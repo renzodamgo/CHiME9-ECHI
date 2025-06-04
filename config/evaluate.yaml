@@ -1,0 +1,16 @@
+defaults:
+  - _self_
+  - paths: default
+
+# Path to where the sumbitted data is stored
+submission_dir: ???
+output_file: results.json
+
+enhanced: ??? # Path to the generated files
+reference: ??? # Path to the ground truth files
+score_config: config/metrics.yaml
+use_gpu: false
+
+hydra:
+  run:
+    dir: ${paths.data_root}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}

@@ -1,0 +1,8 @@
+data_root: data
+
+# Path to where you have downloaded the ECHI dataset
+echi_data_dir: ${paths.data_root}/echi_data
+
+# Path to a working directory where a preprocessed
+# version of the ECHI dataset will be stored.
+echi_working_dir: ${paths.data_root}/echi_working
