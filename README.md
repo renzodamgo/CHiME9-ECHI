@@ -8,6 +8,10 @@
 - installing data
 - running prepare script
 
+For now:
+
+export PYTHONPATH=src
+
 ## Evaluation
 
 - running the evaluate script
