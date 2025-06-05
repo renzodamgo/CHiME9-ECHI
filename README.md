@@ -10,7 +10,9 @@
 
 For now:
 
+```bash
 export PYTHONPATH=src
+```
 
 ## Evaluation
 
@@ -23,7 +25,7 @@ python scripts/evaluate.py enhanced=<path_to_enhanced> reference=<path to refere
 With test data
 
 ```bash
-python scripts/evaluate.py enhanced=test/test_samples/test1 reference=test/test_samples/test
+python scripts/evaluate.py enhanced=test/test_samples/test1 reference=test/test_samples/test2
 ```
 
 (This will change shortly to operate at a higher level of abstraction)
