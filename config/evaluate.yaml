@@ -1,0 +1,22 @@
+defaults:
+  - _self_
+  - paths: default
+
+# Path to where the submitted data is stored
+submission: ???
+
+output_file: ${paths.scratch}/results.{device}.json
+
+reference: ${paths.scratch}/reference # Path to the ground truth files
+enhanced: ${paths.scratch}/enhanced # Path to the generated files
+score_config: config/metrics.yaml
+use_gpu: false
+
+decimate_factor: 1 # Decimation factor for the evaluation
+
+hydra:
+  run:
+    dir: ${paths.scratch}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job_logging:
+    root:
+      level: WARNING
