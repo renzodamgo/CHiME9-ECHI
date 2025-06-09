@@ -12,11 +12,16 @@ from signal_tools import segment_signal_dir
 def main(cfg: DictConfig) -> None:
     logging.info("Preparing the ECHI dataset")
 
-    # Segment the reference signals
-    signal_dir = "/Volumes/ECHI1/chime9_echi/ref/dev/"
-    csv_dir = "/Volumes/ECHI1/chime9_echi/metadata/ref/dev/"
-    output_dir = "output"
-    segment_signal_dir(signal_dir, csv_dir, output_dir, filter="*ha*")
+    signal_dir = f"{cfg.paths.echi}/ref/dev/"
+    csv_dir = f"{cfg.paths.echi}/metadata/ref/dev/"
+    ha_segment_dir = f"{cfg.paths.ref_segment_dir}/ha"
+    aria_segment_dir = f"{cfg.paths.ref_segment_dir}/aria"
+
+    logging.info(f"Segmenting hearing aid reference signals into {ha_segment_dir}")
+    segment_signal_dir(signal_dir, csv_dir, ha_segment_dir, filter="*ha*P*")
+
+    logging.info(f"Segmenting aria reference signals into {aria_segment_dir}")
+    segment_signal_dir(signal_dir, csv_dir, aria_segment_dir, filter="*aria*P*")
 
 
 if __name__ == "__main__":

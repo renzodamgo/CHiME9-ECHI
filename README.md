@@ -2,19 +2,44 @@
 
 **work in progress**
 
-## Installation
+## 1. Installation
 
-- installing code
-- installing data
-- running prepare script
-
-For now:
+Install the code
 
 ```bash
-export PYTHONPATH=src
+git clone ...
+
+export PYTHONPATH=src  # ?
 ```
 
-## Evaluation
+## 2. Install the data
+
+- download and install dataset
+- set paths in config/paths/default
+
+## 3. Prepare the data
+
+Prepare the `chime9_echi` dataset for use.
+
+```bash
+python scripts/prepare.py
+```
+
+## Make a submission
+
+The following script will make a dummy submission.
+
+```bash
+bash scripts/make_dummy_submission <chime9_echi_dir> <submission_directory>"
+```
+
+e.g.
+
+```bash
+bash scripts/make_dummy_submission data/chime9_data data/submission
+```
+
+## Evaluate a submission
 
 - running the evaluate script
 
@@ -27,5 +52,3 @@ With test data
 ```bash
 python scripts/evaluate.py enhanced=test/test_samples/test1 reference=test/test_samples/test2
 ```
-
-(This will change shortly to operate at a higher level of abstraction)

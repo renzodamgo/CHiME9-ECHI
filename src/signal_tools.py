@@ -19,7 +19,7 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
         signal, fs = sf.read(f)
 
     with open(csv_file, "r") as f:
-        segments = list(csv.DictReader(f, fieldnames=["start", "end"]))
+        segments = list(csv.DictReader(f, fieldnames=["index", "start", "end"]))
 
     for index, segment in enumerate(segments, start=1):
         output_file = Path(output_dir) / f"{csv_file.stem}.{index:03g}.wav"

@@ -2,15 +2,16 @@ defaults:
   - _self_
   - paths: default
 
-# Path to where the sumbitted data is stored
-submission_dir: ???
-output_file: results.json
+# Path to where the submitted data is stored
+submission: ???
 
-enhanced: ??? # Path to the generated files
-reference: ??? # Path to the ground truth files
+output_file: ${paths.scratch}/results.json
+
+reference: ${paths.scratch}/reference # Path to the ground truth files
+enhanced: ${paths.scratch}/enhanced # Path to the generated files
 score_config: config/metrics.yaml
 use_gpu: false
 
 hydra:
   run:
-    dir: ${paths.data_root}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: ${paths.scratch}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}

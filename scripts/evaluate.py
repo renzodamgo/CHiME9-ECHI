@@ -66,36 +66,39 @@ def evaluate(enhanced, reference, score_config, output_file, use_gpu):
         logging.info("No utterance-level scoring function is provided.")
 
 
-def translate(name: str) -> str:
-    ## Map the reference segment names onto the wav files
-    # dev_01.ref1_aria.csv -> dev_01.aria.pos1.wav
-    # dev_01.ref1_ha.csv -> dev_01.ha_front.pos1.wav
-    bits = name.split(".")
-    session = bits[0]
-    device = bits[1].split("_")[1]
-    if device == "ha":
-        device += "_front"
-    pos = bits[1].split("_")[0][-1]
-    name = f"{session}.{device}.pos{pos}.wav"
-    return name
-
-
 @hydra.main(version_base=None, config_path="../config", config_name="evaluate")
 def main(cfg: DictConfig):
     logging.info("Running evaluate")
-    signal_dir = "/Volumes/ECHI1/echi_submission"  # TODO - parameterise path names
-    csv_dir = "/Volumes/ECHI1/chime9_echi/metadata/ref/dev/"
-    output_dir = "output2"
 
-    segment_signal_dir(
-        signal_dir, csv_dir, output_dir, filter="*ha*", translate=translate
+    signal_dir = cfg.submission
+    csv_dir = f"{cfg.paths.echi}/metadata/ref/dev/"
+    ref_segment_dir = cfg.paths.ref_segment_dir
+
+    ha_segment_dir = f"{cfg.paths.scratch}/segments/ha"
+    logging.info(f"Hearing aid signals into {ha_segment_dir}")
+    segment_signal_dir(signal_dir, csv_dir, ha_segment_dir, filter="*ha*P*")
+
+    aria_segment_dir = f"{cfg.paths.scratch}/segments/aria"
+    logging.info(f"Aria signals into {aria_segment_dir}")
+    segment_signal_dir(signal_dir, csv_dir, aria_segment_dir, filter="*aria*P*")
+
+    logging.info("Evaluating hearing aid segments")
+    evaluate(
+        f"{ref_segment_dir}/ha",
+        ha_segment_dir,
+        cfg.score_config,
+        cfg.output_file,
+        cfg.use_gpu,
     )
 
-    # evaluate(
-    #    cfg.enhanced, cfg.reference, cfg.score_config, cfg.output_file, cfg.use_gpu
-    # )
-
-    evaluate("output", "output2", cfg.score_config, cfg.output_file, cfg.use_gpu)
+    logging.info("Evaluating aria segments")
+    evaluate(
+        f"{ref_segment_dir}/aria",
+        aria_segment_dir,
+        cfg.score_config,
+        cfg.output_file,
+        cfg.use_gpu,
+    )
 
 
 if __name__ == "__main__":

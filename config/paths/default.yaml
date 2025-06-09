@@ -1,8 +1,5 @@
-data_root: data
+root: data # Root directory for all data directories
+echi: ${paths.root}/chime9_echi # Path to the ECHI dataset directory
+scratch: ${paths.root}/scratch # Path to scratch space for preprocessing
 
-# Path to where you have downloaded the ECHI dataset
-echi_data_dir: ${paths.data_root}/echi_data
-
-# Path to a working directory where a preprocessed
-# version of the ECHI dataset will be stored.
-echi_working_dir: ${paths.data_root}/echi_working
+ref_segment_dir: ${paths.scratch}/ref_segments # Path to the reference segment directory
