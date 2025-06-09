@@ -1,34 +1,65 @@
 """Evaluate ECHI submission using Versa Scorer"""
 
+import glob
 import logging
+import os
+import tempfile
 
 import hydra
 import torch
 import yaml
 from omegaconf import DictConfig
+from versa.scorer_shared import (
+    audio_loader_setup,
+    list_scoring,
+    load_score_modules,
+    load_summary,
+)
 
 from signal_tools import segment_signal_dir
 
 
-def evaluate(enhanced, reference, score_config, output_file, use_gpu):
+def load_audio_files(directory: str, decimate_factor: int = 1):
+    """Load audio files from a directory.
+
+    Uses the Versa soundfile loader and adds a feature that allows decimating
+    the file list by a given factor to allow processing only a subset of files.
+    """
+
+    file_list = glob.glob(os.path.join(directory, "*.wav"))
+    file_list.sort()
+    file_list = file_list[::decimate_factor]  # Decimate the list
+    tmp_filelist = tempfile.NamedTemporaryFile(
+        delete=False, mode="w", suffix=".scp"
+    ).name
+
+    with open(tmp_filelist, "w") as f:
+        for file in file_list:
+            name = os.path.basename(file)
+            f.write(f"{name} {file}\n")
+
+    files = audio_loader_setup(tmp_filelist, io="soundfile")
+    return files
+
+
+def evaluate(
+    enhanced: str,
+    reference: str,
+    score_config,
+    output_file,
+    use_gpu,
+    decimate_factor: int = 1,
+):
     """Run the evaluation wih versa"""
-    from versa.scorer_shared import (  # TODO: here for testing - move to top
-        audio_loader_setup,
-        list_scoring,
-        load_score_modules,
-        load_summary,
-    )
 
     if use_gpu:
         GPU_RANK = 0
         torch.cuda.set_device(GPU_RANK)
         logging.info(f"using device: cuda:{GPU_RANK}")
 
-    enhanced_files = audio_loader_setup(enhanced, io="dir")
+    enhanced_files = load_audio_files(enhanced, decimate_factor)
 
-    # find reference file
-
-    reference_files = audio_loader_setup(reference, io="dir")
+    reference_files = load_audio_files(reference, decimate_factor)
 
     # Get and divide list
     if len(enhanced_files) == 0:
@@ -59,7 +90,7 @@ def evaluate(enhanced, reference, score_config, output_file, use_gpu):
             reference_files,
             text_info=None,
             output_file=output_file,
-            io="dir",
+            io="soundfile",
         )
         logging.info("Summary: {}".format(load_summary(score_info)))
     else:
@@ -74,31 +105,20 @@ def main(cfg: DictConfig):
     csv_dir = f"{cfg.paths.echi}/metadata/ref/dev/"
     ref_segment_dir = cfg.paths.ref_segment_dir
 
-    ha_segment_dir = f"{cfg.paths.scratch}/segments/ha"
-    logging.info(f"Hearing aid signals into {ha_segment_dir}")
-    segment_signal_dir(signal_dir, csv_dir, ha_segment_dir, filter="*ha*P*")
+    for device in ["ha", "aria"]:
+        segment_dir = f"{cfg.paths.scratch}/segments/{device}"
+        logging.info(f"Segment {device} signals into {segment_dir}")
+        segment_signal_dir(signal_dir, csv_dir, segment_dir, filter=f"*{device}*P*")
 
-    aria_segment_dir = f"{cfg.paths.scratch}/segments/aria"
-    logging.info(f"Aria signals into {aria_segment_dir}")
-    segment_signal_dir(signal_dir, csv_dir, aria_segment_dir, filter="*aria*P*")
-
-    logging.info("Evaluating hearing aid segments")
-    evaluate(
-        f"{ref_segment_dir}/ha",
-        ha_segment_dir,
-        cfg.score_config,
-        cfg.output_file,
-        cfg.use_gpu,
-    )
-
-    logging.info("Evaluating aria segments")
-    evaluate(
-        f"{ref_segment_dir}/aria",
-        aria_segment_dir,
-        cfg.score_config,
-        cfg.output_file,
-        cfg.use_gpu,
-    )
+        logging.info(f"Evaluating {device} segments")
+        evaluate(
+            f"{ref_segment_dir}/{device}",
+            segment_dir,
+            cfg.score_config,
+            cfg.output_file.format(device=device),
+            cfg.use_gpu,
+            decimate_factor=cfg.decimate_factor,
+        )
 
 
 if __name__ == "__main__":

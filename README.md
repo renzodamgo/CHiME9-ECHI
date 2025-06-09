@@ -30,25 +30,31 @@ python scripts/prepare.py
 The following script will make a dummy submission.
 
 ```bash
-bash scripts/make_dummy_submission <chime9_echi_dir> <submission_directory>"
+bash scripts/make_dummy_submission.sh <chime9_echi_dir> <submission_directory>"
 ```
 
 e.g.
 
 ```bash
-bash scripts/make_dummy_submission data/chime9_data data/submission
+bash scripts/make_dummy_submission.sh data/chime9_echi data/submission
 ```
 
 ## Evaluate a submission
 
-- running the evaluate script
+Run the evaluate script
 
 ```bash
-python scripts/evaluate.py enhanced=<path_to_enhanced> reference=<path to references>
+python scripts/evaluate.py submission=<submission_dir>
 ```
 
 With test data
 
 ```bash
-python scripts/evaluate.py enhanced=test/test_samples/test1 reference=test/test_samples/test2
+python scripts/evaluate.py submission=data/submission
+```
+
+The `decimate_factor` can be used to select every Nth segment for evaluation. For example, to evaluate a subset of just 1/20 of the data
+
+```bash
+python scripts/evaluate.py submission=data/submission decimate_factor=20
 ```
