@@ -1,7 +1,4 @@
-defaults:
-  - _self_
-  - paths: default
-
-hydra:
-  run:
-    dir: ${paths.scratch}/logs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+signal_dir: ${..paths.echi}/ref/dev
+csv_dir: ${..paths.echi}/metadata/ref/dev
+ha_segment_dir: ${..paths.ref_segment_dir}/ha
+aria_segment_dir: ${..paths.ref_segment_dir}/aria

@@ -4,11 +4,9 @@
 
 1. <a href="#install">Installing the software</a>
 2. <a href="#data">Installing the dataset</a>
-3. <a href="#preparation">Preparing the data</a>
-4. <a href="#baseline"> Running the baseline</a>
-5. <a href="#evaluation">Evaluating the output</a>
-6. <a href="#results">Displaying performance metrics</a>
-7. <a href="#troubleshooting">Troubleshooting</a>
+3. <a href="#baseline"> Running the baseline</a>
+4. <a href="#configuration"> Configuring the baseline</a>
+5. <a href="#troubleshooting">Troubleshooting</a>
 
 ## <a id="#install">1. Installing the software</a>
 
@@ -40,54 +38,47 @@ export PYTHONPATH=$PWD/src:$PYTHONPATH
 - download and install dataset
 - set paths in config/paths/default
 
-## 3. <a id="preparation">Preparing the data</a>
+## <a id="baseline">3. Running the baseline</a>
 
-Prepare the `chime9_echi` dataset for use.
-
-```bash
-python scripts/prepare.py
-```
-
-## 4. <a id="baseline">Running the baseline</a>
-
-The following script will run the baseline and produce output in the format
-that is ready for evaluation.
+The baseline system can be run using
 
 ```bash
-bash scripts/make_dummy_submission.sh <chime9_echi_dir> <submission_directory>"
+python run.py
 ```
 
-e.g.
+This is equivalent to running the following steps
 
 ```bash
-bash scripts/make_dummy_submission.sh data/chime9_echi data/submission
+python -m scripts.prepare
+python -m scripts.inference
+python -m scripts.evaluate
+python -m scripts.display_metrics
 ```
 
-## 5. <a id="evaluation">Evaluating the output</a>
+## <a id="configuration">4. Configuring the baseline</a>
+
+TODO
 
 Run the evaluate script
 
 ```bash
-python scripts/evaluate.py submission=<submission_dir>
+python scripts/evaluate.py evaluate.submission=<submission_dir>
 ```
 
 With test data
 
 ```bash
-python scripts/evaluate.py submission=data/submission
+python scripts/evaluate.py evaluate.submission=data/submission
 ```
 
 The `decimate_factor` can be used to select every Nth segment for evaluation.
 For example, to evaluate a subset of just 1/20 of the data
 
 ```bash
-python scripts/evaluate.py submission=data/submission decimate_factor=20
+python scripts/evaluate.py evaluate.submission=data/submission
+   evaluate.decimate_factor=20
 ```
 
-## 6. <a id="results">Displaying performance metrics</a>
-
-TODO
-
-## 7. <a id="troubleshooting">Troubleshooting/a>
+## <a id="troubleshooting">5. Troubleshooting/a>
 
 TODO

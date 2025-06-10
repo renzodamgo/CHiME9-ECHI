@@ -1,0 +1,26 @@
+# The items in this configuration file correspond to the steps in the overall recipe.
+# The values refer to configuration files of the individual steps.
+
+defaults:
+  - .@paths: paths
+  - .@prepare: prepare
+  - .@evaluate: evaluate
+  - _self_
+
+# Setting up paths for outputs of the experiments
+exp_name: base
+base_dir: exp/${exp_name}
+hydra:
+  run:
+    dir: ${base_dir}/hydra
+  job_logging:
+    root:
+      level: WARNING
+
+# If you wish to skip a step, set its value to null or false as below.
+# This can be also done from command-line when running the script, e.g.
+# python run.py prepare_data.run=false
+prepare:
+  run: false
+evaluate:
+  run: true

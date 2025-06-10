@@ -9,12 +9,6 @@ import hydra
 import torch
 import yaml
 from omegaconf import DictConfig
-from versa.scorer_shared import (
-    audio_loader_setup,
-    list_scoring,
-    load_score_modules,
-    load_summary,
-)
 
 from signal_tools import segment_signal_dir
 
@@ -25,6 +19,8 @@ def load_audio_files(directory: str, decimate_factor: int = 1):
     Uses the Versa soundfile loader and adds a feature that allows decimating
     the file list by a given factor to allow processing only a subset of files.
     """
+
+    from versa.scorer_shared import audio_loader_setup
 
     file_list = glob.glob(os.path.join(directory, "*.wav"))
     file_list.sort()
@@ -42,7 +38,7 @@ def load_audio_files(directory: str, decimate_factor: int = 1):
     return files
 
 
-def evaluate(
+def evaluate_device(
     enhanced: str,
     reference: str,
     score_config,
@@ -51,6 +47,8 @@ def evaluate(
     decimate_factor: int = 1,
 ):
     """Run the evaluation wih versa"""
+
+    from versa.scorer_shared import list_scoring, load_score_modules, load_summary
 
     if use_gpu:
         GPU_RANK = 0
@@ -97,21 +95,19 @@ def evaluate(
         logging.info("No utterance-level scoring function is provided.")
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="evaluate")
-def main(cfg: DictConfig):
+def evaluate(cfg):
     logging.info("Running evaluate")
 
     signal_dir = cfg.submission
-    csv_dir = f"{cfg.paths.echi}/metadata/ref/dev/"
-    ref_segment_dir = cfg.paths.ref_segment_dir
+    ref_segment_dir = cfg.ref_segment_dir
 
     for device in ["ha", "aria"]:
-        segment_dir = f"{cfg.paths.scratch}/segments/{device}"
+        segment_dir = cfg.segment_dir.format(device=device)
         logging.info(f"Segment {device} signals into {segment_dir}")
-        segment_signal_dir(signal_dir, csv_dir, segment_dir, filter=f"*{device}*P*")
+        segment_signal_dir(signal_dir, cfg.csv_dir, segment_dir, filter=f"*{device}*P*")
 
         logging.info(f"Evaluating {device} segments")
-        evaluate(
+        evaluate_device(
             f"{ref_segment_dir}/{device}",
             segment_dir,
             cfg.score_config,
@@ -119,6 +115,11 @@ def main(cfg: DictConfig):
             cfg.use_gpu,
             decimate_factor=cfg.decimate_factor,
         )
+
+
+@hydra.main(version_base=None, config_path="../config", config_name="main")
+def main(cfg: DictConfig):
+    evaluate(cfg.evaluate)
 
 
 if __name__ == "__main__":
