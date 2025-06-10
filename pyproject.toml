@@ -6,6 +6,9 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "hydra-core>=1.3.2",
+    "pip>=25.1.1",
+    "pre-commit>=4.2.0",
+    "types-pyyaml>=6.0.12.20250516",
     "versa-speech-audio-toolkit",
 ]
 
