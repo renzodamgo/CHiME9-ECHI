@@ -6,6 +6,7 @@ import logging
 import hydra
 from omegaconf import OmegaConf
 
+from scripts.dummy_inference import dummy_inference as inference
 from scripts.evaluate import evaluate
 from scripts.prepare import prepare
 
@@ -16,6 +17,9 @@ def main(cfg):
 
     if cfg.prepare.run:
         prepare(cfg.prepare)
+
+    if cfg.inference.run:
+        inference(cfg.inference)
 
     if cfg.evaluate.run:
         evaluate(cfg.evaluate)
