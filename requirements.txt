@@ -1,4 +1,5 @@
 cython
 hydra-core
-numpy
+matplotlib # needed by nisqa?
+numpy==1.26.4
 omegaconf
