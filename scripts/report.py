@@ -19,7 +19,7 @@ def read_jsonl(file_path, data=None):
     return data
 
 
-NON_NUMERIC_KEYS = {"key"}
+NON_NUMERIC_KEYS = {"key", "srmr"}
 
 
 def compute_stats(results):
