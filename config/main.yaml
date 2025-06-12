@@ -6,6 +6,7 @@ defaults:
   - .@prepare: prepare
   - .@inference: inference
   - .@evaluate: evaluate
+  - .@report: report
   - _self_
 
 # Setting up paths for outputs of the experiments
@@ -16,14 +17,16 @@ hydra:
     dir: ${base_dir}/hydra
   job_logging:
     root:
-      level: WARNING
+      level: INFO
 
 # If you wish to skip a step, set its value to null or false as below.
 # This can be also done from command-line when running the script, e.g.
 # python run.py prepare_data.run=false
 prepare:
-  run: true
+  run: false
 inference:
-  run: true
+  run: false
 evaluate:
+  run: false
+report:
   run: true

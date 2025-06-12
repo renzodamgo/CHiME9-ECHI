@@ -42,7 +42,7 @@ def evaluate_device(
     enhanced: str,
     reference: str,
     score_config,
-    output_file,
+    results_file,
     use_gpu,
     decimate_factor: int = 1,
 ):
@@ -87,7 +87,7 @@ def evaluate_device(
             score_modules,
             reference_files,
             text_info=None,
-            output_file=output_file,
+            output_file=results_file,
             io="soundfile",
         )
         logging.info("Summary: {}".format(load_summary(score_info)))
@@ -111,7 +111,7 @@ def evaluate(cfg):
             f"{ref_segment_dir}/{device}",
             segment_dir,
             cfg.score_config,
-            cfg.output_file.format(device=device),
+            cfg.results_file.format(device=device),
             cfg.use_gpu,
             decimate_factor=cfg.decimate_factor,
         )
