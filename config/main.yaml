@@ -6,6 +6,7 @@ defaults:
   - .@prepare: prepare
   - .@inference: inference
   - .@evaluate: evaluate
+  - .@report: report
   - _self_
 
 # Setting up paths for outputs of the experiments
@@ -26,4 +27,6 @@ prepare:
 inference:
   run: true
 evaluate:
+  run: true
+report:
   run: true

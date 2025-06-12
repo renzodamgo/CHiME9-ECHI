@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 from scripts.dummy_inference import dummy_inference as inference
 from scripts.evaluate import evaluate
 from scripts.prepare import prepare
+from scripts.report import report
 
 
 @hydra.main(version_base=None, config_path="config", config_name="main")
@@ -23,6 +24,9 @@ def main(cfg):
 
     if cfg.evaluate.run:
         evaluate(cfg.evaluate)
+
+    if cfg.report.run:
+        report(cfg.report)
 
 
 if __name__ == "__main__":

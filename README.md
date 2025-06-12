@@ -52,7 +52,7 @@ This is equivalent to running the following steps
 python -m scripts.prepare
 python -m scripts.inference
 python -m scripts.evaluate
-python -m scripts.display_metrics
+python -m scripts.report
 ```
 
 ## <a id="configuration">4. Configuring the baseline</a>

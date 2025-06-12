@@ -1,7 +1,7 @@
 # Path to where the submitted data is stored
 submission: ${..paths.scratch}/dev/
 
-output_file: ${..paths.scratch}/results.{device}.json
+results_file: ${..paths.scratch}/results.{device}.json
 
 segment_dir: ${..paths.scratch}/segments/{device}
 
