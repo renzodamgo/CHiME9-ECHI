@@ -10,3 +10,6 @@ pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audi
 
 # you might want to add this to your ~/.bashrc
 export PYTHONPATH=$PWD/src:$PYTHONPATH
+
+# Install NISQA
+bash external/versa/tools/setup_nisqa.sh

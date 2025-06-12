@@ -21,7 +21,7 @@
 # - name: squim_ref
 # - name: squim_no_ref
 #
-- name: pysepm
+# - name: pysepm
 ##### All above here are working
 
 #- name: srmr
@@ -33,5 +33,5 @@
 #    dnsmos:
 #      fs: 16000
 
-# - name: nisqa
+- name: nisqa
 #  No such file or directory: './tools/NISQA/weights/nisqa.tar'
