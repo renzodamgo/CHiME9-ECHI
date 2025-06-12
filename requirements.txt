@@ -1,4 +1,6 @@
 cython
+git+https://github.com/ftshijt/pysepm.git
 hydra-core
-numpy
+matplotlib # needed by nisqa?
+numpy==2.2
 omegaconf
