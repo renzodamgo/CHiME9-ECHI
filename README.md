@@ -1,17 +1,22 @@
-# TODO - prior to launch
 
-- ** Integrating a proper baseline system **
+# Baseline systems for the ECHI task of the CHiME-9 challange
+
+## TODO - section to be removed prior to launch
+
+- **Integrating a proper baseline system**
 - rationalise the configuration parameters - reduce repetition and make more consistent
 - results reporting
-     - writing to file
-     - working out what stats are needed
+  - writing to file
+  - working out what stats are needed
 - hpc support
-     - provide slurm support so evaluation can be run on multiple processors
-     - work out how to handle GPU vs CPU based computation
+  - provide slurm support so evaluation can be run on multiple processors
+  - work out how to handle GPU vs CPU based computation
 - defining the final set of metrics
 - improving the documentation
 
-# Baseline systems for the ECHI task of the CHiME-9 challange
+- Had to 'unset GITHUB_TOKEN' to stop utmos install failing.
+
+---
 
 ## Sections
 
@@ -95,6 +100,3 @@ python scripts/evaluate.py evaluate.submission=data/submission
 ## <a id="troubleshooting">5. Troubleshooting/a>
 
 TODO
-
-
-

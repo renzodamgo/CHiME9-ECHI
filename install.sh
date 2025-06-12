@@ -1,15 +1,63 @@
 #!/bin/bash
 
-conda create --name echi_recipe python=3.11
-conda activate echi_recipe
-conda config --add conda-forge
+# Exit immediately on any error
+set -e
 
-conda install --file requirements.txt
+# Environment name
+ENV_NAME=echi_recipe
 
-pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit
+# Detect Conda base path
+CONDA_BASE=$(conda info --base)
 
-# you might want to add this to your ~/.bashrc
+# Make sure Conda is initialized in this shell
+source "$CONDA_BASE/etc/profile.d/conda.sh"
+
+# Optional: run `conda init` once to fix future shell sessions
+# Comment this out if you don't want to touch user shell config
+conda init bash >/dev/null 2>&1 || true
+
+# Create the conda environment (if it doesn't already exist)
+if conda info --envs | grep -q "$ENV_NAME"; then
+    echo "Conda environment '$ENV_NAME' already exists. Skipping creation."
+else
+    conda create --name "$ENV_NAME" python=3.11 -y
+fi
+
+# Activate the environment
+conda activate "$ENV_NAME"
+
+# Add conda-forge as a high-priority channel (if not already present)
+if ! conda config --show channels | grep -q "conda-forge"; then
+    conda config --add channels conda-forge
+    conda config --set channel_priority strict
+fi
+
+# Install dependencies
+if [[ -f requirements.txt ]]; then
+    conda install --file requirements.txt -y
+else
+    echo "ERROR: requirements.txt not found"
+    exit 1
+fi
+
+# Install Versa from GitHub
+echo "Installing Versa Speech Audio Toolkit ..."
+python -m pip install git+https://github.com/wavlab-speech/versa.git#egg=versa-speech-audio-toolkit
+
+# Install the pysepm package from GitHub
+echo "Installing pysepm ..."
+python -m pip install git+https://github.com/ftshijt/pysepm.git
+
+# Set PYTHONPATH
+echo "export PYTHONPATH=\$PWD/src:\$PYTHONPATH" >>~/.bashrc
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 
-# Install NISQA
-bash external/versa/tools/setup_nisqa.sh
+# Run NISQA setup
+if [[ -f external/versa/tools/setup_nisqa.sh ]]; then
+    bash external/versa/tools/setup_nisqa.sh
+else
+    echo "ERROR: NISQA setup script not found at external/versa/tools/setup_nisqa.sh"
+    exit 1
+fi
+
+echo "✅ Environment '$ENV_NAME' is set up and ready to use!"
