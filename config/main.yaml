@@ -27,6 +27,6 @@ prepare:
 inference:
   run: false
 evaluate:
-  run: false
+  run: true
 report:
   run: true

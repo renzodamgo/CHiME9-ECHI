@@ -53,12 +53,11 @@ def segment_signal_dir(
     ]
     n_files = len(wav_files)
 
-    for wav_file in wav_files:
-        if not wav_file.exists():
-            logging.error(f"Missing wav file: {wav_file}")
-
     for wav_file, csv_file in tqdm(
         zip(wav_files, csv_files), desc="Segmenting...", total=n_files
     ):
+        if not wav_file.exists():
+            logging.error(f"Missing wav file: {wav_file}")
+            continue
         segment_signal(wav_file, csv_file, Path(output_dir))
         segment_signal(wav_file, csv_file, Path(output_dir))
