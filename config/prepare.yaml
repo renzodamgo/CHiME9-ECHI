@@ -3,5 +3,5 @@ csv_dir: ${..paths.echi}/metadata/ref/{dataset}
 
 ref_segment_dir: ${..paths.ref_segment_dir}
 
-dataset: dev
+dataset: ${..shared.dataset}
 devices: [ha, aria]

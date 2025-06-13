@@ -100,7 +100,7 @@ def evaluate(cfg):
 
     signal_dir = cfg.enhanced_dir.format(dataset=cfg.dataset)
 
-    for device in ["ha", "aria"]:
+    for device in cfg.devices:
         segment_dir = cfg.segment_dir.format(device=device)
         logging.info(f"Segment {device} signals into {segment_dir}")
         segment_signal_dir(signal_dir, cfg.csv_dir, segment_dir, filter=f"*{device}*P*")

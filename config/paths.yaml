@@ -15,3 +15,5 @@ scratch: ${paths.root}/scratch # Path to scratch space for preprocessing
 
 enhanced_dir: ${paths.scratch}/{dataset}
 enhanced_signal: ${paths.enhanced_dir}/{session}.{device}.{pid}.wav
+
+results_file: ${..paths.scratch}/results.${..shared.dataset}.{device}.json

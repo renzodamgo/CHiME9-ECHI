@@ -1,5 +1,5 @@
 sessions_file: ${..paths.echi}/metadata/sessions.csv
-dataset: dev
+dataset: ${..shared.dataset}
 devices: ${..shared.devices}
 sample_rate: 16000 # Sample rate for the audio files
 

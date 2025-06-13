@@ -1,7 +1,7 @@
 # Path to where the submitted data is stored
 enhanced_dir: ${..paths.enhanced_dir}
 
-results_file: ${..paths.scratch}/results.{device}.json
+results_file: ${..paths.results_file}
 
 segment_dir: ${..paths.scratch}/segments/{device}
 
@@ -13,4 +13,5 @@ score_config: config/metrics_test.yaml
 use_gpu: false
 decimate_factor: 1 # Decimation factor for the evaluation
 
-dataset: dev
+dataset: ${..shared.dataset}
+devices: ${..shared.devices}
