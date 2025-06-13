@@ -1,5 +1,17 @@
 root: data # Root directory for all data directories
-echi: ${paths.root}/chime9_echi # Path to the ECHI dataset directory
+
+# Path to the ECHI dataset directory
+echi: ${paths.root}/chime9_echi
+signal_dir: ${paths.echi}/{device}/{dataset}
+echi_signal: ${paths.signal_dir}/{session}.{device}.wav
+
+ref_signal_dir: ${paths.echi}/ref/{dataset}
+
+# Path to the reference segment directory
+ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}
+
+# Submission paths
 scratch: ${paths.root}/scratch # Path to scratch space for preprocessing
 
-ref_segment_dir: ${paths.scratch}/ref_segments # Path to the reference segment directory
+enhanced_dir: ${paths.scratch}/{dataset}
+enhanced_signal: ${paths.enhanced_dir}/{session}.{device}.{pid}.wav

@@ -36,8 +36,8 @@ def csv_to_wav(name: str) -> str:
 
 
 def segment_signal_dir(
-    signals_dir: Path | str,
-    csv_dir: Path | str,
+    signal_dir: Path | str,
+    segment_info_dir: Path | str,
     output_dir: Path | str,
     filter: str = "*",
     translate: Optional[Callable[[str], str]] = None,
@@ -47,9 +47,15 @@ def segment_signal_dir(
     if translate is None:
         translate = csv_to_wav
 
-    csv_files = list(Path(csv_dir).glob(filter))
+    output_dir = Path(output_dir)
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_files = list(Path(segment_info_dir).glob(filter))
+    print(segment_info_dir)
+    print(csv_files)
     wav_files = [
-        Path(signals_dir) / translate(str(csv_file.name)) for csv_file in csv_files
+        Path(signal_dir) / translate(str(csv_file.name)) for csv_file in csv_files
     ]
     n_files = len(wav_files)
 
@@ -59,5 +65,4 @@ def segment_signal_dir(
         if not wav_file.exists():
             logging.error(f"Missing wav file: {wav_file}")
             continue
-        segment_signal(wav_file, csv_file, Path(output_dir))
         segment_signal(wav_file, csv_file, Path(output_dir))

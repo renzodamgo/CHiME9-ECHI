@@ -3,6 +3,7 @@
 
 defaults:
   - .@paths: paths
+  - .@shared: shared
   - .@prepare: prepare
   - .@inference: inference
   - .@evaluate: evaluate
@@ -27,6 +28,6 @@ prepare:
 inference:
   run: false
 evaluate:
-  run: true
+  run: false
 report:
   run: true

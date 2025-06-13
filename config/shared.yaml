@@ -1,0 +1,4 @@
+# Configuration parameters shared across modules
+
+devices: [ha, aria] # Devices to process
+sample_rate: 16000 # Reference sample rate.

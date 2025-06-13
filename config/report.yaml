@@ -1,2 +1,2 @@
 results_file: ${..paths.scratch}/results.{device}.json
-devices: [aria, ha]
+devices: ${..shared.devices}

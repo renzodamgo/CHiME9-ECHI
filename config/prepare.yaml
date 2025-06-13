@@ -1,4 +1,7 @@
-signal_dir: ${..paths.echi}/ref/dev
-csv_dir: ${..paths.echi}/metadata/ref/dev
-ha_segment_dir: ${..paths.ref_segment_dir}/ha
-aria_segment_dir: ${..paths.ref_segment_dir}/aria
+ref_signal_dir: ${..paths.ref_signal_dir}
+csv_dir: ${..paths.echi}/metadata/ref/{dataset}
+
+ref_segment_dir: ${..paths.ref_segment_dir}
+
+dataset: dev
+devices: [ha, aria]

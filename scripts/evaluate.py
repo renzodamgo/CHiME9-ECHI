@@ -98,8 +98,7 @@ def evaluate_device(
 def evaluate(cfg):
     logging.info("Running evaluate")
 
-    signal_dir = cfg.submission
-    ref_segment_dir = cfg.ref_segment_dir
+    signal_dir = cfg.enhanced_dir.format(dataset=cfg.dataset)
 
     for device in ["ha", "aria"]:
         segment_dir = cfg.segment_dir.format(device=device)
@@ -107,8 +106,9 @@ def evaluate(cfg):
         segment_signal_dir(signal_dir, cfg.csv_dir, segment_dir, filter=f"*{device}*P*")
 
         logging.info(f"Evaluating {device} segments")
+        ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
         evaluate_device(
-            f"{ref_segment_dir}/{device}",
+            ref_segment_dir,
             segment_dir,
             cfg.score_config,
             cfg.results_file.format(device=device),
