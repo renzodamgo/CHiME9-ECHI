@@ -32,7 +32,7 @@ def dummy_inference_for_session(
     # For the dummy inference the output for each speaker is the same
     # so we just write one output file and symlink it for each PID
     outfile = enhanced_signal_filename_template.format(
-        session=session, dataset=dataset, device=device, pid="xxx"
+        session=session, device=device, pid="xxx"
     )
 
     if os.path.exists(outfile):
@@ -62,7 +62,7 @@ def dummy_inference_for_session(
     # so we just write one output file and symlink it for each PID
 
     outfile = enhanced_signal_filename_template.format(
-        session=session, dataset=dataset, device=device, pid="xxx"
+        session=session, device=device, pid="xxx"
     )
     os.makedirs(os.path.dirname(outfile), exist_ok=True)
     with open(outfile, "wb") as f:
@@ -70,7 +70,7 @@ def dummy_inference_for_session(
 
     for pid in pids:
         outfile_pid = enhanced_signal_filename_template.format(
-            session=session, dataset=dataset, device=device, pid=pid
+            session=session, device=device, pid=pid
         )
         outfile_name = os.path.basename(outfile)
         os.symlink(outfile_name, outfile_pid)

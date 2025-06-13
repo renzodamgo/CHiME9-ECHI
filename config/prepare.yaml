@@ -1,7 +1,8 @@
 ref_signal_dir: ${..paths.ref_signal_dir}
-csv_dir: ${..paths.echi}/metadata/ref/{dataset}
+segment_info_dir: ${..paths.segment_info_dir}
 
 ref_segment_dir: ${..paths.ref_segment_dir}
 
 dataset: ${..shared.dataset}
 devices: [ha, aria]
+sessions_file: ${..paths.sessions_file}

@@ -98,7 +98,7 @@ def evaluate_device(
 def evaluate(cfg):
     logging.info("Running evaluate")
 
-    signal_dir = cfg.enhanced_dir.format(dataset=cfg.dataset)
+    signal_dir = cfg.enhanced_dir
 
     for device in cfg.devices:
         segment_dir = cfg.segment_dir.format(device=device)
