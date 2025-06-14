@@ -15,3 +15,5 @@ decimate_factor: 1 # Decimation factor for the evaluation
 
 dataset: ${..shared.dataset}
 devices: ${..shared.devices}
+
+sessions_file: ${..paths.sessions_file}

@@ -16,7 +16,7 @@ def prepare(cfg):
     for device in cfg.devices:
         output_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
         logging.info(f"Segmenting {device} reference signals into {output_dir}")
-        segment_info_dir = cfg.csv_dir.format(dataset=cfg.dataset)
+        segment_info_dir = cfg.segment_info_dir.format(dataset=cfg.dataset)
         segment_signal_dir(
             signal_dir=signal_dir,
             segment_info_dir=segment_info_dir,
