@@ -134,6 +134,8 @@ def evaluate(cfg):
     logging.info("Running evaluate")
 
     signal_dir = cfg.enhanced_dir
+    batch = (cfg.batch, cfg.n_batches)  # ie., i of N
+    validate_batch_param(batch)
 
     for device in cfg.devices:
         session_device_pid_tuples = get_session_tuples(
@@ -147,7 +149,7 @@ def evaluate(cfg):
         logging.info(f"Evaluating {device} segments")
         ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
         results_file = cfg.results_file.format(device=device)
-        results_file = add_batch_to_results_file_name(results_file, cfg.batch)
+        results_file = add_batch_to_results_file_name(results_file, batch)
         evaluate_device(
             ref_segment_dir,
             segment_dir,
@@ -155,7 +157,7 @@ def evaluate(cfg):
             cfg.score_config,
             results_file,
             cfg.use_gpu,
-            batch=cfg.batch,
+            batch=batch,
         )
 
 
