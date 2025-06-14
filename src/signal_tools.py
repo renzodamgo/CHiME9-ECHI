@@ -1,12 +1,34 @@
 """Tools for handling signals"""
 
 import csv
+import itertools
 import logging
 from pathlib import Path
 from typing import Callable, Optional
 
 import soundfile as sf
 from tqdm import tqdm
+
+POSITIONS = ["pos1", "pos2", "pos3", "pos4"]
+
+
+def get_session_tuples(session_file, devices, datasets=None):
+    """Get session tuples for the specified datasets and devices."""
+    with open(session_file, "r") as f:
+        sessions = list(csv.DictReader(f))
+
+    # Filter sessions for the specified datasets
+    if datasets is not None:
+        sessions = [s for s in sessions if s["session"].startswith(tuple(datasets))]
+    session_device_pid_tuples = []
+
+    for device, session in itertools.product(devices, sessions):
+        device_pos = "pos" + session[f"{device}_pos"]
+        pids = [session[pos] for pos in POSITIONS if pos != device_pos]
+        for pid in pids:
+            session_device_pid_tuples.append((session["session"], device, pid))
+
+    return session_device_pid_tuples
 
 
 def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
@@ -30,14 +52,14 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
             sf.write(f, signal_segment, samplerate=fs)
 
 
-def csv_to_wav(name: str) -> str:
-    """Replace .csv with .wav"""
-    return ".".join(name.split(".")[:-1]) + ".wav"
+def wav_to_csv(name: str) -> str:
+    """Replace .wav with .csv"""
+    return ".".join(name.split(".")[:-1]) + ".csv"
 
 
 def segment_signal_dir(
-    signals_dir: Path | str,
-    csv_dir: Path | str,
+    signal_dir: Path | str,
+    segment_info_dir: Path | str,
     output_dir: Path | str,
     filter: str = "*",
     translate: Optional[Callable[[str], str]] = None,
@@ -45,12 +67,19 @@ def segment_signal_dir(
     """Extract speech segments from all signals in a directory"""
     logging.info("Segmenting signals...")
     if translate is None:
-        translate = csv_to_wav
+        translate = wav_to_csv
 
-    csv_files = list(Path(csv_dir).glob(filter))
-    wav_files = [
-        Path(signals_dir) / translate(str(csv_file.name)) for csv_file in csv_files
+    output_dir = Path(output_dir)
+    if not output_dir.exists():
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Find all the wav files to process...
+    wav_files = list(Path(signal_dir).glob(filter))
+    # ... and find their corresponding csv segmentation files
+    csv_files = [
+        Path(segment_info_dir) / translate(str(wav_file.name)) for wav_file in wav_files
     ]
+
     n_files = len(wav_files)
 
     for wav_file, csv_file in tqdm(
@@ -59,5 +88,4 @@ def segment_signal_dir(
         if not wav_file.exists():
             logging.error(f"Missing wav file: {wav_file}")
             continue
-        segment_signal(wav_file, csv_file, Path(output_dir))
         segment_signal(wav_file, csv_file, Path(output_dir))

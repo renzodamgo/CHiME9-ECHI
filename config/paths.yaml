@@ -1,5 +1,32 @@
 root: data # Root directory for all data directories
-echi: ${paths.root}/chime9_echi # Path to the ECHI dataset directory
-scratch: ${paths.root}/scratch # Path to scratch space for preprocessing
 
-ref_segment_dir: ${paths.scratch}/ref_segments # Path to the reference segment directory
+# Path to a disk with enough space for preprocessing
+scratch: ${paths.root}/scratch
+
+# Path to the ECHI dataset directory
+echi: ${paths.root}/chime9_echi
+
+# Directory where the enhanced signal are stored
+enhanced_dir: ${paths.scratch}/submission
+
+# ###########
+# You should not need to change anything below this line
+#
+
+# chime9_echi dataset layout
+signal_id: "{session}.{device}.{pid}" # Unique identifier for each signal
+signal_dir: ${paths.echi}/{device}/{dataset}
+echi_signal: ${paths.signal_dir}/{session}.{device}.wav
+ref_signal_dir: ${paths.echi}/ref/{dataset}
+ref_signal_file: ${paths.ref_signal_dir}/${paths.signal_id}.wav
+# chime9_echi metadata layout
+sessions_file: ${paths.echi}/metadata/sessions.${..shared.dataset}.csv
+segment_info_dir: ${paths.echi}/metadata/ref/{dataset}
+segment_info_file: ${paths.segment_info_dir}/${paths.signal_id}.csv
+
+# Path to the reference segment directory
+ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}
+
+enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav
+
+results_file: ${..paths.scratch}/results.${..shared.dataset}.{device}.json

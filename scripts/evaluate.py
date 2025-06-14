@@ -4,16 +4,21 @@ import glob
 import logging
 import os
 import tempfile
+from pathlib import Path
 
 import hydra
 import torch
 import yaml
 from omegaconf import DictConfig
 
-from signal_tools import segment_signal_dir
+from signal_tools import get_session_tuples, segment_signal_dir
 
 
-def load_audio_files(directory: str, decimate_factor: int = 1):
+def load_audio_files(
+    directory: str,
+    selection=None,
+    decimate_factor: int = 1,
+):
     """Load audio files from a directory.
 
     Uses the Versa soundfile loader and adds a feature that allows decimating
@@ -23,7 +28,14 @@ def load_audio_files(directory: str, decimate_factor: int = 1):
     from versa.scorer_shared import audio_loader_setup
 
     file_list = glob.glob(os.path.join(directory, "*.wav"))
+
+    if selection is not None:
+        file_list = [
+            file for file in file_list if Path(file).name.startswith(selection)
+        ]
+
     file_list.sort()
+    print(file_list)
     file_list = file_list[::decimate_factor]  # Decimate the list
     tmp_filelist = tempfile.NamedTemporaryFile(
         delete=False, mode="w", suffix=".scp"
@@ -41,6 +53,7 @@ def load_audio_files(directory: str, decimate_factor: int = 1):
 def evaluate_device(
     enhanced: str,
     reference: str,
+    session_device_pid_tuples,
     score_config,
     results_file,
     use_gpu,
@@ -55,9 +68,12 @@ def evaluate_device(
         torch.cuda.set_device(GPU_RANK)
         logging.info(f"using device: cuda:{GPU_RANK}")
 
-    enhanced_files = load_audio_files(enhanced, decimate_factor)
+    # Selection set so that only loads audio files that are part of the
+    # list of session, device, pids that are to be evaluated.
+    selection = tuple(f"{s}.{d}.{p}" for s, d, p in session_device_pid_tuples)
 
-    reference_files = load_audio_files(reference, decimate_factor)
+    enhanced_files = load_audio_files(enhanced, selection, decimate_factor)
+    reference_files = load_audio_files(reference, selection, decimate_factor)
 
     # Get and divide list
     if len(enhanced_files) == 0:
@@ -98,18 +114,23 @@ def evaluate_device(
 def evaluate(cfg):
     logging.info("Running evaluate")
 
-    signal_dir = cfg.submission
-    ref_segment_dir = cfg.ref_segment_dir
+    signal_dir = cfg.enhanced_dir
 
-    for device in ["ha", "aria"]:
+    for device in cfg.devices:
+        session_device_pid_tuples = get_session_tuples(
+            cfg.sessions_file, [device], datasets=[cfg.dataset]
+        )
+
         segment_dir = cfg.segment_dir.format(device=device)
         logging.info(f"Segment {device} signals into {segment_dir}")
         segment_signal_dir(signal_dir, cfg.csv_dir, segment_dir, filter=f"*{device}*P*")
 
         logging.info(f"Evaluating {device} segments")
+        ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
         evaluate_device(
-            f"{ref_segment_dir}/{device}",
+            ref_segment_dir,
             segment_dir,
+            session_device_pid_tuples,
             cfg.score_config,
             cfg.results_file.format(device=device),
             cfg.use_gpu,

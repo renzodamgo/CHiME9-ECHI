@@ -1,7 +1,8 @@
-sessions_file: ${..paths.echi}/metadata/sessions.csv
-dataset: dev
-devices: [aria, ha] # Devices to use for evaluation
+dataset: ${..shared.dataset}
+devices: ${..shared.devices}
 sample_rate: 16000 # Sample rate for the audio files
 
-noisy_signal: ${..paths.echi}/{device}/{dataset}/{session}.{device}.wav
-enhanced_signal: ${..paths.scratch}/{dataset}/{session}.{device}.{pid}.wav
+noisy_signal: ${..paths.echi_signal}
+
+enhanced_signal: ${..paths.enhanced_signal}
+sessions_file: ${..paths.sessions_file}
