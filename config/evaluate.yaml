@@ -11,7 +11,7 @@ ref_segment_dir: ${..paths.ref_segment_dir} # Path to the reference segment dire
 #score_config: config/metrics.yaml
 score_config: config/metrics_test.yaml
 use_gpu: false
-decimate_factor: 1 # Decimation factor for the evaluation
+batch: (1, 1) #  (i, N), batch i of N; note (1, 1) means no batching
 
 dataset: ${..shared.dataset}
 devices: ${..shared.devices}

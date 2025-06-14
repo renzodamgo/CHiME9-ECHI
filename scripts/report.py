@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from glob import glob
 
 import hydra
@@ -52,7 +53,10 @@ def report(cfg):
     logging.info("Reporting results")
     for device in cfg.devices:
         logging.info(f"Processing device: {device}")
-        results_files = glob(cfg.results_file.format(device=device))
+        results_file = cfg.results_file.format(device=device)
+        results_file_base, ext = os.path.splitext(results_file)
+        # The wildcard is used to accumluate over multiple batches
+        results_files = glob(f"{results_file_base}*{ext}")
         if not results_files:
             logging.warning(f"No results found for device: {device}")
             continue

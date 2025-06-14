@@ -17,7 +17,7 @@ from signal_tools import get_session_tuples, segment_signal_dir
 def load_audio_files(
     directory: str,
     selection=None,
-    decimate_factor: int = 1,
+    batch=(1, 1),
 ):
     """Load audio files from a directory.
 
@@ -35,8 +35,8 @@ def load_audio_files(
         ]
 
     file_list.sort()
-    print(file_list)
-    file_list = file_list[::decimate_factor]  # Decimate the list
+
+    file_list = file_list[batch[0] - 1 :: batch[1]]  # Form list for batch
     tmp_filelist = tempfile.NamedTemporaryFile(
         delete=False, mode="w", suffix=".scp"
     ).name
@@ -57,7 +57,7 @@ def evaluate_device(
     score_config,
     results_file,
     use_gpu,
-    decimate_factor: int = 1,
+    batch=(1, 1),
 ):
     """Run the evaluation wih versa"""
 
@@ -72,8 +72,8 @@ def evaluate_device(
     # list of session, device, pids that are to be evaluated.
     selection = tuple(f"{s}.{d}.{p}" for s, d, p in session_device_pid_tuples)
 
-    enhanced_files = load_audio_files(enhanced, selection, decimate_factor)
-    reference_files = load_audio_files(reference, selection, decimate_factor)
+    enhanced_files = load_audio_files(enhanced, selection, batch)
+    reference_files = load_audio_files(reference, selection, batch)
 
     # Get and divide list
     if len(enhanced_files) == 0:
@@ -111,6 +111,25 @@ def evaluate_device(
         logging.info("No utterance-level scoring function is provided.")
 
 
+def validate_batch_param(batch):
+    """Validate batch parameter."""
+    if len(batch) != 2 or batch[0] > batch[1]:
+        raise ValueError(
+            "Batch parameter must be a tuple of two integers (i, N) "
+            "where index i <= batch size N. Got: {}".format(batch)
+        )
+
+
+def add_batch_to_results_file_name(results_file, batch):
+    """Add batch information to the results file name."""
+    if batch == (1, 1):  # No batching, return original file name
+        return results_file
+    batch_str = f"{batch[0]}_{batch[1]}"
+    base, ext = os.path.splitext(results_file)
+    results_file_with_batch = f"{base}.batch_{batch_str}{ext}"
+    return results_file_with_batch
+
+
 def evaluate(cfg):
     logging.info("Running evaluate")
 
@@ -127,14 +146,16 @@ def evaluate(cfg):
 
         logging.info(f"Evaluating {device} segments")
         ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
+        results_file = cfg.results_file.format(device=device)
+        results_file = add_batch_to_results_file_name(results_file, cfg.batch)
         evaluate_device(
             ref_segment_dir,
             segment_dir,
             session_device_pid_tuples,
             cfg.score_config,
-            cfg.results_file.format(device=device),
+            results_file,
             cfg.use_gpu,
-            decimate_factor=cfg.decimate_factor,
+            batch=cfg.batch,
         )
 
 
