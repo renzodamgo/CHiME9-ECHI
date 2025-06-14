@@ -100,3 +100,7 @@ python scripts/evaluate.py evaluate.submission=data/submission
 ## <a id="troubleshooting">5. Troubleshooting/a>
 
 TODO
+
+```bash
+python run.py evaluate.n_batches=10 evaluate.batch='range(1,10)' --multirun
+```

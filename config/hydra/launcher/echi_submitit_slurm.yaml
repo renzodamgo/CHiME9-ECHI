@@ -1,0 +1,17 @@
+# Submitit configuration for running on slurm cluster
+defaults:
+  - submitit_slurm
+
+mem_per_cpu: 16GB
+tasks_per_node: 1
+timeout_min: 180
+additional_parameters:
+  account: clarity
+  partition: clarity
+setup:
+  [
+    "module load anaconda/2023.07",
+    "conda activate echi_recipe",
+    "export SLURM_EXPORT_ENV=ALL",
+    "export PYTHONPATH=src",
+  ]
