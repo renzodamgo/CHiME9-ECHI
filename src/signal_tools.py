@@ -37,14 +37,28 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
     if not Path(output_dir).exists():
         Path(output_dir).mkdir(parents=True, exist_ok=True)
 
-    with open(wav_file, "rb") as f:
-        signal, fs = sf.read(f)
-
     with open(csv_file, "r") as f:
         segments = list(csv.DictReader(f, fieldnames=["index", "start", "end"]))
 
+    # check if any files missing:
+    files_missing = False
+    for index, segment in enumerate(segments, start=1):
+        expected_files = Path(output_dir) / f"{csv_file.stem}.{index:03g}.wav"
+        if not expected_files.exists():
+            files_missing = True
+            break
+    if not files_missing:
+        logging.debug(f"All segments already exist in {output_dir}")
+        return
+
+    with open(wav_file, "rb") as f:
+        signal, fs = sf.read(f)
+
     for index, segment in enumerate(segments, start=1):
         output_file = Path(output_dir) / f"{csv_file.stem}.{index:03g}.wav"
+        if output_file.exists():
+            logging.debug(f"Segment {output_file} already exists, skipping")
+            continue
         start_sample = int(segment["start"])
         end_sample = int(segment["end"])
         signal_segment = signal[start_sample:end_sample]
