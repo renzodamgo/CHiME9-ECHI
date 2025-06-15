@@ -54,7 +54,11 @@ export PYTHONPATH=$PWD/src:$PYTHONPATH
 
 # Run NISQA setup
 if [[ -f external/versa/tools/setup_nisqa.sh ]]; then
-    bash external/versa/tools/setup_nisqa.sh
+    (
+        cd external/versa/tools || exit 1
+        bash setup_nisqa.sh
+    )
+
 else
     echo "ERROR: NISQA setup script not found at external/versa/tools/setup_nisqa.sh"
     exit 1

@@ -29,37 +29,36 @@ fi
 # Usage: ./run_parallel_slurm.sh [N_BATCHES]
 N_BATCHES="${1:-40}"
 
-# Run the prepare, infer and evaluate
-echo "Submitting main evaluation job array..."
-# Capture the output of the first python command
-output=$(python run.py \
+echo "Run prepare stage..."
+python run.py \
+    prepare.run=true \
+    inference.run=false \
+    evaluate.run=false \
+    report.run=false
+
+echo "Run inference stage..."
+python run.py \
+    prepare.run=false \
+    inference.run=true \
+    evaluate.run=false \
+    report.run=false
+
+echo "Multirun evaluate stage..."
+python run.py \
+    prepare.run=false \
+    inference.run=false \
+    evaluate.run=true \
     report.run=false \
     evaluate.n_batches=${N_BATCHES} \
     evaluate.batch="range(1,$((${N_BATCHES} + 1)))" \
     hydra/launcher=echi_submitit_slurm \
-    --multirun)
+    --multirun
 
-echo "$output"
-
-# Extract the job ID. Assumes the output contains a line like "Submitted batch job XXXX"
-# or "Submitted job XXXX". Adjust the grep and awk/sed pattern if needed.
-JOB_ID=$(echo "$output" | grep -oP 'Submitted (batch )?job \K\d+' || echo "")
-
-if [ -z "$JOB_ID" ]; then
-    echo "Failed to retrieve JOB_ID from the first submission. Output was:"
-    echo "$output"
-    exit 1
-fi
-
-echo "Main evaluation job array submitted with ID: ${JOB_ID}"
-
-# Run the report after the previous job has completed successfully
-echo "Submitting report job with dependency on job ID: ${JOB_ID}"
+echo "Run reporting stage..."
 python run.py \
     prepare.run=false \
     inference.run=false \
     evaluate.run=false \
-    report.run=true \
-    hydra.launcher.additional_parameters.dependency=afterok:${JOB_ID}
+    report.run=true
 
-echo "Report job submitted."
+echo "$output"

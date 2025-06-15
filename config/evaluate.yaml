@@ -8,8 +8,9 @@ segment_dir: ${..paths.scratch}/segments/{device}
 csv_dir: ${..paths.echi}/metadata/ref/dev # Path to the CSV files for evaluation
 ref_segment_dir: ${..paths.ref_segment_dir} # Path to the reference segment directory
 
-#score_config: config/metrics.yaml
-score_config: config/metrics_test.yaml
+score_config: config/metrics.yaml
+#score_config: config/metrics_test.yaml
+
 use_gpu: false
 
 # For parallel evaluation
