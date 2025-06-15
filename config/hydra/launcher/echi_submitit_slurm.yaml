@@ -1,4 +1,8 @@
 # Submitit configuration for running on slurm cluster
+
+# These will need to be editted to match your cluster setup.
+# The example below is for the University of Sheffield.
+
 defaults:
   - submitit_slurm
 
@@ -10,7 +14,8 @@ additional_parameters:
   partition: clarity
 setup:
   [
-    "module load anaconda/2023.07",
+    "module load Anaconda3/2019.07",
+    "module load libsndfile/1.0.28-GCCcore-9.3.0",
     "conda activate echi_recipe",
     "export SLURM_EXPORT_ENV=ALL",
     "export PYTHONPATH=src",
