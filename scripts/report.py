@@ -9,6 +9,8 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
+from signal_tools import get_session_tuples
+
 
 def read_jsonl(file_path, data=None):
     """Read a JSONL file and return a list of dictionaries."""
@@ -27,6 +29,7 @@ def compute_stats(results):
     """Compute statistics from the results."""
     stats = dict()
     valid_keys = [k for k in results[0] if k not in NON_NUMERIC_KEYS]
+
     for key in valid_keys:
         data = [float(result[key]) for result in results if key in result]
         mean_value = np.mean(data) if data else 0
@@ -36,6 +39,7 @@ def compute_stats(results):
         stats[key] = {
             "mean": mean_value,
             "std": std_value,
+            "std_err": std_value / np.sqrt(len(data)) if len(data) > 1 else np.nan,
             "count": len(data),
             "min": min_value,
             "max": max_value,
@@ -43,23 +47,29 @@ def compute_stats(results):
     return stats
 
 
-def display_report(label, all_stats):
-    """Display the report based on computed statistics."""
-    logging.info("Displaying report")
-    for key in all_stats.keys():
-        stats = all_stats[key]
-        logging.info(
-            f"{label}: {key}: mean {stats['mean']:.4g} std {stats['std']:.4g} min {stats['min']:.4g} max {stats['max']:.4g} count {stats['count']}"
-        )
+def save_stats(stats, stats_file):
+    """Save computed statistics to a file."""
+    os.makedirs(os.path.dirname(stats_file), exist_ok=True)
+    with open(stats_file, "w", encoding="utf-8") as f:
+        json.dump(stats, f, indent=4)
+    logging.info(f"Stats saved to {stats_file}")
 
 
 def report(cfg):
     logging.info("Reporting results")
+
+    session_device_pid_tuples = get_session_tuples(
+        cfg.sessions_file, cfg.devices, datasets=[cfg.dataset]
+    )
+
+    sessions = set(session for session, _, _ in session_device_pid_tuples)
+    pids = set(pid for _, _, pid in session_device_pid_tuples)
+
     for device in cfg.devices:
         logging.info(f"Processing device: {device}")
         results_file = cfg.results_file.format(device=device)
         results_file_base, ext = os.path.splitext(results_file)
-        # The wildcard is used to accumluate over multiple batches
+        # The wildcard is used to accumulate over multiple batches
         results_files = glob(f"{results_file_base}*{ext}")
         if not results_files:
             logging.warning(f"No results found for device: {device}")
@@ -71,8 +81,35 @@ def report(cfg):
         logging.info(f"Total results for {device}: {len(results)}")
 
         stats = compute_stats(results)
+        stats_file = cfg.report_file.format(device=device, session="_", pid="_")
+        save_stats(stats, stats_file)
 
-        display_report(device, stats)
+        # Process the session level reports for each device
+        for session in sessions:
+            session_results = [result for result in results if session in result["key"]]
+            if not session_results:
+                logging.warning(f"No results for session: {session}")
+                continue
+
+            session_stats = compute_stats(session_results)
+            session_stats_file = cfg.report_file.format(
+                device=device, session=session, pid="_"
+            )
+            save_stats(session_stats, session_stats_file)
+
+            # Process the PID level reports for each device-session combination
+            for pid in pids:
+                pid_session_results = [
+                    result for result in session_results if pid in result["key"]
+                ]
+                if not pid_session_results:
+                    continue
+
+                session_stats = compute_stats(pid_session_results)
+                session_stats_file = cfg.report_file.format(
+                    device=device, session=session, pid=pid
+                )
+                save_stats(session_stats, session_stats_file)
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="main")

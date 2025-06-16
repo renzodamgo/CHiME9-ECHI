@@ -53,6 +53,7 @@ def load_audio_files(
 def evaluate_device(
     enhanced: str,
     reference: str,
+    signal_id,
     session_device_pid_tuples,
     score_config,
     results_file,
@@ -70,7 +71,10 @@ def evaluate_device(
 
     # Selection set so that only loads audio files that are part of the
     # list of session, device, pids that are to be evaluated.
-    selection = tuple(f"{s}.{d}.{p}" for s, d, p in session_device_pid_tuples)
+    selection = tuple(
+        signal_id.format(session=s, device=d, pid=p)
+        for s, d, p in session_device_pid_tuples
+    )
 
     enhanced_files = load_audio_files(enhanced, selection, batch)
     reference_files = load_audio_files(reference, selection, batch)
@@ -153,6 +157,7 @@ def evaluate(cfg):
         evaluate_device(
             ref_segment_dir,
             segment_dir,
+            cfg.signal_id,
             session_device_pid_tuples,
             cfg.score_config,
             results_file,

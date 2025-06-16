@@ -2,3 +2,8 @@ devices: ${..shared.devices}
 dataset: ${..shared.dataset}
 
 results_file: ${..paths.results_file}
+report_file: ${..paths.report_file}
+
+signal_id: ${..paths.signal_id} # naming convention for signals e.g. session.device.pid
+
+sessions_file: ${..paths.sessions_file}
