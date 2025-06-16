@@ -105,11 +105,11 @@ def report(cfg):
                 if not pid_session_results:
                     continue
 
-                session_stats = compute_stats(pid_session_results)
-                session_stats_file = cfg.report_file.format(
+                participant_stats = compute_stats(pid_session_results)
+                participant_stats_file = cfg.report_file.format(
                     device=device, session=session, pid=pid
                 )
-                save_stats(session_stats, session_stats_file)
+                save_stats(participant_stats, participant_stats_file)
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="main")
