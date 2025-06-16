@@ -5,7 +5,7 @@ defaults:
   - .@paths: paths
   - .@shared: shared
   - .@prepare: prepare
-  - .@inference: inference
+  - .@enhance: enhance
   - .@evaluate: evaluate
   - .@report: report
   - _self_
@@ -25,7 +25,7 @@ hydra:
 # python run.py prepare_data.run=false
 prepare:
   run: false
-inference:
+enhance:
   run: false
 evaluate:
   run: true

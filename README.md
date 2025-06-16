@@ -1,5 +1,5 @@
 
-# Baseline systems for the ECHI task of the CHiME-9 challange
+# Baseline systems for the ECHI task of the CHiME-9 challenge
 
 ## TODO - section to be removed prior to launch
 
@@ -8,9 +8,9 @@
 - results reporting
   - writing to file
   - working out what stats are needed
-- hpc support
-  - provide slurm support so evaluation can be run on multiple processors
-  - work out how to handle GPU vs CPU based computation
+- ~~hpc support~~
+  - ~~provide slurm support so evaluation can be run on multiple processors~~
+  - ~~work out how to handle GPU vs CPU based computation~~
 - ~~defining the final set of metrics~~
 - improving the documentation
 
@@ -68,7 +68,7 @@ This is equivalent to running the following steps
 
 ```bash
 python -m scripts.prepare
-python -m scripts.inference
+python -m scripts.enhance
 python -m scripts.evaluate
 python -m scripts.report
 ```

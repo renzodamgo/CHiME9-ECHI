@@ -7,7 +7,7 @@ set -o pipefail
 # Function to display usage information
 usage() {
     echo "Usage: $0 [N_BATCHES]"
-    echo "Runs the prepare, infer, and evaluate stages in parallel, followed by the report stage."
+    echo "Runs the prepare, enhance, and evaluate stages in parallel, followed by the report stage."
     echo
     echo "Arguments:"
     echo "  N_BATCHES (optional): Number of parallel processes to run for evaluation."
@@ -30,7 +30,7 @@ fi
 # Usage: ./run_parallel_local.sh [N_BATCHES]
 N_BATCHES="${1:-10}"
 
-# Run the prepare, infer and evaluate
+# Run the prepare, enhance and evaluate
 python run.py \
     report.run=false \
     evaluate.n_batches=${N_BATCHES} \
@@ -41,6 +41,6 @@ python run.py \
 # Run the report after the previous job has completed successfully
 python run.py \
     prepare.run=false \
-    inference.run=false \
+    enhance.run=false \
     evaluate.run=false \
     report.run=true

@@ -1,4 +1,4 @@
-"""Mock up of the inference stage.
+"""Mock up of the enhance stage.
 
 Processes the dev or eval set by simply producing single channel versions of the
 noisy inputs. The output signals are in the correct format for evaluation but
@@ -18,7 +18,7 @@ from tqdm import tqdm
 from signal_tools import get_session_tuples
 
 
-def dummy_inference_for_session(
+def dummy_enhance_for_session(
     signal_filename_template,
     enhanced_signal_filename_template,
     dataset,
@@ -31,7 +31,7 @@ def dummy_inference_for_session(
         session=session, dataset=dataset, device=device
     )
 
-    # For the dummy inference the output for each speaker is the same
+    # For the dummy enhance the output for each speaker is the same
     # so we just write one output file and symlink it for each PID
     outfile = enhanced_signal_filename_template.format(
         session=session, device=device, pid="xxx"
@@ -68,7 +68,7 @@ def dummy_inference_for_session(
         os.symlink(os.path.basename(outfile), outfile_pid)
 
 
-def dummy_inference(cfg):
+def dummy_enhance(cfg):
     logging.info("Processing the noisy signals")
 
     session_device_pid_tuples = get_session_tuples(
@@ -78,7 +78,7 @@ def dummy_inference(cfg):
     for session, device, pid in tqdm(
         session_device_pid_tuples, desc="Processing sessions..."
     ):
-        dummy_inference_for_session(
+        dummy_enhance_for_session(
             cfg.noisy_signal,
             cfg.enhanced_signal,
             cfg.dataset,
@@ -91,7 +91,7 @@ def dummy_inference(cfg):
 
 @hydra.main(version_base=None, config_path="../config", config_name="main")
 def main(cfg: DictConfig) -> None:
-    dummy_inference(cfg.inference)
+    dummy_enhance(cfg.inference)
 
 
 if __name__ == "__main__":

@@ -32,21 +32,21 @@ N_BATCHES="${1:-40}"
 echo "Run prepare stage..."
 python run.py \
     prepare.run=true \
-    inference.run=false \
+    enhance.run=false \
     evaluate.run=false \
     report.run=false
 
-echo "Run inference stage..."
+echo "Run enhance stage..."
 python run.py \
     prepare.run=false \
-    inference.run=true \
+    enhance.run=true \
     evaluate.run=false \
     report.run=false
 
 echo "Multirun evaluate stage..."
 python run.py \
     prepare.run=false \
-    inference.run=false \
+    enhance.run=false \
     evaluate.run=true \
     report.run=false \
     evaluate.n_batches=${N_BATCHES} \
@@ -57,7 +57,7 @@ python run.py \
 echo "Run reporting stage..."
 python run.py \
     prepare.run=false \
-    inference.run=false \
+    enhance.run=false \
     evaluate.run=false \
     report.run=true
 
