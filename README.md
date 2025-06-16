@@ -79,9 +79,9 @@ are reported at three levels:
 For the `dev` set there will be 2, 24 (2 x 12) and 72 (2 x 12 x 3) of these
  files respectively.
 
-The reports are stored a dictionary with an entry for each metric. Each metric in
- turn is presented with a dictionary storing the `mean`, `standard deviation`,
- `standard error`, `min value`, `max value` and the `number of segments`.
+The reports are stored as a dictionary with an entry for each metric. Each metric,
+in turn, is presented as a dictionary storing the `mean`, `standard deviation`,
+`standard error`, `min value`, `max value`, and the `number of segments`.
 
 ## <a id="configuration">4. Configuring the baseline</a>
 
