@@ -31,10 +31,14 @@ def compute_stats(results):
         data = [float(result[key]) for result in results if key in result]
         mean_value = np.mean(data) if data else 0
         std_value = np.std(data) if len(data) > 1 else 0
+        min_value = np.min(data) if data else np.nan
+        max_value = np.max(data) if data else np.nan
         stats[key] = {
             "mean": mean_value,
             "std": std_value,
             "count": len(data),
+            "min": min_value,
+            "max": max_value,
         }
     return stats
 
@@ -45,7 +49,7 @@ def display_report(label, all_stats):
     for key in all_stats.keys():
         stats = all_stats[key]
         logging.info(
-            f"{label}: {key}: mean {stats['mean']:.4g} std {stats['std']:.4g} count {stats['count']}"
+            f"{label}: {key}: mean {stats['mean']:.4g} std {stats['std']:.4g} min {stats['min']:.4g} max {stats['max']:.4g} count {stats['count']}"
         )
 
 
