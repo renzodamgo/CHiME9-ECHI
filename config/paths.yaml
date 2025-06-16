@@ -29,4 +29,5 @@ ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}
 
 enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav
 
-results_file: ${..paths.scratch}/results.${..shared.dataset}.{device}.json
+results_file: ${..paths.scratch}/results/results.${..shared.dataset}.{device}.json
+report_file: ${..paths.scratch}/reports/report.${..shared.dataset}.{device}.{session}.{pid}.json

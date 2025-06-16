@@ -66,6 +66,23 @@ python -m scripts.evaluate
 python -m scripts.report
 ```
 
+Results will appear in the reports directory defined in `config/paths.yaml`. Results
+are reported at three levels:
+
+- The device level, `report.dev.<device>._._.json` - i.e. accumulated over all
+ sessions.
+- The session level, `report.dev.<device>.<session>._.json` - i.e. for a specific
+ session and given device.
+- The participant level, `report.dev.<device>.<session>.<PID>.json` - i.e. for a
+ specific participant within a session for a given device.
+
+For the `dev` set there will be 2, 24 (2 devices x 12 session) and 72 (2 devices
+ x 12 session x 3 participants) of these files respectively.
+
+The reports are stored as a dictionary with an entry for each metric. Each metric,
+in turn, is presented as a dictionary storing the `mean`, `standard deviation`,
+`standard error`, `min value`, `max value`, and the `number of segments`.
+
 ## <a id="configuration">4. Configuring the baseline</a>
 
 The system uses [Hydra](https://hydra.cc/) for configuration management.
