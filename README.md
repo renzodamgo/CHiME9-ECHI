@@ -1,22 +1,4 @@
-
 # Baseline systems for the ECHI task of the CHiME-9 challenge
-
-## TODO - section to be removed prior to launch
-
-- **Integrating a proper baseline system**
-- ~~rationalise the configuration parameters ~~
-- results reporting
-  - writing to file
-  - working out what stats are needed
-- ~~hpc support~~
-  - ~~provide slurm support so evaluation can be run on multiple processors~~
-  - ~~work out how to handle GPU vs CPU based computation~~
-- ~~defining the final set of metrics~~
-- improving the documentation
-
-- Had to 'unset GITHUB_TOKEN' to stop utmos install failing.
-
----
 
 ## Sections
 
@@ -51,10 +33,21 @@ conda activate echi_recipe
 export PYTHONPATH=$PWD/src:$PYTHONPATH
 ```
 
+To make the `PYTHONPATH` setting persistent across terminal sessions, you can add
+ the `export` command to your shell's configuration file (e.g., `~/.bashrc` for
+ bash or `~/.zshrc` for zsh).
+
 ## <a id="data"> 2. Installing the data </a>
 
-- download and install dataset
-- set paths in config/paths/default
+[Specific instructions on how to download and install the CHiME-9 ECHi dataset will
+be provided here once available.]
+
+The baseline system expects the dataset to be placed in the `data/chime9_echi`
+ directory by default. The paths to various subsets of the data (e.g., training,
+ development, evaluation) are defined in the `config/paths.yaml` file. If you
+ choose to place the data in a different location, you will need to update
+ `config/paths.yaml` accordingly. However, adhering to the default directory
+ structure (`data/chime9_echi`) is recommended for ease of use.
 
 ## <a id="baseline">3. Running the baseline</a>
 
@@ -75,32 +68,116 @@ python -m scripts.report
 
 ## <a id="configuration">4. Configuring the baseline</a>
 
-TODO
+The system uses [Hydra](https://hydra.cc/) for configuration management.
+ This allows for a flexible and hierarchical way to manage settings.
 
-Run the evaluate script
+The main configuration files are located in the `config` directory:
+
+- `main.yaml`: Main configuration, imports other specific configurations.
+- `shared.yaml`: Shared parameters used across different scripts (e.g., dataset paths,
+general settings).
+- `prepare.yaml`: Configuration for the data preparation stage (`scripts/prepare.py`).
+- `enhance.yaml`: Configuration for the enhancement stage (`scripts/enhance.py`).
+- `evaluate.yaml`: Configuration for the evaluation stage (`scripts/evaluate.py`).
+- `report.yaml`: Configuration for the reporting stage (`scripts/report.py`).
+- `metrics.yaml`: Configuration for the metrics used in evaluation.
+- `paths.yaml`: Defines paths for data, models, and outputs.
+
+You can override any configuration parameter from the command line.
+
+For `run.py`, which executes the entire pipeline:
 
 ```bash
+# Example: Run with a specific dataset configuration and disable GPU usage
+# for enhancement
+python run.py shared.dataset=my_custom_dataset enhance.use_gpu=false
+```
+
+For individual scripts like `scripts/evaluate.py`:
+
+```bash
+# Example: Evaluate a specific submission directory
 python scripts/evaluate.py evaluate.submission=<submission_dir>
-```
 
-With test data
-
-```bash
+# Example: Evaluate with specific test data
 python scripts/evaluate.py evaluate.submission=data/submission
 ```
 
-The `decimate_factor` can be used to select every Nth segment for evaluation.
-For example, to evaluate a subset of just 1/20 of the data
+Key configurable parameters include:
+
+- **Dataset:** `shared.dataset` allows you to specify different dataset configurations.
+- **Device Settings:** Parameters like `enhance.use_gpu` (true/false) and
+ `enhance.device` (e.g., 'cuda:0', 'cpu') control hardware usage.
+- **Evaluation:**
+  - `evaluate.submission`: Path to the enhanced audio or transcriptions to be evaluated.
+  - `evaluate.n_batches`, `evaluate.batch`: Control parallel processing during
+ evaluation by splitting the data into batches.
+
+## <a id="troubleshooting">5. Troubleshooting</a>
+
+If you encounter issues, here are some common troubleshooting steps:
+
+- **Activate Conda Environment:** Ensure your Conda environment (`echi_recipe`) is
+ activated:
+
+  ```bash
+  conda activate echi_recipe
+  ```
+
+- **Check PYTHONPATH:** Verify that your `PYTHONPATH` environment variable is correctly
+ set to include the `src` directory of this project:
+
+  ```bash
+  export PYTHONPATH=$PWD/src:$PYTHONPATH
+  # (or ensure this is in your .bashrc or equivalent shell startup script)
+  echo $PYTHONPATH
+  ```
+
+- **Verify Data Paths:** Double-check that the dataset paths in `config/paths.yaml`
+ match the actual location of your CHiME-9 ECHi data. The default expected location
+ is `data/chime9_echi`.
+- **Hydra Log Files:** For detailed error messages and execution logs, inspect the
+ Hydra log files. These are typically found in the `exp/<experiment_name>/hydra/`
+ directory (e.g., `exp/main/hydra/`). The exact path will be printed at the start
+ of a run.
+- **Common Python Issues:** Check for common Python package installation problems
+ or version conflicts within the Conda environment. Sometimes, reinstalling a
+ problematic package can help.
+
+### Running Evaluation in Batches
+
+The following command is an example of how to run the evaluation stage in parallel
+batches using Hydra's multirun feature and using either Hydra's submitit job launcher
+plugin.
+
+For running on a local machine with multiple cores,
 
 ```bash
-python scripts/evaluate.py evaluate.submission=data/submission
-   evaluate.decimate_factor=20
+python run.py evaluate.n_batches=10 evaluate.batch='range(1,11)' \
+ hydra/launcher=echi_submitit_local  --multirun
 ```
 
-## <a id="troubleshooting">5. Troubleshooting/a>
-
-TODO
+For running on an HPC facility with a Slurm scheduler
 
 ```bash
-python run.py evaluate.n_batches=10 evaluate.batch='range(1,10)' --multirun
+python run.py evaluate.n_batches=200 evaluate.batch='range(1,201)' \
+ hydra/launcher=echi_submitit_slurm  --multirun
 ```
+
+- `evaluate.n_batches=10`: This parameter informs the script that the data should
+ be conceptually divided into 10 batches.
+- `evaluate.batch='range(1,10)'`: This specific Hydra syntax tells the system to
+ launch multiple runs, iterating through the values generated by `range(1,10)`.
+ In Python, `range(1,10)` produces numbers from 1 up to (but not including) 10,
+ so this will create runs for batch numbers 1, 2, 3, 4, 5, 6, 7, 8, and 9. Each of
+ these runs will process its corresponding segment of the data.
+- `--multirun`: This is a Hydra flag that enables launching multiple jobs based on
+ the sweep defined by `evaluate.batch`. These jobs may run sequentially or in
+ parallel, depending on your Hydra launcher configuration (e.g., basic local
+ launcher vs. a Slurm or other HPC scheduler launcher).
+
+**Note on batch numbering:** If you intend to process all 10 batches, numbered for
+ example from 1 to 10, you would use `evaluate.batch='range(1,11)'`.
+
+If using an HPC facilty and Slurm, please check the configuration file
+ `config/hydra/launcher/echi_submitit_slurm.yaml` and edit to fit your system.
