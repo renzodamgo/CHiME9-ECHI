@@ -111,7 +111,7 @@ def report(cfg):
                 device=device, session=session, pid="_"
             )
             save_stats(session_stats, session_stats_file)
-            save_results(session_results, stats_file, ext=".csv")
+            save_results(session_results, session_stats_file, ext=".csv")
 
             # Process the PID level reports for each device-session combination
             for pid in pids:
