@@ -83,6 +83,9 @@ The reports are stored as a dictionary with an entry for each metric. Each metri
 in turn, is presented as a dictionary storing the `mean`, `standard deviation`,
 `standard error`, `min value`, `max value`, and the `number of segments`.
 
+For each `json` file there will also be a similarly named `csv` file containing
+the metric data on which the statistics were computed.
+
 ## <a id="configuration">4. Configuring the baseline</a>
 
 The system uses [Hydra](https://hydra.cc/) for configuration management.
