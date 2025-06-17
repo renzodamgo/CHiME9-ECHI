@@ -1,5 +1,6 @@
 """Prepare ECHI data"""
 
+import csv
 import json
 import logging
 import os
@@ -55,6 +56,19 @@ def save_stats(stats, stats_file):
     logging.info(f"Stats saved to {stats_file}")
 
 
+def save_results(results, results_file, ext=None):
+    """Save results to a CSV file."""
+    if ext is not None:
+        results_file_base, _ = os.path.splitext(results_file)
+        results_file = f"{results_file_base}{ext}"
+    os.makedirs(os.path.dirname(results_file), exist_ok=True)
+    with open(results_file, "w", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=results[0].keys())
+        writer.writeheader()
+        for result in results:
+            writer.writerow(result)
+
+
 def report(cfg):
     logging.info("Reporting results")
 
@@ -83,6 +97,7 @@ def report(cfg):
         stats = compute_stats(results)
         stats_file = cfg.report_file.format(device=device, session="_", pid="_")
         save_stats(stats, stats_file)
+        save_results(results, stats_file, ext=".csv")
 
         # Process the session level reports for each device
         for session in sessions:
@@ -96,6 +111,7 @@ def report(cfg):
                 device=device, session=session, pid="_"
             )
             save_stats(session_stats, session_stats_file)
+            save_results(session_results, stats_file, ext=".csv")
 
             # Process the PID level reports for each device-session combination
             for pid in pids:
@@ -110,6 +126,7 @@ def report(cfg):
                     device=device, session=session, pid=pid
                 )
                 save_stats(participant_stats, participant_stats_file)
+                save_results(pid_session_results, participant_stats_file, ext=".csv")
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="main")
