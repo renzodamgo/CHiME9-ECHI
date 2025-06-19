@@ -19,6 +19,7 @@ signal_dir: ${paths.echi}/{device}/{dataset}
 echi_signal: ${paths.signal_dir}/{session}.{device}.wav
 ref_signal_dir: ${paths.echi}/ref/{dataset}
 ref_signal_file: ${paths.ref_signal_dir}/${paths.signal_id}.wav
+
 # chime9_echi metadata layout
 sessions_file: ${paths.echi}/metadata/sessions.${..shared.dataset}.csv
 segment_info_dir: ${paths.echi}/metadata/ref/{dataset}
@@ -27,7 +28,10 @@ segment_info_file: ${paths.segment_info_dir}/${paths.signal_id}.csv
 # Path to the reference segment directory
 ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}
 
-enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav
+# Directories and paths where outputs are produced
+segment_dir: ${..paths.scratch}/${..shared.exp}/segments/{device}
+results_file: ${..paths.scratch}/${..shared.exp}/results/results.${..shared.dataset}.{device}.json
+report_file: ${..paths.scratch}/${..shared.exp}/reports/report.${..shared.dataset}.{device}.{session}.{pid}.json
 
-results_file: ${..paths.scratch}/results/results.${..shared.dataset}.{device}.json
-report_file: ${..paths.scratch}/reports/report.${..shared.dataset}.{device}.{session}.{pid}.json
+# Names for the enhanced signals
+enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav

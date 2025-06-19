@@ -3,7 +3,7 @@ enhanced_dir: ${..paths.enhanced_dir}
 
 results_file: ${..paths.results_file}
 
-segment_dir: ${..paths.scratch}/segments/{device}
+segment_dir: ${..paths.segment_dir}
 
 csv_dir: ${..paths.echi}/metadata/ref/dev # Path to the CSV files for evaluation
 ref_segment_dir: ${..paths.ref_segment_dir} # Path to the reference segment directory

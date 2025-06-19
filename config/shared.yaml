@@ -3,3 +3,5 @@
 devices: [ha, aria] # Devices to process
 dataset: dev # Dataset to use for processing
 sample_rate: 16000 # Reference sample rate.
+
+exp: exp # Experiment name - change this to create a new experiment
