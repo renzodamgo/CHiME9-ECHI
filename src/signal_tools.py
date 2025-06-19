@@ -61,6 +61,9 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
             continue
         start_sample = int(segment["start"])
         end_sample = int(segment["end"])
+        if end_sample > len(signal):
+            logging.warning(f"Segment {output_file} exceeds signal length. Skipping.")
+            continue
         signal_segment = signal[start_sample:end_sample]
         with open(output_file, "wb") as f:
             sf.write(f, signal_segment, samplerate=fs)
