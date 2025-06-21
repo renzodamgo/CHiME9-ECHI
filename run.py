@@ -10,6 +10,7 @@ from scripts.dummy_enhance import dummy_enhance as enhance
 from scripts.evaluate import evaluate
 from scripts.prepare import prepare
 from scripts.report import report
+from scripts.validate import validate
 
 
 @hydra.main(version_base=None, config_path="config", config_name="main")
@@ -21,6 +22,12 @@ def main(cfg):
 
     if cfg.enhance.run:
         enhance(cfg.enhance)
+
+    if cfg.validate.run:
+        status = validate(cfg.validate)
+        if not status:
+        # The validate function logs detailed errors, so we just exit with a failure code.
+        raise SystemExit(1)
 
     if cfg.evaluate.run:
         evaluate(cfg.evaluate)

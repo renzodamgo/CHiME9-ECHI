@@ -1,0 +1,6 @@
+dataset: ${..shared.dataset}
+devices: ${..shared.devices}
+
+noisy_signal: ${..paths.echi_signal}
+enhanced_signal: ${..paths.enhanced_signal}
+sessions_file: ${..paths.sessions_file}
