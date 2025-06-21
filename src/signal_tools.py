@@ -31,6 +31,13 @@ def get_session_tuples(session_file, devices, datasets=None):
     return session_device_pid_tuples
 
 
+def wav_file_name(
+    output_dir: Path, stem: str, index: int, start_sample: int, end_sample: int
+) -> Path:
+    """Construct the wav file name based on session, device, and pid."""
+    return Path(output_dir) / f"{stem}.{index:03g}.{start_sample}_{end_sample}.wav"
+
+
 def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
     """Extract speech segments from a signal"""
     logging.debug(f"Segmenting {wav_file} {csv_file}")
@@ -42,8 +49,14 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
 
     # check if any files missing:
     files_missing = False
-    for index, segment in enumerate(segments, start=1):
-        expected_files = Path(output_dir) / f"{csv_file.stem}.{index:03g}.wav"
+    for segment in segments:
+        expected_files = wav_file_name(
+            output_dir,
+            csv_file.stem,
+            int(segment["index"]),
+            int(segment["start"]),
+            int(segment["end"]),
+        )
         if not expected_files.exists():
             files_missing = True
             break
@@ -54,13 +67,17 @@ def segment_signal(wav_file: Path, csv_file: Path, output_dir: Path) -> None:
     with open(wav_file, "rb") as f:
         signal, fs = sf.read(f)
 
-    for index, segment in enumerate(segments, start=1):
-        output_file = Path(output_dir) / f"{csv_file.stem}.{index:03g}.wav"
+    for segment in segments:
+        index = int(segment["index"])
+        start_sample = int(segment["start"])
+        end_sample = int(segment["end"])
+
+        output_file = wav_file_name(
+            output_dir, csv_file.stem, index, start_sample, end_sample
+        )
         if output_file.exists():
             logging.debug(f"Segment {output_file} already exists, skipping")
             continue
-        start_sample = int(segment["start"])
-        end_sample = int(segment["end"])
         if end_sample > len(signal):
             logging.warning(f"Segment {output_file} exceeds signal length. Skipping.")
             continue

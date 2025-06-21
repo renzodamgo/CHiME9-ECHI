@@ -142,6 +142,12 @@ def evaluate(cfg):
     validate_batch_param(batch)
 
     for device in cfg.devices:
+        results_file = cfg.results_file.format(device=device)
+        results_file = add_batch_to_results_file_name(results_file, batch)
+
+        # Create directory if it does not exist
+        os.makedirs(os.path.dirname(results_file), exist_ok=True)
+
         session_device_pid_tuples = get_session_tuples(
             cfg.sessions_file, [device], datasets=[cfg.dataset]
         )
@@ -152,11 +158,9 @@ def evaluate(cfg):
 
         logging.info(f"Evaluating {device} segments")
         ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
-        results_file = cfg.results_file.format(device=device)
-        results_file = add_batch_to_results_file_name(results_file, batch)
         evaluate_device(
-            ref_segment_dir,
             segment_dir,
+            ref_segment_dir,
             cfg.signal_id,
             session_device_pid_tuples,
             cfg.score_config,
