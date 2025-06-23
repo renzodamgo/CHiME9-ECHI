@@ -70,6 +70,17 @@ def save_results(results, results_file, ext=None):
             writer.writerow(result)
 
 
+def clean_results(raw_results):
+    """Remove any incomplete results"""
+    results = []
+    for result in raw_results:
+        if len(result.keys()) == 1:
+            logging.warning(f"Segment {result['key']} how no results")
+            continue
+        results.append(result)
+    return results
+
+
 def report(cfg):
     logging.info("Reporting results")
 
@@ -94,6 +105,8 @@ def report(cfg):
         for results_file in results_files:
             results = read_jsonl(results_file, results)
         logging.info(f"Total results for {device}: {len(results)}")
+
+        results = clean_results(results)
 
         stats = compute_stats(results)
         stats_file = cfg.report_file.format(
