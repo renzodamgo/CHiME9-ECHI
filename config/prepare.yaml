@@ -1,8 +1,20 @@
-ref_signal_dir: ${..paths.ref_signal_dir}
-segment_info_dir: ${..paths.segment_info_dir}
+# Path to where the submitted data is stored
+enhanced_signal: ${..paths.enhanced_signal}
+segment_info_file: ${..paths.segment_info_file}
 
-ref_segment_dir: ${..paths.ref_segment_dir}
+results_file: ${..paths.results_file}
+
+segment_dir: ${..paths.segment_dir}
+
+csv_dir: ${..paths.echi}/metadata/ref/dev # Path to the CSV files for evaluation
+ref_segment_dir: ${..paths.ref_segment_dir} # Path to the reference segment directory
+
+signal_id: ${..paths.signal_id} # naming convention for signals e.g. session.device.pid
+
+score_config: config/metrics.yaml
+#score_config: config/metrics_test.yaml
 
 dataset: ${..shared.dataset}
-devices: [ha, aria]
+devices: ${..shared.devices}
+
 sessions_file: ${..paths.sessions_file}

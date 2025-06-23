@@ -29,36 +29,25 @@ fi
 # Usage: ./run_parallel_slurm.sh [N_BATCHES]
 N_BATCHES="${1:-40}"
 
-echo "Run prepare stage..."
-python run.py \
-    prepare.run=true \
-    enhance.run=false \
-    evaluate.run=false \
-    report.run=false
+echo "Run setup stage..."
+python scripts/setup.py
 
 echo "Run enhance stage..."
-python run.py \
-    prepare.run=false \
-    enhance.run=true \
-    evaluate.run=false \
-    report.run=false
+python scripts/enhance.py
+
+echo "Run validation stage..."
+python scripts/validate.py
+
+echo "Run preparation stage..."
+python scripts/prepare.py
 
 echo "Multirun evaluate stage..."
-python run.py \
-    prepare.run=false \
-    enhance.run=false \
+python scripts/evaluate.py \
     evaluate.run=true \
-    report.run=false \
     evaluate.n_batches=${N_BATCHES} \
     evaluate.batch="range(1,$((${N_BATCHES} + 1)))" \
     hydra/launcher=echi_submitit_slurm \
     --multirun
 
 echo "Run reporting stage..."
-python run.py \
-    prepare.run=false \
-    enhance.run=false \
-    evaluate.run=false \
-    report.run=true
-
-echo "$output"
+python scripts/report.py

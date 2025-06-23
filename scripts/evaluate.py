@@ -1,6 +1,7 @@
 """Evaluate ECHI submission using Versa Scorer"""
 
 import glob
+import itertools
 import logging
 import os
 import tempfile
@@ -11,7 +12,7 @@ import torch
 import yaml
 from omegaconf import DictConfig
 
-from signal_tools import get_session_tuples, segment_signal_dir
+from signal_tools import get_session_tuples
 
 
 def load_audio_files(
@@ -137,12 +138,13 @@ def add_batch_to_results_file_name(results_file, batch):
 def evaluate(cfg):
     logging.info("Running evaluate")
 
-    signal_dir = cfg.enhanced_dir
     batch = (cfg.batch, cfg.n_batches)  # ie., i of N
     validate_batch_param(batch)
 
-    for device in cfg.devices:
-        results_file = cfg.results_file.format(device=device)
+    for device, segment_type in itertools.product(cfg.devices, cfg.segment_types):
+        logging.info(f"Evaluating {device} with {segment_type} segments")
+
+        results_file = cfg.results_file.format(device=device, segment_type=segment_type)
         results_file = add_batch_to_results_file_name(results_file, batch)
 
         # Create directory if it does not exist
@@ -152,12 +154,11 @@ def evaluate(cfg):
             cfg.sessions_file, [device], datasets=[cfg.dataset]
         )
 
-        segment_dir = cfg.segment_dir.format(device=device)
-        logging.info(f"Segment {device} signals into {segment_dir}")
-        segment_signal_dir(signal_dir, cfg.csv_dir, segment_dir, filter=f"*{device}*P*")
+        segment_dir = cfg.segment_dir.format(device=device, segment_type=segment_type)
 
-        logging.info(f"Evaluating {device} segments")
-        ref_segment_dir = cfg.ref_segment_dir.format(dataset=cfg.dataset, device=device)
+        ref_segment_dir = cfg.ref_segment_dir.format(
+            dataset=cfg.dataset, device=device, segment_type=segment_type
+        )
         evaluate_device(
             segment_dir,
             ref_segment_dir,

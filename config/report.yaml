@@ -1,5 +1,6 @@
 devices: ${..shared.devices}
 dataset: ${..shared.dataset}
+segment_types: ${..shared.segment_types}
 
 results_file: ${..paths.results_file}
 report_file: ${..paths.report_file}

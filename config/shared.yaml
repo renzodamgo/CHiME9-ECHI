@@ -1,5 +1,6 @@
 # Configuration parameters shared across modules
 
+segment_types: [individual] # [individual, summed] # Types of reference segments to process
 devices: [ha, aria] # Devices to process
 dataset: dev # Dataset to use for processing
 sample_rate: 16000 # Reference sample rate.
