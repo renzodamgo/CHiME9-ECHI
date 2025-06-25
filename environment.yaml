@@ -1,0 +1,24 @@
+name: echi_recipe
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - cython
+  - espnet
+  - hydra-core
+  - hydra-submitit-launcher
+  - librosa
+  - matplotlib
+  - numpy==1.26.4
+  - omegaconf
+  - pip
+  - pysoundfile
+  - pytorch
+  - torchaudio
+  - torchmetrics
+  - tqdm
+  - wandb
+  - pip:
+      - auraloss
+      - torch-stoi
+      - sentencepiece

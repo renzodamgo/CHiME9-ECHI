@@ -26,17 +26,11 @@ fi
 # Activate the environment
 conda activate "$ENV_NAME"
 
-# Add conda-forge as a high-priority channel (if not already present)
-if ! conda config --show channels | grep -q "conda-forge"; then
-    conda config --add channels conda-forge
-    conda config --set channel_priority strict
-fi
-
 # Install dependencies
-if [[ -f requirements.txt ]]; then
-    conda install --file requirements.txt -y
+if [[ -f environment.yaml ]]; then
+    conda env update --name "$ENV_NAME" --file environment.yaml --prune
 else
-    echo "ERROR: requirements.txt not found"
+    echo "ERROR: environment.yaml not found"
     exit 1
 fi
 

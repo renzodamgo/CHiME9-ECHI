@@ -1,12 +1,15 @@
 # uv lock file - ignore for now
 uv.lock
 
+.vscode
+
 # Scratch code
 scratch/
 
 # Data folders
 data/*
 !data/.gitkeep
+
 
 # Experiment directories
 exp

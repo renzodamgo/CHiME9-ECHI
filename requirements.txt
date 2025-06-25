@@ -1,6 +1,0 @@
-cython
-hydra-core
-hydra-submitit-launcher
-matplotlib # needed by nisqa?
-numpy==1.26.4
-omegaconf
