@@ -11,7 +11,7 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
-from signal_tools import get_session_tuples
+from evaluation.segment_signals import get_session_tuples
 
 
 def read_jsonl(file_path, data=None):
@@ -93,7 +93,9 @@ def report(cfg):
 
     for device, segment_type in itertools.product(cfg.devices, cfg.segment_types):
         logging.info(f"Processing device: {device}")
-        results_file = cfg.results_file.format(device=device, segment_type=segment_type)
+        results_file = cfg.results_file.format(
+            dataset=cfg.dataset, device=device, segment_type=segment_type
+        )
         results_file_base, ext = os.path.splitext(results_file)
         # The wildcard is used to accumulate over multiple batches
         results_files = glob(f"{results_file_base}*{ext}")
@@ -110,7 +112,11 @@ def report(cfg):
 
         stats = compute_stats(results)
         stats_file = cfg.report_file.format(
-            device=device, segment_type=segment_type, session="_", pid="_"
+            dataset=cfg.dataset,
+            device=device,
+            segment_type=segment_type,
+            session="_",
+            pid="_",
         )
         save_stats(stats, stats_file)
         save_results(results, stats_file, ext=".csv")
@@ -124,7 +130,11 @@ def report(cfg):
 
             session_stats = compute_stats(session_results)
             session_stats_file = cfg.report_file.format(
-                device=device, segment_type=segment_type, session=session, pid="_"
+                dataset=cfg.dataset,
+                device=device,
+                segment_type=segment_type,
+                session=session,
+                pid="_",
             )
             save_stats(session_stats, session_stats_file)
             save_results(session_results, session_stats_file, ext=".csv")
@@ -139,7 +149,11 @@ def report(cfg):
 
                 participant_stats = compute_stats(pid_session_results)
                 participant_stats_file = cfg.report_file.format(
-                    device=device, segment_type=segment_type, session=session, pid=pid
+                    dataset=cfg.dataset,
+                    device=device,
+                    segment_type=segment_type,
+                    session=session,
+                    pid=pid,
                 )
                 save_stats(participant_stats, participant_stats_file)
                 save_results(pid_session_results, participant_stats_file, ext=".csv")

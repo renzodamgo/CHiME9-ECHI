@@ -1,0 +1,11 @@
+noisy_input_file: ${..paths.echi_signal}
+ref_input_file: ${..paths.ref_signal_file}
+segment_info_file: ${..paths.segment_info_file}
+segment_sample_rate: ${..sample_rate}
+
+noisy_output_dir: ${..paths.train_input_dir}
+ref_output_dir: ${..paths.train_target_dir}
+
+dataset: [train, dev]
+devices: ${..device}
+sessions_file: ${..paths.sessions_file}

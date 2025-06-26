@@ -12,7 +12,7 @@ import torch
 import yaml
 from omegaconf import DictConfig
 
-from signal_tools import get_session_tuples
+from evaluation.segment_signals import get_session_tuples
 
 
 def load_audio_files(
@@ -144,7 +144,9 @@ def evaluate(cfg):
     for device, segment_type in itertools.product(cfg.devices, cfg.segment_types):
         logging.info(f"Evaluating {device} with {segment_type} segments")
 
-        results_file = cfg.results_file.format(device=device, segment_type=segment_type)
+        results_file = cfg.results_file.format(
+            dataset=cfg.dataset, device=device, segment_type=segment_type
+        )
         results_file = add_batch_to_results_file_name(results_file, batch)
 
         # Create directory if it does not exist
@@ -154,7 +156,9 @@ def evaluate(cfg):
             cfg.sessions_file, [device], datasets=[cfg.dataset]
         )
 
-        segment_dir = cfg.segment_dir.format(device=device, segment_type=segment_type)
+        segment_dir = cfg.segment_dir.format(
+            dataset=cfg.dataset, device=device, segment_type=segment_type
+        )
 
         ref_segment_dir = cfg.ref_segment_dir.format(
             dataset=cfg.dataset, device=device, segment_type=segment_type

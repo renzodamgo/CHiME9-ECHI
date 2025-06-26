@@ -7,7 +7,7 @@ import hydra
 import soundfile as sf
 from omegaconf import DictConfig
 
-from signal_tools import get_session_tuples
+from evaluation.segment_signals import get_session_tuples
 
 EXPECTED_SAMPLE_RATE = 16000
 EXPECTED_FORMAT = "PCM_16"

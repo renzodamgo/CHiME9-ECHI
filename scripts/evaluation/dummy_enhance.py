@@ -15,7 +15,7 @@ from librosa import resample
 from omegaconf import DictConfig
 from tqdm import tqdm
 
-from signal_tools import get_session_tuples
+from evaluation.segment_signals import get_session_tuples
 
 
 def dummy_enhance_for_session(
@@ -34,7 +34,7 @@ def dummy_enhance_for_session(
     # For the dummy enhance the output for each speaker is the same
     # so we just write one output file and symlink it for each PID
     outfile = enhanced_signal_filename_template.format(
-        session=session, device=device, pid="xxx"
+        dataset=dataset, session=session, device=device, pid="xxx"
     )
 
     logging.info(f"Processing session {session} for device {device} with PID {pid}")
@@ -62,7 +62,7 @@ def dummy_enhance_for_session(
             sf.write(f, processed_signal, required_samplerate)
 
     outfile_pid = enhanced_signal_filename_template.format(
-        session=session, device=device, pid=pid
+        dataset=dataset, session=session, device=device, pid=pid
     )
     if not os.path.exists(outfile_pid):
         os.symlink(os.path.basename(outfile), outfile_pid)

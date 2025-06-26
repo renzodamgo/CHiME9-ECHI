@@ -1,6 +1,8 @@
-dataset: ${..shared.dataset}
-devices: ${..shared.devices}
+dataset: ${..dataset}
+devices: ${..devices}
+sample_rate: ${..sample_rate} # Sample rate for the audio files
 
 noisy_signal: ${..paths.echi_signal}
+
 enhanced_signal: ${..paths.enhanced_signal}
 sessions_file: ${..paths.sessions_file}

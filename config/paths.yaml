@@ -7,7 +7,7 @@ scratch: ${paths.root}/scratch
 echi: ${paths.root}/chime9_echi
 
 # Directory where the enhanced signal are stored
-enhanced_dir: ${paths.scratch}/submission
+enhanced_dir: ${..base_dir}/{dataset}_submission
 
 # ###########
 # You should not need to change anything below this line
@@ -19,19 +19,27 @@ signal_dir: ${paths.echi}/{device}/{dataset}
 echi_signal: ${paths.signal_dir}/{session}.{device}.wav
 ref_signal_dir: ${paths.echi}/ref/{dataset}
 ref_signal_file: ${paths.ref_signal_dir}/${paths.signal_id}.wav
+rainbow_signal_dir: ${paths.echi}/participant/{dataset}
+rainbow_signal_file: ${paths.rainbow_signal_dir}/{pid}.wav
 
 # chime9_echi metadata layout
-sessions_file: ${paths.echi}/metadata/sessions.${..shared.dataset}.csv
+sessions_file: ${paths.echi}/metadata/sessions.{dataset}.csv
 segment_info_dir: ${paths.echi}/metadata/ref/{dataset}
 segment_info_file: ${paths.segment_info_dir}/${paths.signal_id}.csv
 
 # Path to the reference segment directory
 ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}/{segment_type}
 
+# Path to the training segment directory
+train_input_dir: ${paths.scratch}/train_segments/{dataset}/{device}
+train_input_file: ${paths.train_input_dir}/${paths.signal_id}.{segment}.wav
+train_target_dir: ${paths.scratch}/train_segments/{dataset}/{device}_ref
+train_target_file: ${paths.train_target_dir}/${paths.signal_id}.{segment}.wav
+
 # Directories and paths where outputs are produced
-segment_dir: ${..paths.scratch}/${..shared.exp}/segments/{device}/{segment_type}
-results_file: ${..paths.scratch}/${..shared.exp}/results/results.${..shared.dataset}.{device}.{segment_type}.json
-report_file: ${..paths.scratch}/${..shared.exp}/reports/report.${..shared.dataset}.{device}.{segment_type}.{session}.{pid}.json
+segment_dir: ${..base_dir}/segments/{device}/{segment_type}
+results_file: ${..base_dir}/results/results.{dataset}.{device}.{segment_type}.json
+report_file: ${..base_dir}/reports/report.{dataset}.{device}.{segment_type}.{session}.{pid}.json
 
 # Names for the enhanced signals
 enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav

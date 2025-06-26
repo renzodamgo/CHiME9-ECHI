@@ -1,0 +1,37 @@
+# The items in this configuration file correspond to the steps in the overall recipe.
+# The values refer to configuration files of the individual steps.
+
+defaults:
+  - .@paths: ../paths
+  - .@shared: ../shared
+  - .@unpack: unpack
+  - .@dataset: dataset
+  - .@train: train
+  - .@model: model
+  - _self_
+
+# Signal info
+device: aria
+sample_rate: 16000
+
+# WandB logging info
+wandb:
+  entity: robbiesuth97-university-of-sheffield
+  project: echi-baseline-dev
+
+# Setting up paths for outputs of the experiments
+base_dir: ${paths.scratch}/experiments/${shared.exp_name}
+hydra:
+  run:
+    dir: ${base_dir}/hydra
+  job_logging:
+    root:
+      level: INFO
+
+# If you wish to skip a step, set its value to null or true as below.
+# This can be also done from command-line when running the script, e.g.
+# python run.py prepare_data.run=false
+unpack:
+  run: true
+train:
+  run: true

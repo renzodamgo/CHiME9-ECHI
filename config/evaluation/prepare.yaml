@@ -1,5 +1,7 @@
 # Path to where the submitted data is stored
-enhanced_dir: ${..paths.enhanced_dir}
+enhanced_signal: ${..paths.enhanced_signal}
+segment_info_file: ${..paths.segment_info_file}
+segment_sample_rate: ${..sample_rate}
 
 results_file: ${..paths.results_file}
 
@@ -13,13 +15,7 @@ signal_id: ${..paths.signal_id} # naming convention for signals e.g. session.dev
 score_config: config/metrics.yaml
 #score_config: config/metrics_test.yaml
 
-use_gpu: false
+dataset: ${dataset}
+devices: ${devices}
 
-# For parallel evaluation
-batch: 1
-n_batches: 1
-
-dataset: ${..shared.dataset}
-devices: ${..shared.devices}
-segment_types: ${..shared.segment_types}
 sessions_file: ${..paths.sessions_file}

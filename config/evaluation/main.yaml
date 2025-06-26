@@ -2,8 +2,8 @@
 # The values refer to configuration files of the individual steps.
 
 defaults:
-  - .@paths: paths
-  - .@shared: shared
+  - .@paths: ../paths
+  - .@shared: ../shared
   - .@setup: setup
   - .@validate: validate
   - .@prepare: prepare
@@ -12,9 +12,14 @@ defaults:
   - .@report: report
   - _self_
 
+# Info for which signals to evaluate
+segment_types: [individual] # [individual, summed] # Types of reference segments to process
+devices: [aria] # Devices to process
+dataset: dev # Dataset to use for processing
+sample_rate: 16000
+
 # Setting up paths for outputs of the experiments
-exp_name: base
-base_dir: exp/${exp_name}
+base_dir: ${paths.scratch}/experiments/${shared.exp_name}
 hydra:
   run:
     dir: ${base_dir}/hydra

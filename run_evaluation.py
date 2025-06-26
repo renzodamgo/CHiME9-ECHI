@@ -6,15 +6,15 @@ import logging
 import hydra
 from omegaconf import OmegaConf
 
-from scripts.dummy_enhance import dummy_enhance as enhance
-from scripts.evaluate import evaluate
-from scripts.prepare import prepare
-from scripts.report import report
-from scripts.setup import setup
-from scripts.validate import validate
+from scripts.evaluation.dummy_enhance import dummy_enhance as enhance
+from scripts.evaluation.evaluate import evaluate
+from scripts.evaluation.prepare import prepare
+from scripts.evaluation.report import report
+from scripts.evaluation.setup import setup
+from scripts.evaluation.validate import validate
 
 
-@hydra.main(version_base=None, config_path="config", config_name="main")
+@hydra.main(version_base=None, config_path="config/evaluation", config_name="main")
 def main(cfg):
     logging.info(f"Hydra config:\n{OmegaConf.to_yaml(cfg, resolve=True)}")
 

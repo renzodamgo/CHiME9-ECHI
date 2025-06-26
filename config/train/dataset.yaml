@@ -1,0 +1,26 @@
+device: ${..device}
+
+noisy_signal: ${..paths.train_input_file}
+ref_signal: ${..paths.train_target_file}
+rainbow_signal: ${..paths.rainbow_signal_file}
+
+sessions_file: ${..paths.sessions_file}
+segments_file: ${..paths.segment_info_file}
+
+signal:
+  noisy_sr: 48000
+  ref_sr: 16000
+  spkid_sr: 48000
+
+loader:
+  train:
+    batch_size: 1
+    num_workers: 0
+    shuffle: true
+    pin_memory: true
+  dev:
+    batch_size: 1
+    num_workers: 0
+    shuffle: false
+    pin_memory: true
+
