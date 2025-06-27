@@ -9,13 +9,17 @@ from omegaconf import DictConfig
 
 from evaluation.segment_signals import get_session_tuples
 
-EXPECTED_SAMPLE_RATE = 16000
-EXPECTED_FORMAT = "PCM_16"
-EXPECTED_N_CHANNELS = 1
-
 
 def validate_signal(
-    dataset, session, device, pid, noisy_signal_template, enhanced_signal_template
+    dataset,
+    session,
+    device,
+    pid,
+    noisy_signal_template,
+    enhanced_signal_template,
+    expected_samplerate,
+    expected_bitdepth,
+    expected_nchannels,
 ):
     """Validate a single signal for ECHI submission."""
     logging.debug(
@@ -66,27 +70,27 @@ def validate_signal(
         errors.append(error_msg)
 
     # Check that the sample rate is 16 kHz for the enhanced signal
-    if enhanced_signal_info.samplerate != EXPECTED_SAMPLE_RATE:
+    if enhanced_signal_info.samplerate != expected_samplerate:
         error_msg = (
             f"Enhanced signal {enhanced_signal_file} has incorrect sample rate: "
             f"Observed {enhanced_signal_info.samplerate}; "
-            f"Expected {EXPECTED_SAMPLE_RATE}."
+            f"Expected {expected_samplerate}."
         )
         errors.append(error_msg)
 
     # Check that the submitted signal is 16-bit PCM
-    if enhanced_signal_info.subtype != EXPECTED_FORMAT:
+    if enhanced_signal_info.subtype != expected_bitdepth:
         error_msg = (
-            f"Enhanced signal {enhanced_signal_file} is not {EXPECTED_FORMAT} format. "
-            f"Observed {enhanced_signal_info.subtype}; Expected {EXPECTED_FORMAT}."
+            f"Enhanced signal {enhanced_signal_file} is not {expected_bitdepth} format. "
+            f"Observed {enhanced_signal_info.subtype}; Expected {expected_bitdepth}."
         )
         errors.append(error_msg)
 
     # Check that the number of channels is 1 for the enhanced signal
-    if enhanced_signal_info.channels != EXPECTED_N_CHANNELS:
+    if enhanced_signal_info.channels != expected_nchannels:
         error_msg = (
             f"Enhanced signal {enhanced_signal_file} has incorrect number of channels: "
-            f"Observed {enhanced_signal_info.channels}; Expected {EXPECTED_N_CHANNELS}."
+            f"Observed {enhanced_signal_info.channels}; Expected {expected_nchannels}."
         )
         errors.append(error_msg)
 
@@ -111,6 +115,9 @@ def validate(cfg):
                 pid=pid,
                 noisy_signal_template=cfg.noisy_signal,
                 enhanced_signal_template=cfg.enhanced_signal,
+                expected_samplerate=cfg.expected_sample_rate,
+                expected_bitdepth=cfg.expected_bitdepth,
+                expected_nchannels=cfg.expected_nchannels,
             )
         )
 

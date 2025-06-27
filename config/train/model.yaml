@@ -1,4 +1,4 @@
-name: causalmcxtfgridnet
+name: baseline
 
 input:
   sample_rate: 16000
@@ -15,11 +15,11 @@ input:
 params:
   n_srcs: 1
   n_imics: ${model.input.channels}
-  n_layers: 3
-  lstm_hidden_units: 128
-  attn_n_head: 4
-  attn_qk_output_channel: 128
-  emb_dim: 48
+  n_layers: 1
+  lstm_hidden_units: 16
+  attn_n_head: 2
+  attn_qk_output_channel: 16
+  emb_dim: 12
   emb_ks: 4
   emb_hs: 1
   activation: prelu

@@ -1,30 +1,11 @@
 import torch
-from omegaconf import DictConfig
-from typing import Optional
 from pathlib import Path
 import wandb
 import logging
 import numpy as np
 import torchaudio
 
-from train.CausalMCxTFGridNet import MCxTFGridNet
 from train.file_utils import read_json, write_json
-
-
-def get_model(cfg: DictConfig, ckpt_path: Optional[Path] = None) -> torch.nn.Module:
-    model = MCxTFGridNet(**cfg.params)
-
-    if ckpt_path is not None:
-        ckpt = torch.load(ckpt_path)
-        model.load_state_dict(ckpt)
-
-    return model
-
-
-def get_device():
-    if torch.cuda.is_available():
-        return "cuda"
-    return "cpu"
 
 
 class LossTracker:

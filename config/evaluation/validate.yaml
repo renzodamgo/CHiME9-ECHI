@@ -4,3 +4,7 @@ devices: ${devices}
 noisy_signal: ${..paths.echi_signal}
 enhanced_signal: ${..paths.enhanced_signal}
 sessions_file: ${..paths.sessions_file}
+
+expected_sample_rate: ${..shared.sample_rate}
+expected_bitdepth: ${..shared.signal_bitdepth}
+expected_nchannels: ${..shared.nchannels}

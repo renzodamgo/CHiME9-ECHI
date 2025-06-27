@@ -20,7 +20,7 @@ wandb:
   project: echi-baseline-dev
 
 # Setting up paths for outputs of the experiments
-base_dir: ${paths.scratch}/experiments/${shared.exp_name}
+base_dir: ${paths.scratch}/experiments/${shared.exp_name}/train
 hydra:
   run:
     dir: ${base_dir}/hydra

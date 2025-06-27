@@ -4,21 +4,26 @@
 defaults:
   - .@paths: ../paths
   - .@shared: ../shared
-  - .@setup: setup
-  - .@validate: validate
-  - .@prepare: prepare
-  - .@evaluate: evaluate
-  - .@report: report
   - _self_
 
+# Experiment name
+exp_name: ${shared.exp_name}
+
 # Info for which signals to evaluate
-segment_types: [individual] # [individual, summed] # Types of reference segments to process
 devices: [aria] # Devices to process
 dataset: dev # Dataset to use for processing
-sample_rate: 16000
+sample_rate: ${shared.sample_rate}
+bitdepth: ${shared.signal_bitdepth}
+
+# Input filepaths
+noisy_signal: ${paths.echi_signal}
+rainbow_signal: ${paths.rainbow_signal_file}
+
+enhanced_signal: ${paths.enhanced_signal}
+sessions_file: ${paths.sessions_file}
 
 # Setting up paths for outputs of the experiments
-base_dir: ${paths.scratch}/experiments/${shared.exp_name}/evaluation
+base_dir: ${paths.scratch}/experiments/${shared.exp_name}/inference
 hydra:
   run:
     dir: ${base_dir}/hydra
@@ -29,13 +34,3 @@ hydra:
 # If you wish to skip a step, set its value to null or true as below.
 # This can be also done from command-line when running the script, e.g.
 # python run.py setup.run=false
-setup:
-  run: true
-validate:
-  run: true
-prepare:
-  run: true
-evaluate:
-  run: true
-report:
-  run: true

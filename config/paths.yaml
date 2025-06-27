@@ -7,7 +7,8 @@ scratch: ${paths.root}/scratch
 echi: ${paths.root}/chime9_echi
 
 # Directory where the enhanced signal are stored
-enhanced_dir: ${..base_dir}/{dataset}_submission
+experiments_dir: ${paths.scratch}/experiments
+enhanced_dir: ${paths.experiments_dir}/${..shared.exp_name}/inference/{dataset}_submission
 
 # ###########
 # You should not need to change anything below this line

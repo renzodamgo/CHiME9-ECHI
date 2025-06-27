@@ -9,7 +9,7 @@ from pathlib import Path
 from torch.utils.data import Dataset
 import csv
 
-from train.signal_prep import AudioPrep, combine_audio_list
+from shared.signal_utils import AudioPrep, combine_audio_list
 
 
 from typing import Any

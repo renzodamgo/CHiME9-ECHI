@@ -6,7 +6,6 @@ import logging
 import hydra
 from omegaconf import OmegaConf
 
-from scripts.evaluation.dummy_enhance import dummy_enhance as enhance
 from scripts.evaluation.evaluate import evaluate
 from scripts.evaluation.prepare import prepare
 from scripts.evaluation.report import report
@@ -20,9 +19,6 @@ def main(cfg):
 
     if cfg.setup.run:
         setup(cfg.setup)
-
-    if cfg.enhance.run:
-        enhance(cfg.enhance)
 
     if cfg.validate.run:
         status = validate(cfg.validate)

@@ -1,4 +1,4 @@
-epochs: 5
+epochs: 2
 checkpoint_interval: 2
 schedule_lr: false
 lr: 0.001

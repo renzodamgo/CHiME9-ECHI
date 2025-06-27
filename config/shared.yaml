@@ -1,1 +1,8 @@
 exp_name: baseline
+
+# ###########
+# You should not need to change anything below this line
+#
+sample_rate: 16000
+signal_bitdepth: PCM_16
+nchannels: 1

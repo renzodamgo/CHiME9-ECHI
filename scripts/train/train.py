@@ -6,10 +6,10 @@ from torch_stoi import NegSTOILoss
 from torch.utils.data.dataloader import DataLoader
 
 from train.echi import ECHI, collate_fn
-from train.model_tools import get_model
+from shared.core_utils import get_model, get_device
 from train.losses import get_loss
-from train.model_tools import get_device, Gromit
-from train.signal_prep import STFTWrapper, match_length, AudioPrep
+from train.gromit import Gromit
+from shared.signal_utils import STFTWrapper, match_length, AudioPrep
 
 torch.manual_seed(666)
 
@@ -202,12 +202,6 @@ def run(
             noisy = noisy.to(device, non_blocking=True)
             targets = targets.to(device, non_blocking=True)
             spk_id = batch["spkid"].to(device, non_blocking=True)
-
-            if noisy.shape[-1] == 0 or targets.shape[-1] == 0:
-                logging.warning(
-                    f"Bad audio! {batch['id']} noisy: {noisy.shape} target: {targets.shape}"
-                )
-                continue
 
             if do_stft:
                 noisy = stft(noisy)

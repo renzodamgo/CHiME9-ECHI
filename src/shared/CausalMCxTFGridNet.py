@@ -134,7 +134,6 @@ class MCxTFGridNet(AbsSeparator):
             additional (Dict or None): other data, currently unused in this model,
                     we return it also in output.
         """
-
         # B, 2, T, (C,) F
         if is_complex(spec):
             feature = torch.stack([spec.real, spec.imag], dim=1)
@@ -523,10 +522,11 @@ class EnUnetModule(nn.Module):
         for i in range(len(self.encoder)):
             x = self.encoder[i](x)
             x_list.append(x)
-
         x = self.decoder[0](x)
         for i in range(1, len(self.decoder)):
+
             x = self.decoder[i](torch.cat([x, x_list[-(i + 1)]], dim=1))
+
         x_resi = x_resi + x
 
         return self.out_pool(x_resi)
