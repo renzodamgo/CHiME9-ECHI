@@ -18,7 +18,7 @@ def main(cfg):
         unpack(cfg.unpack)
 
     if cfg.train.run:
-        run(cfg.dataset, cfg.model, cfg.train, cfg.base_dir, True)
+        run(cfg.dataloading, cfg.model, cfg.train, cfg.base_dir, True)
 
 
 if __name__ == "__main__":

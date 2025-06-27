@@ -7,7 +7,7 @@ from torch.utils.data.dataloader import DataLoader
 
 from train.echi import ECHI, collate_fn
 from shared.core_utils import get_model, get_device
-from train.losses import get_loss
+from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
 from shared.signal_utils import STFTWrapper, match_length, AudioPrep
 
@@ -181,6 +181,12 @@ def run(
     stoi_fn = NegSTOILoss(model_cfg.input.sample_rate).to(device)
     ckpt_interval = train_cfg.checkpoint_interval
 
+    do_lrschedule = train_cfg.schedule_lr is not None
+    if do_lrschedule:
+        lr_scheduler = get_lrmethod(
+            train_cfg.schedule_lr.name, optimizer, train_cfg.schedule_lr.params
+        )
+
     model.to(device)
     loss_fn.to(device)
 
@@ -227,7 +233,7 @@ def run(
             loss = loss_fn(processed, targets)
 
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), train_cfg.clip_grad_norm)
             optimizer.step()
 
             gromit.train_loss.update(loss.detach())
@@ -309,5 +315,8 @@ def run(
                         targets,
                         gromit,
                     )
+
+            if do_lrschedule:
+                lr_scheduler.step(gromit.val_loss.get_average())
 
         gromit.epoch_report(epoch, do_checkpoint, model)

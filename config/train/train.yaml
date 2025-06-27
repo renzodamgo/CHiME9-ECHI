@@ -1,7 +1,17 @@
 epochs: 2
 checkpoint_interval: 2
-schedule_lr: false
 lr: 0.001
+clip_grad_norm: 1.0
+
+schedule_lr:
+  name: plateau_reduce
+  params:
+    mode: min
+    factor: 0.5
+    patience: 2
+    threshold: 0.1
+    min_lr: 1e-08
+
 loss:
   name: spec
   kwargs:

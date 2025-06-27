@@ -1,4 +1,5 @@
 import auraloss
+import torch
 
 EPS = 1e-5
 
@@ -27,3 +28,10 @@ def get_loss(name, params=None):
         return auraloss.freq.MultiResolutionSTFTLoss(**params)
     else:
         raise ValueError(f"Unknown loss name: {name}")
+
+
+def get_lrmethod(name: str, optim, params):
+    if name == "plateau_reduce":
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(optim, **params)
+    else:
+        raise ValueError(f"LR Scheduler {name} not implemented. Add code here")

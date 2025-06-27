@@ -96,7 +96,7 @@ class MCxTFGridNet(AbsSeparator):
 
         self.fusions = nn.ModuleList([])
         for _ in range(n_layers):
-            self.fusions.append(FusionModule(emb_dim))
+            self.fusions.append(FiLM(emb_dim, emb_dim))
 
         self.gridnets = nn.ModuleList([])
         for _ in range(n_layers):
@@ -470,6 +470,22 @@ class AuxEncoder(nn.Module):
         return auxs, self.speaker(auxs)
 
 
+class FiLM(nn.Module):
+    def __init__(self, feature_dim, cond_dim):
+        super(FiLM, self).__init__()
+        self.gamma_fc = nn.Linear(cond_dim, feature_dim)
+        self.beta_fc = nn.Linear(cond_dim, feature_dim)
+
+    def forward(self, cond, x):
+        """
+        x:    [B, C, T, F] or [B, C]
+        cond: [B, cond_dim]
+        """
+        gamma = self.gamma_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
+        beta = self.beta_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
+        return gamma * x + beta
+
+
 class FusionModule(nn.Module):
     def __init__(self, emb_dim, nhead=4, dropout=0.1):
         super(FusionModule, self).__init__()
@@ -486,8 +502,12 @@ class FusionModule(nn.Module):
         nn.init.zeros_(self.alpha)
 
     def forward(self, aux: torch.Tensor, esti: torch.Tensor) -> torch.Tensor:
+        B, C, F, T = esti.shape
+
         aux = aux.unsqueeze(1)  # [B, 1, C]
         flatten_esti = esti.flatten(start_dim=2).transpose(1, 2)  # [B, T*F, C]
+        # flatten_esti = esti
+
         aux_adapt = self.attn(aux, flatten_esti, flatten_esti, need_weights=False)[0]
         aux = aux + self.alpha * aux_adapt  # [B, 1, C]
 
