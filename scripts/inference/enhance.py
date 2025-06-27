@@ -36,7 +36,13 @@ def enhance_all_sessions(cfg):
         noisy_audio, noisy_fs = torchaudio.load(noisy_fpath)
         rainbow_audio, rainbow_fs = torchaudio.load(rainbow_fpath)
 
-        output = enhance_fn(noisy_audio, noisy_fs, rainbow_audio, rainbow_fs, **kwargs)
+        output = enhance_fn(
+            noisy_audio=noisy_audio,
+            noisy_fs=noisy_fs,
+            spkid_audio=rainbow_audio,
+            spkid_fs=rainbow_fs,
+            **kwargs,
+        )
 
         enhanced_fpath = Path(
             cfg.enhanced_signal.format(

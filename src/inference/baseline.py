@@ -23,7 +23,6 @@ def enhance(
     spkid_audio = spkid_prep.process(spkid_audio, spkid_fs)
     spkid_stft = stft(spkid_audio)
 
-    # spkid_stft = spkid_stft.transpose(0, 1)
     spkid_stft = spkid_stft.unsqueeze(0)
     spkid_lens = torch.tensor([spkid_stft.shape[2]])
 
@@ -39,13 +38,9 @@ def enhance(
     overlap_samples = int(window_samples * overlap)
     stride = window_samples - overlap_samples
 
-    print("window", window_samples // noisy_prep.output_sr)
-    print("stride", stride / noisy_prep.output_sr)
-
     model.eval()
     with torch.no_grad():
         for start in range(0, noisy_audio.shape[-1], stride):
-            print(start)
             end = start + window_samples
             if end > duration:
                 end = duration + 1
@@ -66,7 +61,6 @@ def enhance(
                 den_snippet[-overlap_samples:] *= 0.5
 
             output[start:end] += den_snippet
-            break
 
     return output
 
