@@ -1,16 +1,11 @@
 import math
-from collections import OrderedDict
-from typing import List, Tuple, Any
+from typing import Tuple, Any
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import init
 from torch.nn.parameter import Parameter
-
-from espnet2.enh.layers.complex_utils import is_complex, new_complex_like
-from espnet2.enh.separator.abs_separator import AbsSeparator
-from espnet2.torch_utils.get_layer_from_string import get_layer
 
 HALF_PRECISION_DTYPES: tuple[Any, ...]
 if hasattr(torch, "bfloat16"):
@@ -19,7 +14,7 @@ else:
     HALF_PRECISION_DTYPES = (torch.float16,)
 
 
-class MCxTFGridNet(AbsSeparator):
+class MCxTFGridNet(nn.Module):
     """Offline TFGridNetV3.
 
     On top of TFGridNetV2, TFGridNetV3 slightly modifies the internal architecture
@@ -117,7 +112,7 @@ class MCxTFGridNet(AbsSeparator):
 
     def forward(
         self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor
-    ) -> Tuple[List[torch.Tensor], torch.Tensor, OrderedDict]:
+    ) -> torch.Tensor:
         """Forward.
 
         Args:
@@ -134,19 +129,12 @@ class MCxTFGridNet(AbsSeparator):
             additional (Dict or None): other data, currently unused in this model,
                     we return it also in output.
         """
-        # B, 2, T, (C,) F
-        if is_complex(spec):
-            feature = torch.stack([spec.real, spec.imag], dim=1)
-        else:
-            assert spec.size(-1) == 2, spec.shape
-            feature = spec.moveaxis(-1, 2)
-            spec = spec[..., 0] + 1j * spec[..., 1]
+        assert spec.size(-1) == 2, spec.shape
+        feature = spec.moveaxis(-1, 2)
+        spec = spec[:, :, 0] + 1j * spec[:, :, 1]
 
-        if is_complex(spk):
-            spk_feat = torch.stack([spk.real, spk.imag], dim=1)
-        else:
-            assert spk.size(-1) == 2, spk.shape
-            spk_feat = spk.moveaxis(-1, 1)
+        assert spk.size(-1) == 2, spk.shape
+        spk_feat = spk.moveaxis(-1, 1)
 
         n_batch, mics, _, n_frames, n_freqs = feature.shape
         assert mics == self.n_imics
@@ -167,9 +155,7 @@ class MCxTFGridNet(AbsSeparator):
         batch = self.deconv(batch)  # [B, n_srcs*2, T, F]
 
         batch = batch.view([n_batch, self.n_srcs, 2, n_frames, n_freqs])
-        batch = new_complex_like(spec, (batch[:, :, 0], batch[:, :, 1]))
-
-        # batch = [batch[:, src] for src in range(self.num_spk)]
+        batch = torch.complex(batch[:, :, 0], batch[:, :, 1])
 
         return batch.unsqueeze(1)  # , ilens, OrderedDict()
 
@@ -195,6 +181,7 @@ class GridNetV3Block(nn.Module):
     ):
         super().__init__()
         assert activation == "prelu"
+        activation_fn = torch.nn.PReLU()
 
         in_channels = emb_dim * emb_ks
 
@@ -248,7 +235,7 @@ class GridNetV3Block(nn.Module):
             "attn_concat_proj",
             nn.Sequential(
                 nn.Conv2d(emb_dim, emb_dim, 1),
-                get_layer(activation)(),
+                activation_fn,
                 LayerNormalization(emb_dim, dim=-3, total_dim=4, eps=eps),
             ),
         )

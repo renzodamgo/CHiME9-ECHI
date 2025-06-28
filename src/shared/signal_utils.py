@@ -217,7 +217,7 @@ class STFTWrapper(torch.nn.Module):
     def inverse(self, X: torch.Tensor) -> torch.Tensor:
         if not X.is_complex():
             X = X.contiguous()
-            X = torch.view_as_complex(X)
+            X = torch.complex(X[..., 0], X[..., 1])
 
         do_reshape = X.ndim == 4
         if do_reshape:
