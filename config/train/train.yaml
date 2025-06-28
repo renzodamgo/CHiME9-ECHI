@@ -1,6 +1,6 @@
-epochs: 2
+epochs: 100
 checkpoint_interval: 2
-lr: 0.001
+lr: 1e-6
 clip_grad_norm: 1.0
 
 schedule_lr:

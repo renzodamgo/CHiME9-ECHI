@@ -17,6 +17,7 @@ torch.manual_seed(666)
 def get_dataset(
     split: str,
     data_cfg: DictConfig,
+    debug: bool,
     noisy_prepper: AudioPrep,
     ref_prepper: AudioPrep,
     spk_prepper: AudioPrep,
@@ -29,7 +30,7 @@ def get_dataset(
         data_cfg.rainbow_signal,
         data_cfg.sessions_file,
         data_cfg.segments_file,
-        True,
+        debug,
         noisy_prepper,
         ref_prepper,
         spk_prepper,
@@ -168,11 +169,11 @@ def run(
     )
 
     trainset, trainsaves = get_dataset(
-        "train", data_cfg, noisy_prepper, ref_prepper, spk_prepper
+        "train", data_cfg, debug, noisy_prepper, ref_prepper, spk_prepper
     )
 
     devset, devsaves = get_dataset(
-        "dev", data_cfg, noisy_prepper, ref_prepper, spk_prepper
+        "dev", data_cfg, debug, noisy_prepper, ref_prepper, spk_prepper
     )
 
     model = get_model(model_cfg, None)

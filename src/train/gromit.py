@@ -38,6 +38,13 @@ class Gromit:
         self.wandb_entity = wandb_entity
         self.wandb_project = wandb_project
 
+        self.use_wandb = (
+            (not self.debug)
+            and (self.wandb_entity is not None)
+            and (self.wandb_project is not None)
+        )
+        self.use_wandb = True
+
         self.train_loss = LossTracker()
         self.val_loss = LossTracker()
         self.val_stoi = LossTracker()
@@ -58,7 +65,7 @@ class Gromit:
 
         run_name = self.output_path.name
 
-        if not self.debug:
+        if self.use_wandb:
             wandb.init(
                 entity=self.wandb_entity,
                 project=self.wandb_project,
@@ -109,7 +116,7 @@ class Gromit:
         train_log.append(new_log)
         write_json(self.json_name, train_log)
 
-        if not self.debug:
+        if self.use_wandb:
             wandb.log(wlog)
 
     def save_sample(
