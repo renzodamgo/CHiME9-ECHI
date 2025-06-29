@@ -15,7 +15,7 @@ defaults:
 segment_types: [individual] # [individual, summed] # Types of reference segments to process
 devices: [aria] # Devices to process
 dataset: dev # Dataset to use for processing
-sample_rate: 16000
+sample_rate: ${shared.ref_sample_rate}
 
 # Setting up paths for outputs of the experiments
 base_dir: ${paths.scratch}/experiments/${shared.exp_name}/evaluation

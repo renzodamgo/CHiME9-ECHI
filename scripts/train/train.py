@@ -9,19 +9,12 @@ from train.echi import ECHI, collate_fn
 from shared.core_utils import get_model, get_device
 from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
-from shared.signal_utils import STFTWrapper, match_length, AudioPrep
+from shared.signal_utils import STFTWrapper, match_length, prep_audio
 
 torch.manual_seed(666)
 
 
-def get_dataset(
-    split: str,
-    data_cfg: DictConfig,
-    debug: bool,
-    noisy_prepper: AudioPrep,
-    ref_prepper: AudioPrep,
-    spk_prepper: AudioPrep,
-):
+def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     data = ECHI(
         split,
         data_cfg.device,
@@ -31,9 +24,6 @@ def get_dataset(
         data_cfg.sessions_file,
         data_cfg.segments_file,
         debug,
-        noisy_prepper,
-        ref_prepper,
-        spk_prepper,
     )
     data_len = len(data)
     samples = [data.__getitem__(i * data_len // 5)["id"] for i in range(1, 4)]
@@ -142,39 +132,9 @@ def run(
     else:
         do_stft = False
 
-    use_spkid = model_cfg.input.use_spkid
-    if use_spkid is None:
-        use_spkid = False
+    trainset, trainsaves = get_dataset("train", data_cfg, debug)
 
-    noisy_prepper = AudioPrep(
-        output_channels=model_cfg.input.channels,
-        input_sr=48000,
-        output_sr=model_cfg.input.sample_rate,
-        output_rms=model_cfg.input.rms,
-        device="cpu",
-    )
-    ref_prepper = AudioPrep(
-        output_channels=1,
-        input_sr=16000,
-        output_sr=model_cfg.input.sample_rate,
-        output_rms=model_cfg.input.rms,
-        device="cpu",
-    )
-    spk_prepper = AudioPrep(
-        output_channels=1,
-        input_sr=48000,
-        output_sr=model_cfg.input.sample_rate,
-        output_rms=model_cfg.input.rms,
-        device="cpu",
-    )
-
-    trainset, trainsaves = get_dataset(
-        "train", data_cfg, debug, noisy_prepper, ref_prepper, spk_prepper
-    )
-
-    devset, devsaves = get_dataset(
-        "dev", data_cfg, debug, noisy_prepper, ref_prepper, spk_prepper
-    )
+    devset, devsaves = get_dataset("dev", data_cfg, debug)
 
     model = get_model(model_cfg, None)
     optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg.lr)
@@ -187,6 +147,10 @@ def run(
         lr_scheduler = get_lrmethod(
             train_cfg.schedule_lr.name, optimizer, train_cfg.schedule_lr.params
         )
+
+    input_channels = model_cfg.input.channels
+    input_sr = model_cfg.input.sample_rate
+    input_rms = model_cfg.input.rms
 
     model.to(device)
     loss_fn.to(device)
@@ -203,12 +167,15 @@ def run(
             loader = trainset
 
         for batch in loader:
-            noisy = batch["noisy"]
-            targets = batch["target"]
 
-            noisy = noisy.to(device, non_blocking=True)
-            targets = targets.to(device, non_blocking=True)
+            noisy = batch["noisy"].to(device, non_blocking=True)
+            targets = batch["target"].to(device, non_blocking=True)
             spk_id = batch["spkid"].to(device, non_blocking=True)
+
+            noisy = prep_audio(
+                noisy, batch["fs"], input_channels, input_sr, input_rms, True
+            )
+            spk_id = prep_audio(spk_id, batch["fs"], 1, input_sr, input_rms, True)
 
             if do_stft:
                 noisy = stft(noisy)
@@ -223,7 +190,6 @@ def run(
 
             if do_stft:
                 processed = stft.inverse(processed)
-                noisy = stft.inverse(noisy)
 
             processed, targets, use_val = check_lengths(
                 batch["id"], processed, targets, "train", do_stft
@@ -246,8 +212,8 @@ def run(
                 trainsaves,
                 "train",
                 epoch,
-                noisy,
-                targets,
+                batch["noisy"],
+                batch["target"],
                 gromit,
             )
 
@@ -263,18 +229,16 @@ def run(
             with torch.no_grad():
                 for batch in loader:
 
-                    noisy = batch["noisy"]
-                    targets = batch["target"]
-
-                    noisy = noisy.to(device, non_blocking=True)
-                    targets = targets.to(device, non_blocking=True)
+                    noisy = batch["noisy"].to(device, non_blocking=True)
+                    targets = batch["target"].to(device, non_blocking=True)
                     spk_id = batch["spkid"].to(device, non_blocking=True)
 
-                    if noisy.shape[-1] == 0 or targets.shape[-1] == 0:
-                        logging.warning(
-                            f"Bad audio! {batch['id']} noisy: {noisy.shape} target: {targets.shape}"
-                        )
-                        continue
+                    noisy = prep_audio(
+                        noisy, batch["fs"], input_channels, input_sr, input_rms, True
+                    )
+                    spk_id = prep_audio(
+                        spk_id, batch["fs"], 1, input_sr, input_rms, True
+                    )
 
                     if do_stft:
                         noisy = stft(noisy)
@@ -287,7 +251,6 @@ def run(
 
                     if do_stft:
                         processed = stft.inverse(processed)
-                        noisy = stft.inverse(noisy)
 
                     processed, targets, use_val = check_lengths(
                         batch["id"], processed, targets, "val", do_stft
@@ -312,8 +275,8 @@ def run(
                         devsaves,
                         "dev",
                         epoch,
-                        noisy,
-                        targets,
+                        batch["noisy"],
+                        batch["target"],
                         gromit,
                     )
 

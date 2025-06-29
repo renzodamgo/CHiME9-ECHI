@@ -1,23 +1,16 @@
-if __name__ == "__main__":
-    import sys
-
-    sys.path.append("src")
-
-import soundfile as sf
 import torchaudio
 from pathlib import Path
 from torch.utils.data import Dataset
 import csv
-from tqdm import tqdm
 
-from shared.signal_utils import AudioPrep, combine_audio_list
+from shared.signal_utils import combine_audio_list
 
 
 from typing import Any
 
 
 def collate_fn(batch: list[dict[str, Any]]):
-    new_out: dict[str, Any] = {"id": [x["id"] for x in batch]}
+    new_out: dict[str, Any] = {"id": [x["id"] for x in batch], "fs": batch[0]["fs"]}
 
     for audio_type in ["noisy", "target", "spkid"]:
         audio = [x[audio_type] for x in batch]
@@ -39,9 +32,6 @@ class ECHI(Dataset):
         sessions_file: str,
         segments_file: str,
         debug: bool,
-        noisy_prep: AudioPrep,
-        ref_prep: AudioPrep,
-        spk_prep: AudioPrep,
     ):
         super().__init__()
         self.subset = subset
@@ -60,20 +50,17 @@ class ECHI(Dataset):
 
         self.segment_samples = 16000 * 4
 
-        self.preppers = {"noisy": noisy_prep, "target": ref_prep, "spkid": spk_prep}
-
         self.debug = debug
 
         self.manifest: list[dict]
         self.make_manifest()
 
-
     def make_manifest(self):
         self.manifest = []
-        
-        end = False        
 
-        for meta in tqdm(self.metadata):
+        end = False
+
+        for meta in self.metadata:
 
             try:
                 device_pos = int(meta[f"{self.audio_device}_pos"])
@@ -139,16 +126,21 @@ class ECHI(Dataset):
 
         out = {"id": meta["id"]}
 
-        for audio_type in self.signal_paths.keys():
-            audio, fs = torchaudio.load(str(meta[audio_type]))
-            prep = self.preppers[audio_type]  # type: AudioPrep
-            audio = prep.process(audio, fs)
+        noisy, nfs = torchaudio.load(str(meta["noisy"]))
+        target, tfs = torchaudio.load(str(meta["target"]))
+        spkid, sfs = torchaudio.load(str(meta["spkid"]))
 
-            if audio.shape[-1] > self.segment_samples and audio_type != "spk":
-                # Cut segments short to avoid memory issues
-                audio = audio[..., : self.segment_samples]
+        assert nfs == tfs, f"Noisy fs ({nfs}Hz) doesn't match Target fs ({tfs}Hz)"
+        assert nfs == sfs, f"Noisy fs ({nfs}Hz) doesn't match SpkID fs ({sfs}Hz)"
 
-            out[audio_type] = audio
+        if noisy.shape[-1] > self.segment_samples:
+            noisy = noisy[..., : self.segment_samples]
+            target = target[..., : self.segment_samples]
+
+        out["noisy"] = noisy
+        out["target"] = target.squeeze(0)
+        out["spkid"] = spkid.squeeze(0)
+        out["fs"] = nfs
 
         return out
 

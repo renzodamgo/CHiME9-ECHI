@@ -1,9 +1,9 @@
 name: baseline
 
 input:
-  sample_rate: 16000
+  sample_rate: ${model_sample_rate}
   channels: ${audio_channels}
-  rms: 0.05
+  rms: 0.0
   use_spkid: true
   type: stft
   stft:
@@ -18,7 +18,7 @@ params:
   n_layers: 3
   lstm_hidden_units: 128
   attn_n_head: 4
-  attn_qk_output_channel: 128
+  attn_qk_output_channel: 192
   emb_dim: 64
   emb_ks: 4
   emb_hs: 1

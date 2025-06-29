@@ -10,6 +10,8 @@ scratch/
 data/*
 !data/.gitkeep
 
+# Slurm logging
+slurm/logs/*/*.out
 
 # Experiment directories
 exp

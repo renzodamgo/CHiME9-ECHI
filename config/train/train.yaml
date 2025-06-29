@@ -1,6 +1,6 @@
 epochs: 100
 checkpoint_interval: 2
-lr: 1e-6
+lr: 1e-7
 clip_grad_norm: 1.0
 
 schedule_lr:
@@ -9,8 +9,8 @@ schedule_lr:
     mode: min
     factor: 0.5
     patience: 2
-    threshold: 0.1
-    min_lr: 1e-08
+    threshold: 0.01
+    min_lr: 1e-10
 
 loss:
   name: spec
@@ -27,7 +27,7 @@ loss:
     scale: null
     n_bins: null
     perceptual_weighting: false
-    scale_invariance: false
+    scale_invariance: true
     eps: 1.0e-08
     output: loss
     reduction: mean

@@ -6,15 +6,21 @@ import hydra
 from omegaconf import DictConfig
 
 from shared.core_utils import get_session_tuples
-from train.signal_prep import segment_all_signals
+from train.signal_prep import segment_all_signals, resample_rainbow
 
 
 def unpack(cfg):
     logging.info("Preparing the ECHI dataset")
 
-    print(cfg.devices)
     session_tuples = get_session_tuples(
         cfg.sessions_file, cfg.devices, datasets=cfg.dataset
+    )
+
+    resample_rainbow(
+        cfg.rainbow_input_file,
+        cfg.rainbow_output_file,
+        cfg.model_sample_rate,
+        session_tuples,
     )
 
     directories = [
@@ -28,7 +34,8 @@ def unpack(cfg):
             output_dir_template=out_dir,
             segment_info_file=cfg.segment_info_file,
             session_tuples=session_tuples,
-            seg_sample_rate=cfg.segment_sample_rate,
+            save_sample_rate=cfg.model_sample_rate,
+            seg_sample_rate=cfg.ref_sample_rate,
         )
 
 

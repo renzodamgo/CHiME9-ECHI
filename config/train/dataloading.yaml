@@ -2,7 +2,7 @@ device: ${..device}
 
 noisy_signal: ${..paths.train_input_file}
 ref_signal: ${..paths.train_target_file}
-rainbow_signal: ${..paths.rainbow_signal_file}
+rainbow_signal: ${..paths.train_rainbow_file}
 
 sessions_file: ${..paths.sessions_file}
 segments_file: ${..paths.segment_info_file}

@@ -4,6 +4,7 @@ import csv
 import logging
 from pathlib import Path
 
+import soxr
 import numpy as np
 import soundfile as sf
 from tqdm import tqdm
@@ -45,7 +46,11 @@ def wav_file_name(output_dir: Path, stem: str, index: int) -> Path:
 
 
 def segment_signal(
-    wav_file: Path | list[Path], csv_file: Path, output_dir: Path, seg_sample_rate: int
+    wav_file: Path | list[Path],
+    csv_file: Path,
+    output_dir: Path,
+    save_sample_rate: int,
+    seg_sample_rate: int,
 ) -> None:
     """Extract speech segments from a signal"""
     logging.debug(f"Segmenting {wav_file} {csv_file}")
@@ -74,8 +79,11 @@ def segment_signal(
         with open(wav_file, "rb") as f:
             signal, fs = sf.read(f)
 
+    if fs != save_sample_rate:
+        signal = soxr.resample(signal, fs, save_sample_rate)
+
     logging.debug(f"Will generate {len(segments)} segments from {wav_file}")
-    sample_scalar = fs / seg_sample_rate
+    sample_scalar = save_sample_rate / seg_sample_rate
 
     for segment in segments:
         index = int(segment["index"])
@@ -90,10 +98,9 @@ def segment_signal(
             logging.warning(f"Segment {output_file} exceeds signal length. Skipping.")
             continue
         signal_segment = signal[start_sample:end_sample]
-        if output_file.name[:2] == "._":
-            print(wav_file)
+
         with open(output_file, "wb") as f:
-            sf.write(f, signal_segment, samplerate=fs)
+            sf.write(f, signal_segment, samplerate=save_sample_rate)
 
 
 def csv_to_pid_wav(name: str) -> str:
@@ -106,6 +113,7 @@ def segment_all_signals(
     output_dir_template,
     segment_info_file,
     session_tuples,
+    save_sample_rate,
     seg_sample_rate,
 ):
     for session, device, pid in tqdm(session_tuples):
@@ -127,4 +135,37 @@ def segment_all_signals(
             logging.warning(f"WARNING: csv file not found at {csv_file}")
             continue
 
-        segment_signal(wav_file, csv_file, output_dir, seg_sample_rate)
+        segment_signal(
+            wav_file, csv_file, output_dir, save_sample_rate, seg_sample_rate
+        )
+
+
+def resample_rainbow(
+    signal_template,
+    output_template,
+    save_sample_rate,
+    session_tuples,
+):
+    dataset_pids = list(set((x.split("_")[0], y) for x, _, y in session_tuples))
+
+    for dataset, pid in dataset_pids:
+        sig_file = Path(signal_template.format(dataset=dataset, pid=pid))
+        if not sig_file.exists():
+            logging.warning(f"Rainbow file {sig_file} not found")
+            continue
+
+        output_file = Path(output_template.format(dataset=dataset, pid=pid))
+        if output_file.exists():
+            continue
+
+        with open(sig_file, "rb") as file:
+            signal, fs = sf.read(file)
+
+        if fs != save_sample_rate:
+            signal = soxr.resample(signal, fs, save_sample_rate)
+
+        if not output_file.parent.exists():
+            output_file.parent.mkdir(parents=True)
+
+        with open(output_file, "wb") as f:
+            sf.write(f, signal, samplerate=save_sample_rate)
