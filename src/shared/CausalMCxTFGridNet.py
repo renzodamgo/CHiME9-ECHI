@@ -344,7 +344,7 @@ class GridNetV3Block(nn.Module):
 
         causal_mask = torch.tril(
             torch.ones(attn_mat.shape[-1], attn_mat.shape[-1])
-        ).bool()
+        ).bool().to(attn_mat.device)
         attn_mat = attn_mat.masked_fill(~causal_mask, float("-inf"))
 
         attn_mat = F.softmax(attn_mat, dim=2)  # [B', T, T]

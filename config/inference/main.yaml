@@ -10,7 +10,7 @@ defaults:
 exp_name: ${shared.exp_name}
 
 # Info for which signals to evaluate
-devices: [aria] # Devices to process
+device: aria # Devices to process
 dataset: dev # Dataset to use for processing
 sample_rate: ${shared.sample_rate}
 bitdepth: ${shared.signal_bitdepth}

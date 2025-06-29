@@ -19,9 +19,9 @@ def enhance_all_sessions(cfg):
     logging.info("Preparing the ECHI dataset")
 
     session_tuples = get_session_tuples(
-        cfg.sessions_file, cfg.devices, datasets=cfg.dataset
+        cfg.sessions_file, cfg.device, datasets=cfg.dataset
     )
-    enhance_fn, kwargs = get_enhance_fn(Path(cfg.base_dir).parent)
+    enhance_fn, kwargs = get_enhance_fn(Path(cfg.base_dir).parent, cfg.device)
 
     for session, device, pid in tqdm(session_tuples):
         dataset = session.split("_")[0]

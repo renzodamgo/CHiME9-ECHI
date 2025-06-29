@@ -12,6 +12,7 @@ from train.signal_prep import segment_all_signals
 def unpack(cfg):
     logging.info("Preparing the ECHI dataset")
 
+    print(cfg.devices)
     session_tuples = get_session_tuples(
         cfg.sessions_file, cfg.devices, datasets=cfg.dataset
     )

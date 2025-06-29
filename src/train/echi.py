@@ -8,6 +8,7 @@ import torchaudio
 from pathlib import Path
 from torch.utils.data import Dataset
 import csv
+from tqdm import tqdm
 
 from shared.signal_utils import AudioPrep, combine_audio_list
 
@@ -61,17 +62,18 @@ class ECHI(Dataset):
 
         self.preppers = {"noisy": noisy_prep, "target": ref_prep, "spkid": spk_prep}
 
+        self.debug = debug
+
         self.manifest: list[dict]
         self.make_manifest()
 
-        self.debug = debug
-        if self.debug:
-            self.manifest = self.manifest[:10]
 
     def make_manifest(self):
         self.manifest = []
+        
+        end = False        
 
-        for meta in self.metadata:
+        for meta in tqdm(self.metadata):
 
             try:
                 device_pos = int(meta[f"{self.audio_device}_pos"])
@@ -95,6 +97,13 @@ class ECHI(Dataset):
 
                 self.manifest += self.get_segment_paths(meta["session"], pid, segments)
 
+                if self.debug and len(self.manifest) > 10:
+                    self.manifest = self.manifest[:10]
+                    end = True
+                    break
+            if end:
+                break
+
     def get_segment_paths(self, session, pid, segments) -> list[dict]:
 
         good_files = []
@@ -116,9 +125,7 @@ class ECHI(Dataset):
 
                 seg_fpaths[audio_type] = this_fpath
             if all_good:
-
-                with sf.SoundFile(seg_fpaths["noisy"]) as f:
-                    length = f.frames / f.samplerate
+                length = (int(seg["end"]) - int(seg["start"])) / 16000
                 if length < 1:
                     continue
 

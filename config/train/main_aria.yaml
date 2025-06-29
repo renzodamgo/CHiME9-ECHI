@@ -8,22 +8,19 @@ defaults:
   - .@dataloading: dataloading
   - .@train: train
   - .@model: model
+  - .@wandb: wandb
   - _self_
 
 # Signal info
 device: aria
+audio_channels: 7
 sample_rate: 16000
 
 # Debug run
 debug: false
 
-# WandB logging info
-wandb:
-  entity: robbiesuth97-university-of-sheffield
-  project: echi-baseline
-
 # Setting up paths for outputs of the experiments
-base_dir: ${paths.scratch}/experiments/${shared.exp_name}/train
+base_dir: ${paths.scratch}/experiments/${shared.exp_name}/train_${device}
 hydra:
   run:
     dir: ${base_dir}/hydra

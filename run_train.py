@@ -10,7 +10,7 @@ from scripts.train.unpack import unpack
 from scripts.train.train import run
 
 
-@hydra.main(version_base=None, config_path="config/train", config_name="main")
+@hydra.main(version_base=None, config_path="config/train", config_name="main_aria")
 def main(cfg):
     logging.info(f"Hydra config:\n{OmegaConf.to_yaml(cfg, resolve=True)}")
 
@@ -18,7 +18,15 @@ def main(cfg):
         unpack(cfg.unpack)
 
     if cfg.train.run:
-        run(cfg.dataloading, cfg.model, cfg.train, cfg.base_dir, cfg.debug)
+        run(
+            cfg.dataloading,
+            cfg.model,
+            cfg.train,
+            cfg.base_dir,
+            cfg.debug,
+            cfg.wandb.entity,
+            cfg.wandb.project,
+        )
 
 
 if __name__ == "__main__":

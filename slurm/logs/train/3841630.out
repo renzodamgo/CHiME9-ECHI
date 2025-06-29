@@ -1,0 +1,164 @@
+[2025-06-28 19:06:07,798][root][INFO] - Hydra config:
+paths:
+  root: data
+  scratch: data/scratch
+  echi: data/chime9_echi
+  experiments_dir: data/scratch/experiments
+  enhanced_dir: data/scratch/experiments/baseline/inference/{dataset}_submission
+  signal_id: '{session}.{device}.{pid}'
+  signal_dir: data/chime9_echi/{device}/{dataset}
+  echi_signal: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  ref_signal_dir: data/chime9_echi/ref/{dataset}
+  ref_signal_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  rainbow_signal_dir: data/chime9_echi/participant/{dataset}
+  rainbow_signal_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segment_info_dir: data/chime9_echi/metadata/ref/{dataset}
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  ref_segment_dir: data/scratch/ref_segments/{dataset}/{device}/{segment_type}
+  train_input_dir: data/scratch/train_segments/{dataset}/{device}
+  train_input_file: data/scratch/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  train_target_dir: data/scratch/train_segments/{dataset}/{device}_ref
+  train_target_file: data/scratch/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  segment_dir: data/scratch/experiments/baseline/train_ha/segments/{device}/{segment_type}
+  results_file: data/scratch/experiments/baseline/train_ha/results/results.{dataset}.{device}.{segment_type}.json
+  report_file: data/scratch/experiments/baseline/train_ha/reports/report.{dataset}.{device}.{segment_type}.{session}.{pid}.json
+  enhanced_signal: data/scratch/experiments/baseline/inference/{dataset}_submission/{session}.{device}.{pid}.wav
+shared:
+  exp_name: baseline
+  sample_rate: 16000
+  signal_bitdepth: PCM_16
+  nchannels: 1
+unpack:
+  noisy_input_file: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  ref_input_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  segment_sample_rate: 16000
+  noisy_output_dir: data/scratch/train_segments/{dataset}/{device}
+  ref_output_dir: data/scratch/train_segments/{dataset}/{device}_ref
+  dataset:
+  - train
+  - dev
+  devices: ha
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+dataloading:
+  device: ha
+  noisy_signal: data/scratch/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  ref_signal: data/scratch/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  rainbow_signal: data/chime9_echi/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segments_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  signal:
+    noisy_sr: 48000
+    ref_sr: 16000
+    spkid_sr: 48000
+  loader:
+    train:
+      batch_size: 1
+      num_workers: 0
+      shuffle: true
+      pin_memory: true
+    dev:
+      batch_size: 1
+      num_workers: 0
+      shuffle: false
+      pin_memory: true
+train:
+  epochs: 100
+  checkpoint_interval: 2
+  lr: 1.0e-06
+  clip_grad_norm: 1.0
+  schedule_lr:
+    name: plateau_reduce
+    params:
+      mode: min
+      factor: 0.5
+      patience: 2
+      threshold: 0.1
+      min_lr: 1.0e-08
+  loss:
+    name: spec
+    kwargs:
+      fft_size: 1024
+      hop_size: 256
+      win_length: 1024
+      window: hann_window
+      w_sc: 1.0
+      w_log_mag: 1.0
+      w_lin_mag: 0.0
+      w_phs: 0.0
+      sample_rate: null
+      scale: null
+      n_bins: null
+      perceptual_weighting: false
+      scale_invariance: false
+      eps: 1.0e-08
+      output: loss
+      reduction: mean
+      mag_distance: L1
+  run: true
+model:
+  name: baseline
+  input:
+    sample_rate: 16000
+    channels: 4
+    rms: 0.05
+    use_spkid: true
+    type: stft
+    stft:
+      n_fft: 128
+      win_length: 128
+      hop_length: 64
+      window: hann
+  params:
+    n_srcs: 1
+    n_imics: 4
+    n_layers: 3
+    lstm_hidden_units: 128
+    attn_n_head: 4
+    attn_qk_output_channel: 128
+    emb_dim: 64
+    emb_ks: 4
+    emb_hs: 1
+    activation: prelu
+    eps: 1.0e-05
+wandb:
+  entity: robbiesuth97-university-of-sheffield
+  project: CHiME9-ECHI
+device: ha
+audio_channels: 4
+sample_rate: 16000
+debug: false
+base_dir: data/scratch/experiments/baseline/train_ha
+
+[2025-06-28 19:06:07,800][root][INFO] - Preparing the ECHI dataset
+ha
+  0%|          | 0/120 [00:00<?, ?it/s] 12%|█▏        | 14/120 [00:00<00:00, 137.29it/s] 23%|██▎       | 28/120 [00:00<00:00, 138.44it/s] 36%|███▌      | 43/120 [00:00<00:00, 140.63it/s] 50%|█████     | 60/120 [00:00<00:00, 150.70it/s] 63%|██████▎   | 76/120 [00:00<00:00, 151.38it/s] 78%|███████▊  | 93/120 [00:00<00:00, 157.34it/s] 91%|█████████ | 109/120 [00:00<00:00, 157.93it/s]100%|██████████| 120/120 [00:00<00:00, 150.05it/s]
+  0%|          | 0/120 [00:00<?, ?it/s] 12%|█▏        | 14/120 [00:00<00:00, 139.10it/s] 23%|██▎       | 28/120 [00:00<00:00, 137.84it/s] 36%|███▌      | 43/120 [00:00<00:00, 139.22it/s] 50%|█████     | 60/120 [00:00<00:00, 148.92it/s] 63%|██████▎   | 76/120 [00:00<00:00, 151.89it/s] 77%|███████▋  | 92/120 [00:00<00:00, 153.13it/s] 90%|█████████ | 108/120 [00:00<00:00, 153.28it/s]100%|██████████| 120/120 [00:00<00:00, 149.15it/s]
+  0%|          | 0/30 [00:00<?, ?it/s] 10%|█         | 3/30 [00:00<00:01, 23.39it/s] 20%|██        | 6/30 [00:00<00:00, 24.17it/s] 30%|███       | 9/30 [00:00<00:00, 23.22it/s] 40%|████      | 12/30 [00:00<00:00, 23.09it/s] 50%|█████     | 15/30 [00:00<00:00, 22.81it/s] 60%|██████    | 18/30 [00:00<00:00, 24.58it/s] 70%|███████   | 21/30 [00:00<00:00, 24.91it/s] 83%|████████▎ | 25/30 [00:01<00:00, 25.53it/s] 93%|█████████▎| 28/30 [00:01<00:00, 26.31it/s]100%|██████████| 30/30 [00:01<00:00, 25.10it/s]
+  0%|          | 0/10 [00:00<?, ?it/s] 30%|███       | 3/10 [00:00<00:00, 21.61it/s] 60%|██████    | 6/10 [00:00<00:00, 23.79it/s] 90%|█████████ | 9/10 [00:00<00:00, 23.45it/s]100%|██████████| 10/10 [00:00<00:00, 23.30it/s]
+/fastdata/acp19rws/.conda/envs/echi_recipe/lib/python3.12/site-packages/torch_stoi/stoi.py:77: UserWarning: "sinc_interpolation" resampling method name is being deprecated and replaced by "sinc_interp_hann" in the next release. The default behavior remains unchanged.
+  self.resample = torchaudio.transforms.Resample(
+wandb: Currently logged in as: robbiesuth97 (robbiesuth97-university-of-sheffield) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.20.1
+wandb: Run data is saved locally in data/scratch/experiments/baseline/train_ha/wandb/run-20250628_190614-89f26cjn
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run train_ha
+wandb: ⭐️ View project at https://wandb.ai/robbiesuth97-university-of-sheffield/CHiME9-ECHI
+wandb: 🚀 View run at https://wandb.ai/robbiesuth97-university-of-sheffield/CHiME9-ECHI/runs/89f26cjn
+[2025-06-28 19:06:17,904][root][INFO] - Training
+[2025-06-28 20:35:16,719][root][INFO] -  Epoch 1 report Train loss: 2.60 Val loss: 2.59 Val stoi: 0.48
+[2025-06-28 21:29:57,309][root][INFO] -  Epoch 2 report Train loss: 2.53
+[2025-06-28 22:33:51,028][root][INFO] -  Epoch 3 report Train loss: 2.49 Val loss: 2.59 Val stoi: 0.49
+[2025-06-28 23:27:32,963][root][INFO] -  Epoch 4 report Train loss: 2.46
+[2025-06-29 00:31:20,643][root][INFO] -  Epoch 5 report Train loss: 2.44 Val loss: 2.58 Val stoi: 0.50
+[2025-06-29 01:25:02,866][root][INFO] -  Epoch 6 report Train loss: 2.42
+[2025-06-29 02:29:02,077][root][INFO] -  Epoch 7 report Train loss: 2.41 Val loss: 2.65 Val stoi: 0.50
+[2025-06-29 03:25:06,535][root][INFO] -  Epoch 8 report Train loss: 2.40
+[2025-06-29 04:31:24,046][root][INFO] -  Epoch 9 report Train loss: 2.39 Val loss: 2.63 Val stoi: 0.50
+[2025-06-29 05:28:32,377][root][INFO] -  Epoch 10 report Train loss: 2.39
+[2025-06-29 06:36:17,249][root][INFO] -  Epoch 11 report Train loss: 2.38 Val loss: 2.65 Val stoi: 0.50
+[2025-06-29 07:31:55,327][root][INFO] -  Epoch 12 report Train loss: 2.38
+[2025-06-29 08:37:28,476][root][INFO] -  Epoch 13 report Train loss: 2.37 Val loss: 2.66 Val stoi: 0.50
+[2025-06-29 09:32:30,051][root][INFO] -  Epoch 14 report Train loss: 2.37

@@ -15,7 +15,7 @@ class LossTracker:
         self.history = []
 
     def update(self, loss: torch.Tensor):
-        self.loss += loss
+        self.loss += loss.to(self.loss.device)
         self.steps += 1
 
     def get_average(self) -> float:
@@ -43,7 +43,6 @@ class Gromit:
             and (self.wandb_entity is not None)
             and (self.wandb_project is not None)
         )
-        self.use_wandb = True
 
         self.train_loss = LossTracker()
         self.val_loss = LossTracker()

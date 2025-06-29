@@ -65,10 +65,10 @@ def enhance(
     return output
 
 
-def get_process(exp_dir: Path) -> tuple[Callable, dict]:
+def get_process(exp_dir: Path, device: str) -> tuple[Callable, dict]:
 
     # Get model
-    model, cfg = find_model(exp_dir)
+    model, cfg = find_model(exp_dir, device)
 
     # Get kwargs
     kwargs = load_kwargs(cfg.model)
@@ -77,9 +77,9 @@ def get_process(exp_dir: Path) -> tuple[Callable, dict]:
     return enhance, kwargs
 
 
-def find_model(exp_dir: Path):
+def find_model(exp_dir: Path, device: str):
 
-    exp_dir = exp_dir / "train"
+    exp_dir = exp_dir / f"train_{device}"
 
     with open(exp_dir / "train_log.json", "r") as file:
         train_log = json.load(file)

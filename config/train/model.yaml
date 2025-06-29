@@ -2,7 +2,7 @@ name: baseline
 
 input:
   sample_rate: 16000
-  channels: 7
+  channels: ${audio_channels}
   rms: 0.05
   use_spkid: true
   type: stft
