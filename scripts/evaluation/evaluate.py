@@ -159,7 +159,6 @@ def evaluate(cfg):
         segment_dir = cfg.segment_dir.format(
             dataset=cfg.dataset, device=device, segment_type=segment_type
         )
-
         ref_segment_dir = cfg.ref_segment_dir.format(
             dataset=cfg.dataset, device=device, segment_type=segment_type
         )

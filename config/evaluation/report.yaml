@@ -5,6 +5,4 @@ segment_types: ${segment_types}
 results_file: ${results_file}
 report_file: ${report_file}
 
-signal_id: ${..paths.signal_id} # naming convention for signals e.g. session.device.pid
-
 sessions_file: ${..paths.sessions_file}

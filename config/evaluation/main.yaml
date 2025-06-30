@@ -13,7 +13,7 @@ defaults:
 
 # Info for which signals to evaluate
 segment_types: [individual, summed] # Types of reference segments to process
-devices: [aria] # Devices to process
+devices: [aria, ha] # Devices to process
 dataset: dev # Dataset to use for processing
 sample_rate: ${shared.ref_sample_rate}
 

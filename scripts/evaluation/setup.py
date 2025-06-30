@@ -10,7 +10,7 @@ from evaluation.segment_signals import get_session_tuples, segment_all_signals
 
 def setup(cfg):
     logging.info("Preparing the ECHI dataset")
-
+    logging.info("Writing segments to {}".format(cfg.output_segment_dir))
     session_tuples = get_session_tuples(
         cfg.sessions_file, cfg.devices, datasets=cfg.dataset
     )
@@ -25,7 +25,7 @@ def setup(cfg):
 
 
 @hydra.main(
-    version_base=None, config_path="../../config/evaluation", config_name="main_eval"
+    version_base=None, config_path="../../config/evaluation", config_name="main"
 )
 def main(cfg: DictConfig) -> None:
     setup(cfg.setup)
