@@ -1,7 +1,7 @@
- name: baseline
+name: baseline
 
- args:
-  inference_dir: ${base_dir}
+args:
+  inference_dir: ${enhancement_dir}
   audio_device: ${device}
   window_size: 60
   stride: 56

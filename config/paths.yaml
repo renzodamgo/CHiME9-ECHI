@@ -1,51 +1,47 @@
-root: data # Root directory for all data directories
-
 # Path to a disk with enough space for preprocessing
-scratch: ${paths.root}/scratch_16k
+root_dir: data/working_dir
 
 # Path to the ECHI dataset directory
-echi: ${paths.root}/chime9_echi
+echi_dir: data/chime9_echi
 
-# Directory where the enhanced signal are stored
-experiments_dir: ${paths.scratch}/experiments
-enhanced_dir: ${paths.experiments_dir}/${..shared.exp_name}/inference/{dataset}_submission
+enhanced_dir: ${exp_dir}/inference/{dataset}_submission
 
 # ###########
 # You should not need to change anything below this line
 #
 
+# Directory where the enhanced signal are stored
+experiments_dir: ${paths.root_dir}/experiments
+exp_dir: ${paths.root_dir}/experiments/${..shared.exp_name}
+
+evaluation_dir: ${paths.exp_dir}/evaluation
+enhancement_dir: ${paths.exp_dir}/enhancement
+train_ha_dir: ${paths.exp_dir}/train_ha
+train_aria_dir: ${paths.exp_dir}/train_aria
+
 # chime9_echi dataset layout
 signal_id: "{session}.{device}.{pid}" # Unique identifier for each signal
-signal_dir: ${paths.echi}/{device}/{dataset}
+signal_dir: ${paths.echi_dir}/{device}/{dataset}
 echi_signal: ${paths.signal_dir}/{session}.{device}.wav
-ref_signal_dir: ${paths.echi}/ref/{dataset}
+ref_signal_dir: ${paths.echi_dir}/ref/{dataset}
 ref_signal_file: ${paths.ref_signal_dir}/${paths.signal_id}.wav
-rainbow_signal_dir: ${paths.echi}/participant/{dataset}
+rainbow_signal_dir: ${paths.echi_dir}/participant/{dataset}
 rainbow_signal_file: ${paths.rainbow_signal_dir}/{pid}.wav
 
 # chime9_echi metadata layout
-sessions_file: ${paths.echi}/metadata/sessions.{dataset}.csv
-segment_info_dir: ${paths.echi}/metadata/ref/{dataset}
+sessions_file: ${paths.echi_dir}/metadata/sessions.{dataset}.csv
+segment_info_dir: ${paths.echi_dir}/metadata/ref/{dataset}
 segment_info_file: ${paths.segment_info_dir}/${paths.signal_id}.csv
 
 # Path to the reference segment directory
-ref_segment_dir: ${paths.scratch}/ref_segments/{dataset}/{device}/{segment_type}
+ref_segment_dir: ${paths.root_dir}/ref_segments/{dataset}/{device}/{segment_type}
 
 # Path to the training segment directory
-train_input_dir: ${paths.scratch}/train_segments/{dataset}/{device}
+train_input_dir: ${paths.root_dir}/train_segments/{dataset}/{device}
 train_input_file: ${paths.train_input_dir}/${paths.signal_id}.{segment}.wav
-train_rainbow_file: ${paths.scratch}/participant/{dataset}/{pid}.wav
-train_target_dir: ${paths.scratch}/train_segments/{dataset}/{device}_ref
+train_rainbow_file: ${paths.root_dir}/participant/{dataset}/{pid}.wav
+train_target_dir: ${paths.root_dir}/train_segments/{dataset}/{device}_ref
 train_target_file: ${paths.train_target_dir}/${paths.signal_id}.{segment}.wav
-
-# Paths to inference signals
-inference_device_file: ${paths.scratch}/inference_signal/{dataset}/{session}.{device}.wav
-inference_rainbow_file: ${paths.train_rainbow_file}
-
-# Directories and paths where outputs are produced
-segment_dir: ${..base_dir}/segments/{device}/{segment_type}
-results_file: ${..base_dir}/results/results.{dataset}.{device}.{segment_type}.json
-report_file: ${..base_dir}/reports/report.{dataset}.{device}.{segment_type}.{session}.{pid}.json
 
 # Names for the enhanced signals
 enhanced_signal: ${paths.enhanced_dir}/${paths.signal_id}.wav

@@ -20,16 +20,11 @@ ref_sample_rate: ${shared.ref_sample_rate}
 # Debug run
 debug: false
 
-# WandB logging info
-wandb:
-  entity: robbiesuth97-university-of-sheffield
-  project: CHiME9-ECHI
-
 # Setting up paths for outputs of the experiments
-base_dir: ${paths.scratch}/experiments/${shared.exp_name}/train_${device}
+train_dir: ${paths.train_ha_dir}
 hydra:
   run:
-    dir: ${base_dir}/hydra
+    dir: ${train_dir}/hydra
   job_logging:
     root:
       level: INFO

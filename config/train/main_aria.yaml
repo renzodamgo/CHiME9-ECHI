@@ -21,10 +21,10 @@ ref_sample_rate: ${shared.ref_sample_rate}
 debug: false
 
 # Setting up paths for outputs of the experiments
-base_dir: ${paths.scratch}/experiments/${shared.exp_name}/train_${device}
+train_dir: ${paths.train_aria_dir}
 hydra:
   run:
-    dir: ${base_dir}/hydra
+    dir: ${train_dir}/hydra
   job_logging:
     root:
       level: INFO
