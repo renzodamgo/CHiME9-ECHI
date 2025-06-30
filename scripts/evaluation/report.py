@@ -159,7 +159,9 @@ def report(cfg):
                 save_results(pid_session_results, participant_stats_file, ext=".csv")
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="main")
+@hydra.main(
+    version_base=None, config_path="../../config/evaluation", config_name="main"
+)
 def main(cfg: DictConfig) -> None:
     report(cfg.report)
 

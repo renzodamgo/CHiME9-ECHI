@@ -25,7 +25,9 @@ def prepare(cfg):
     )
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="main")
+@hydra.main(
+    version_base=None, config_path="../../config/evaluation", config_name="main"
+)
 def main(cfg: DictConfig):
     prepare(cfg.prepare)
 
