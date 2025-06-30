@@ -1,13 +1,13 @@
 # Path to where the submitted data is stored
-enhanced_signal: ${..paths.enhanced_signal}
+enhanced_signal: ${..paths.enhancement_output_file}
 segment_info_file: ${..paths.segment_info_file}
 segment_sample_rate: ${..sample_rate}
 
-results_file: ${..paths.results_file}
+results_file: ${..results_file}
 
-segment_dir: ${..paths.segment_dir}
+segment_dir: ${..paths.ref_segment_dir}
 
-csv_dir: ${..paths.echi}/metadata/ref/dev # Path to the CSV files for evaluation
+csv_dir: ${..paths.echi_dir}/metadata/ref/dev # Path to the CSV files for evaluation
 ref_segment_dir: ${..paths.ref_segment_dir} # Path to the reference segment directory
 
 signal_id: ${..paths.signal_id} # naming convention for signals e.g. session.device.pid

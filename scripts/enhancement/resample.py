@@ -7,15 +7,17 @@ from tqdm import tqdm
 from src.shared.core_utils import get_session_tuples
 
 
+def resample_for_enhancement(cfg: DictConfig):
+    resample_all_rainbows(cfg)
+    resample_all_sessions(cfg)
+
+
 def resample_all_sessions(cfg: DictConfig):
 
     session_tuples = get_session_tuples(cfg.sessions_file, cfg.device, cfg.dataset)
 
     device_input_file = cfg.device_input_file
     device_output_file = cfg.device_output_file
-
-    # rainbow_input_file: ${..shared.rainbow_signal_file}
-    # rainbow_output_file: ${..shared.inference_rainbow_file}
 
     output_sample_rate = cfg.output_sample_rate
 
@@ -33,7 +35,38 @@ def resample_all_sessions(cfg: DictConfig):
             device_output_file.format(dataset=dataset, session=session, device=device)
         )
 
-        if Path(save_file).exists():
+        if save_file.exists():
+            continue
+
+        with open(load_file, "rb") as file:
+            audio, fs = sf.read(file)
+
+        if fs != output_sample_rate:
+            audio = soxr.resample(audio, fs, output_sample_rate)
+
+        if not save_file.parent.exists():
+            save_file.parent.mkdir(parents=True)
+
+        with open(save_file, "wb") as file:
+            sf.write(file, audio, output_sample_rate)
+
+
+def resample_all_rainbows(cfg: DictConfig):
+
+    session_tuples = get_session_tuples(cfg.sessions_file, cfg.device, cfg.dataset)
+
+    rainbow_orig_file = cfg.rainbow_input_file
+    rainbow_new_file = cfg.rainbow_output_file
+
+    output_sample_rate = cfg.output_sample_rate
+
+    for session, _, pid in tqdm(session_tuples):
+        dataset = session.split("_")[0]
+
+        load_file = rainbow_orig_file.format(dataset=dataset, pid=pid)
+        save_file = Path(rainbow_new_file.format(dataset=dataset, pid=pid))
+
+        if save_file.exists():
             continue
 
         with open(load_file, "rb") as file:
