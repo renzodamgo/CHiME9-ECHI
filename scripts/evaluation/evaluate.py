@@ -16,7 +16,7 @@ from evaluation.segment_signals import get_session_tuples
 
 
 def load_audio_files(
-    directory: str,
+    file_list: list[str],
     selection=None,
     batch=(1, 1),
 ):
@@ -27,8 +27,6 @@ def load_audio_files(
     """
 
     from versa.scorer_shared import audio_loader_setup
-
-    file_list = glob.glob(os.path.join(directory, "*.wav"))
 
     if selection is not None:
         file_list = [
@@ -77,8 +75,31 @@ def evaluate_device(
         for s, d, p in session_device_pid_tuples
     )
 
-    enhanced_files = load_audio_files(enhanced, selection, batch)
-    reference_files = load_audio_files(reference, selection, batch)
+    # Find all the enhanced and reference files...
+    enhanced_file_list = glob.glob(os.path.join(enhanced, "*.wav"))
+    reference_file_list = glob.glob(os.path.join(reference, "*.wav"))
+
+    # ...keep only enhanced files for which we have a reference file
+    reference_names = set(os.path.basename(f) for f in reference_file_list)
+    enhanced_file_list = [
+        f for f in enhanced_file_list if os.path.basename(f) in reference_names
+    ]
+
+    # If the enhanced_file_list is shorter than the reference_file_list
+    # then report and error, throw away the extra reference files and continue.
+    if len(enhanced_file_list) < len(reference_file_list):
+        logging.error(
+            "The number of enhanced files is less than the number of reference files. "
+            "This may lead to missing scores for some reference files."
+        )
+        enhanced_names = set(os.path.basename(f) for f in enhanced_file_list)
+        reference_file_list = [
+            f for f in reference_file_list if os.path.basename(f) in enhanced_names
+        ]
+
+    # Now that the lists are the same length, load the audio files
+    enhanced_files = load_audio_files(enhanced_file_list, selection, batch)
+    reference_files = load_audio_files(reference_file_list, selection, batch)
 
     # Get and divide list
     if len(enhanced_files) == 0:
@@ -162,16 +183,22 @@ def evaluate(cfg):
         ref_segment_dir = cfg.ref_segment_dir.format(
             dataset=cfg.dataset, device=device, segment_type=segment_type
         )
-        evaluate_device(
-            segment_dir,
-            ref_segment_dir,
-            cfg.signal_id,
-            session_device_pid_tuples,
-            cfg.score_config,
-            results_file,
-            cfg.use_gpu,
-            batch=batch,
-        )
+        try:
+            evaluate_device(
+                segment_dir,
+                ref_segment_dir,
+                cfg.signal_id,
+                session_device_pid_tuples,
+                cfg.score_config,
+                results_file,
+                cfg.use_gpu,
+                batch=batch,
+            )
+        except Exception as e:
+            logging.error(
+                f"Error evaluating {device} with {segment_type} segments: {e}"
+            )
+            continue
 
 
 @hydra.main(
