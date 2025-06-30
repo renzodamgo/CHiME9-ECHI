@@ -38,6 +38,10 @@ train_rainbow_file: ${paths.scratch}/participant/{dataset}/{pid}.wav
 train_target_dir: ${paths.scratch}/train_segments/{dataset}/{device}_ref
 train_target_file: ${paths.train_target_dir}/${paths.signal_id}.{segment}.wav
 
+# Paths to inference signals
+inference_device_file: ${paths.scratch}/inference_signal/{dataset}/{session}.{device}.wav
+inference_rainbow_file: ${paths.train_rainbow_file}
+
 # Directories and paths where outputs are produced
 segment_dir: ${..base_dir}/segments/{device}/{segment_type}
 results_file: ${..base_dir}/results/results.{dataset}.{device}.{segment_type}.json

@@ -1,0 +1,12 @@
+device: ${device}
+dataset: ${dataset}
+
+sessions_file: ${..paths.sessions_file}
+
+device_input_file: ${..paths.echi_signal}
+device_output_file: ${..paths.inference_device_file}
+
+rainbow_input_file: ${..paths.rainbow_signal_file}
+rainbow_output_file: ${..paths.inference_rainbow_file}
+
+output_sample_rate: ${..model_sample_rate}

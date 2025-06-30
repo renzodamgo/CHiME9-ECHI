@@ -4,21 +4,26 @@
 defaults:
   - .@paths: ../paths
   - .@shared: ../shared
+  - .@resample: resample
+  - .@enhance: enhance
+  - enhance_args: baseline
   - _self_
 
 # Experiment name
 exp_name: ${shared.exp_name}
+enhancement_name: ${enhance_args.name}
 
 # Info for which signals to evaluate
 device: aria # Devices to process
 dataset: dev # Dataset to use for processing
+
 model_sample_rate: ${shared.model_sample_rate}
 ref_sample_rate: ${shared.ref_sample_rate}
 bitdepth: ${shared.signal_bitdepth}
 
 # Input filepaths
-noisy_signal: ${paths.echi_signal}
-rainbow_signal: ${paths.rainbow_signal_file}
+noisy_signal: ${paths.inference_device_file}
+rainbow_signal: ${paths.inference_rainbow_file}
 
 enhanced_signal: ${paths.enhanced_signal}
 sessions_file: ${paths.sessions_file}
@@ -35,3 +40,7 @@ hydra:
 # If you wish to skip a step, set its value to null or true as below.
 # This can be also done from command-line when running the script, e.g.
 # python run.py setup.run=false
+resample:
+  run: false
+enhance:
+  run: true
