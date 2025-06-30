@@ -3,9 +3,9 @@ sessions_file: ${..paths.sessions_file}
 device: ${device}
 dataset: ${dataset}
 
-noisy_signal: ${..paths.inference_device_file}
-rainbow_signal: ${..paths.inference_rainbow_file}
-enhanced_signal: ${..paths.enhanced_signal}
+noisy_signal: ${..paths.enhancement_input_file}
+rainbow_signal: ${..paths.enhancement_rainbow_file}
+enhanced_signal: ${..paths.enhancement_output_file}
 
 model_sample_rate: ${..shared.model_sample_rate}
 ref_sample_rate: ${..shared.ref_sample_rate}

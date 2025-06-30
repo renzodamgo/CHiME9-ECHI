@@ -22,10 +22,10 @@ ref_sample_rate: ${shared.ref_sample_rate}
 bitdepth: ${shared.signal_bitdepth}
 
 # Input filepaths
-noisy_signal: ${paths.inference_device_file}
-rainbow_signal: ${paths.inference_rainbow_file}
+noisy_signal: ${paths.enhancement_input_file}
+rainbow_signal: ${paths.enhancement_rainbow_file}
 
-enhanced_signal: ${paths.enhanced_signal}
+enhanced_signal: ${paths.enhancement_output_file}
 sessions_file: ${paths.sessions_file}
 
 # Setting up paths for outputs of the experiments
@@ -41,6 +41,6 @@ hydra:
 # This can be also done from command-line when running the script, e.g.
 # python run.py setup.run=false
 resample:
-  run: false
+  run: true
 enhance:
   run: true

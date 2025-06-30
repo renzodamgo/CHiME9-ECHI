@@ -22,7 +22,7 @@ def main(cfg):
             cfg.dataloading,
             cfg.model,
             cfg.train,
-            cfg.base_dir,
+            cfg.train_dir,
             cfg.debug,
             cfg.wandb.entity,
             cfg.wandb.project,
