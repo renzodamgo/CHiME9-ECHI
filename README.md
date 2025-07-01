@@ -17,9 +17,9 @@ cd CHiME9-ECHI
 ```
 
 The installation of the necessary tools is detailed in `install.sh`.
-We recommend to follow it step-by-step and adjust for your system if needed.
+We recommend following it step-by-step and adjusting for your system if needed.
 The script will build a conda environment called `echi_recipe` and install the
-dependencies listed in `enivornment.yaml`.
+dependencies listed in `environment.yaml`.
 
 When running the system, remember to activate the conda environment and set the
 necessary environment variables,
@@ -35,7 +35,7 @@ To make the `PYTHONPATH` setting persistent across terminal sessions, you can ad
 
 ## <a id="data"> 2. Installing the data </a>
 
-Out dataset is hosted on HuggingFace. To download the dataset, you must first
+Our dataset is hosted on HuggingFace. To download the dataset, you must first
 request access at the
 [CHiME9-ECHI Dataset page](https://huggingface.co/datasets/CHiME9-ECHI/CHiME9-ECHI).
 Full details of the dataset can be found at that link. Once you have been
@@ -73,8 +73,8 @@ allowing flexibility in where the dataset is physically stored.
 ## <a id="stages">3. Stages</a>
 
 This repository is set up to handle all phases of training, enhancement and evaluation.
- Each of these has it's own pipeline, which will prepare the data and perform the
- intended task.All participants are free to modify the **train** and
+ Each of these has its own pipeline, which will prepare the data and perform the
+ intended task. All participants are free to modify the **train** and
  **enhancement** code to obtain the best results possible.
 
 - **Train:** Prepares speech segments of the dataset and then trains using them.
@@ -89,7 +89,7 @@ This repository is set up to handle all phases of training, enhancement and eval
  found on the [evaluation page](docs/evaluation.md).
 
 > **⚠️ WARNING:**
-> **Evaluation code should be considered read only.**
+> **Evaluation code should be considered read-only.**
 > Any modifications to the evaluation scripts could lead to invalid results.
 > If there are any problems which cannot be resolved without editing the code,
 > please raise an issue and we will respond accordingly.
