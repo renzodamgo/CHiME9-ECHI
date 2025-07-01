@@ -217,7 +217,7 @@ def run(
                 gromit,
             )
 
-        do_checkpoint = epoch % ckpt_interval == 0
+        do_checkpoint = (epoch % ckpt_interval == 0) or ((epoch + 1) == train_cfg.epochs)
 
         if do_checkpoint:
             model.eval()
@@ -283,4 +283,4 @@ def run(
             if do_lrschedule:
                 lr_scheduler.step(gromit.val_loss.get_average())
 
-        gromit.epoch_report(epoch, do_checkpoint, model)
+        gromit.epoch_report(epoch, do_checkpoint, model, optimizer.param_groups[0]['lr'])
