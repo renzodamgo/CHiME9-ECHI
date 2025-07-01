@@ -15,12 +15,12 @@ signal:
 loader:
   train:
     batch_size: 1
-    num_workers: 0
+    num_workers: 4
     shuffle: true
     pin_memory: true
   dev:
     batch_size: 1
-    num_workers: 0
+    num_workers: 4
     shuffle: false
     pin_memory: true
 

@@ -17,4 +17,4 @@ conda activate echi_recipe
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 export PYTHONPATH='$PYTHONPATH:src'
 
-python3 run_inference.py device=aria
+python3 run_enhancement.py device=ha

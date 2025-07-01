@@ -74,7 +74,7 @@ class Gromit:
 
         logging.info("Training")
 
-    def epoch_report(self, epoch, do_ckpt, model: torch.nn.Module, delim=" "):
+    def epoch_report(self, epoch, do_ckpt, model: torch.nn.Module, lr: float, delim=" "):
 
         train_log = read_json(self.json_name)
         new_log = {
@@ -82,6 +82,7 @@ class Gromit:
             "train_loss": np.nan,
             "val_loss": np.nan,
             "val_stoi": np.nan,
+            "lr": lr
         }
 
         wlog = {}
@@ -104,12 +105,15 @@ class Gromit:
 
             wlog[f"val_{self.loss_name}"] = val_loss
             wlog["val_stoi"] = val_stoi
+            wlog["lr"] = lr
 
             new_log["val_loss"] = val_loss
             new_log["val_stoi"] = val_stoi
 
             ckpt_path = self.get_ckpt_path(epoch)
             torch.save(model.state_dict(), ckpt_path)
+
+        out_string += f"{delim}LR: {lr}"
 
         logging.info(out_string)
         train_log.append(new_log)
