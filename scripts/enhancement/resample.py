@@ -1,3 +1,4 @@
+import hydra
 from omegaconf import DictConfig
 from pathlib import Path
 import soundfile as sf
@@ -80,3 +81,15 @@ def resample_all_rainbows(cfg: DictConfig):
 
         with open(save_file, "wb") as file:
             sf.write(file, audio, output_sample_rate)
+
+
+@hydra.main(
+    version_base=None, config_path="../../config/enhancement", config_name="main"
+)
+def main(cfg: DictConfig):
+    print(cfg)
+    resample_for_enhancement(cfg.resample)
+
+
+if __name__ == "__main__":
+    main()

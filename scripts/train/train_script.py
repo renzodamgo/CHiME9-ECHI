@@ -1,4 +1,5 @@
 import torch
+import hydra
 from omegaconf import DictConfig
 from tqdm import tqdm
 import logging
@@ -217,7 +218,9 @@ def run(
                 gromit,
             )
 
-        do_checkpoint = (epoch % ckpt_interval == 0) or ((epoch + 1) == train_cfg.epochs)
+        do_checkpoint = (epoch % ckpt_interval == 0) or (
+            (epoch + 1) == train_cfg.epochs
+        )
 
         if do_checkpoint:
             model.eval()
@@ -283,4 +286,23 @@ def run(
             if do_lrschedule:
                 lr_scheduler.step(gromit.val_loss.get_average())
 
-        gromit.epoch_report(epoch, do_checkpoint, model, optimizer.param_groups[0]['lr'])
+        gromit.epoch_report(
+            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
+        )
+
+
+@hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")
+def main(cfg: DictConfig) -> None:
+    run(
+        cfg.dataloading,
+        cfg.model,
+        cfg.train,
+        cfg.train_dir,
+        cfg.debug,
+        cfg.wandb.entity,
+        cfg.wandb.project,
+    )
+
+
+if __name__ == "__main__":
+    main()

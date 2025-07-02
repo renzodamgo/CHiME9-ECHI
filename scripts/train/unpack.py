@@ -39,9 +39,9 @@ def unpack(cfg):
         )
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="main_eval")
+@hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")
 def main(cfg: DictConfig) -> None:
-    unpack(cfg.setup)
+    unpack(cfg.unpack)
 
 
 if __name__ == "__main__":

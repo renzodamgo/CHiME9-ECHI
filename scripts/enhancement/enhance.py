@@ -74,6 +74,12 @@ def enhance_all_sessions(cfg, enhance_args):
             sf.write(file, output, cfg.ref_sample_rate, subtype=cfg.bitdepth)
 
 
-@hydra.main(version_base=None, config_path="../config", config_name="main")
+@hydra.main(
+    version_base=None, config_path="../../config/enhancement", config_name="main"
+)
 def main(cfg: DictConfig) -> None:
-    enhance_all_sessions(cfg.inference)
+    enhance_all_sessions(cfg, cfg.enhance_args)
+
+
+if __name__ == "__main__":
+    main()

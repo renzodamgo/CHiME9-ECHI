@@ -7,7 +7,7 @@ import hydra
 from omegaconf import OmegaConf
 
 from scripts.train.unpack import unpack
-from scripts.train.train import run
+from scripts.train.train_script import run
 
 
 @hydra.main(version_base=None, config_path="config/train", config_name="main_ha")
@@ -15,6 +15,7 @@ def main(cfg):
     logging.info(f"Hydra config:\n{OmegaConf.to_yaml(cfg, resolve=True)}")
 
     if cfg.unpack.run:
+        print(cfg.unpack)
         unpack(cfg.unpack)
 
     if cfg.train.run:
