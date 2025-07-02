@@ -18,7 +18,7 @@ The evaluation code processes the complete ECHI development set. Before running,
 - **If you used the provided enhancement stage**: If you have configured and run the enhancement stage from this repository (see [enhancement](enhancement.md)), your signals are ready for evaluation.
 
 - **If you used your own enhancement code**: Please ensure that your output signals match the format and naming convention described on the
-[submission page](XXX) of the ECHI challenge site.
+[submission page](https://www.chimechallenge.org/current/task2/submission) of the ECHI challenge site.
 
 The evaluation pipeline includes a validation stage, which will report any issues with the signals and stop the process early if errors are found.
 

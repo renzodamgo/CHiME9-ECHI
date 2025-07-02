@@ -14,7 +14,7 @@ For detailed information on how to participate in the challenge and for obtainin
 
 **CHiME-9 Task 2: Enhancing Conversations for Hearing Impairment (ECHI)** addresses the task of trying to separate conversations between known participants from noisy cafeteria-like backgrounds with low latency processing. Solutions to this problem would benefit [huge numbers](https://rnid.org.uk/get-involved/research-and-policy/facts-and-figures/prevalence-of-deafness-and-hearing-loss/) of people with mild hearing loss.
 
-![concept](images/echi_concept.png)
+![concept](docs/images/echi_concept.png)
 
 ### Key Challenge Features
 
