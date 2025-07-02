@@ -9,11 +9,11 @@ python run_train.py
 This is equivalent to running the following steps
 
 ```bash
-python -m scripts.train.unpack
-python -m scripts.train.train
+python scripts/train/unpack.py
+python scripts/train/train_script.py
 ```
 
-This will unpack the data downloaded and then use them to trian a model.
+This will unpack the data downloaded and then use it to train a model.
 
 ## Unpack
 
@@ -21,8 +21,8 @@ With your downloaded dataset, stored in `data/chime9_echi`, you can specify
 `model_sample_rate`, which is the sample rate input for your model, and a
 `device` (`ha` or `aria`), this script will
 
-- Resample the `device` audio and the corresponding refrences to
-`model_sample_rate` and then segment it all in to just the speech segments,
+- Resample the `device` audio and the corresponding references to
+`model_sample_rate` and then segment it all into just the speech segments,
 - Resample the rainbow passages to `model_sample_rate`.
 
 The outputs of this stage will be saved into `paths.working_dir` under
@@ -42,7 +42,7 @@ This stage can be run on CPU or GPU.
 
 ## Training
 
-The training loop will create a dataloader which loads the data above, and
+The training loop will create a dataloader which loads the data above and
 then defines a model to train with the given training parameters. There are
 multiple configs associated with this stage, stored in `configs.train`:
 
@@ -59,7 +59,7 @@ will stop any logging here.
 This stage should only be run on GPU.
 
 There are two main configuration files: `config/train/main_ha.yaml` and
-`config/train/main_aria`, which correspond to training using the hearing aid
+`config/train/main_aria`, which corresponds to training using the hearing aid
 audio and Aria glasses audio, respectively.
 
 ## Example Usage
@@ -70,7 +70,7 @@ The default setting will train the baseline:
 python run_train.py
 ```
 
-If you have a custom model `your_enhancement_system`, you should store the
+If you have a custom model, `your_enhancement_system`, you should store the
 `torch.nn.Module` file in `src/shared/your_enhancement_system.py` and the
 config in `config/train/your_enhancement_system.yaml`, using the default
 `model.yaml` as a guide.
