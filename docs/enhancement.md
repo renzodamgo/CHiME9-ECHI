@@ -9,23 +9,23 @@ python run_enhancement.py
 This is equivalent to running the following steps:
 
 ```bash
-python scripts.enhancement.resample
-python scripts.enhancement.enhance
+python scripts/enhancement/resample.py
+python scripts/enhancement/enhance.py
 ```
 
 The resample step simply resamples all audio for the dev/test (defined in
-`config.enhancment.main`) and saves it. This stage only need to be run once
+`config. enhancement.main`) and saves it. This stage only needs to be run once
 for any enhancement systems which use the same sample rate.
 
-The enhance stage loads in the resampled 36 minute wav files from above, and
+The enhance stage loads in the resampled 36-minute wav files from above, and
 puts them through a provided enhancement system. By default, this script can
-run passthrough, which returns the first channel of audio, and the baseline
+run passthrough, which returns the first channel of audio and the baseline
 system processing. We have included the option for writing a plugin for this
-script where you can define a custom enhancement function based on your system.
+script, where you can define a custom enhancement function based on your system.
 
 ## Enhancement Plugins
 
-An enhancement plugin is a Python class which processes a the full audio
+An enhancement plugin is a Python class which processes the full audio
 from a session. The core functionality of the class is the function `process_session`,
 which takes a full session of audio and the participant speaker id audio in,
 and produces a full session of that person's speech out.
@@ -37,8 +37,8 @@ for where to find the plugins:
 export ECHIPLUGINS="$PWD/enhancement_plugins"
 ```
 
-This sets the directory of where the enhance script should look for options.
-To write a custom plugin, there are two things that need adding to the code:
+This sets the directory of where the enhancement script should look for options.
+To write a custom plugin, there are two things that need to be added to the code:
 the processing plugin as a Python class, and the parameters for the plugin as a
 yaml config.
 
@@ -80,7 +80,7 @@ specified by `config/enhancement/main.enhancement_name`
 - **Init params:** The parameters used to initialise the class should be stored
 in `config/enhancement/enhance_args/<your-algorithm-name>.yaml`
 - **Process session:** Each class must have a `process_session` function, which
-take the audio for a full session and the participant speech audio as input,
+takes the audio for a full session and the participant's speech audio as input,
 and outputs the enhanced audio for the full session. This is expected by the
 `Enhancement` protocol.
 
