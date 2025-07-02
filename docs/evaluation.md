@@ -112,7 +112,8 @@ For the `dev` set (10 sessions), this results in 164 report files per segment ty
 
 ## <a id="partial">3. Rapid partial evaluation</a>
 
-Running the full evaluation is computationally expensive. During development, you can run a faster, partial evaluation in two ways:
+Running the full evaluation is computationally expensive. If you have access to a Slurm HPC or a powerful workstation
+with many CPU threads then see the section below on [parallel processing](#processors). Alternatively during development, you can run a faster, partial evaluations in two ways:
 
 1. Computing a subset of the metrics.
 
@@ -148,43 +149,113 @@ python run_evaluation.py dataset=dev enhance.use_gpu=false
 
 ### <a id="config_examples"> 3.2 Configuration examples
 
-TODO: complete this section
+This section provides guidance on customizing the evaluation process using different configurations and subsets of data.
 
 #### Using a subset of metrics
 
-#### Evaluating a subset of signals
+Versa computes evaluation metrics based on a configuration file, by default:
+
+```bash
+config/evaluation/metrics.yaml
+```
+
+This default includes both CPU-friendly signal metrics and GPU-reliant DNN-based metrics. If you only want the faster CPU-based metrics, use the simplified configuration:
+
+```bash
+config/evaluation/metrics_quick.yaml
+```
+
+To apply this configuration, specify it via the `evaluate.score_config` parameter:
+
+```bash
+python scripts/evaluation/evaluate.py shared.exp_name=<EXP_NAME> \
+  evaluate.score_config=config/evaluation/metrics_quick.yaml
+```
+
+You may edit `metrics_quick.yaml` or create a custom Versa config to tailor the metric selection further.
+
+#### Using a subset of signals
+
+The full evaluation set contains a large number of segments. For quicker, approximate results, you can evaluate a fraction of the data using batching.
+
+Use the `evaluate.n_batches` parameter to divide the dataset into equal-sized batches, and `evaluate.batch` to specify which batch to evaluate. If not set, the first batch is used by default.
+
+**Example: Evaluate only 1/50th of the data (defaulting to the first batch):**
+
+```bash
+python scripts/evaluation/evaluate.py shared.exp_name=<EXP_NAME> evaluate.n_batches=50
+```
+
+**Example: Evaluate the second batch out of 50:**
+
+```bash
+python scripts/evaluation/evaluate.py shared.exp_name=<EXP_NAME> \
+  evaluate.n_batches=50 evaluate.batch=2
+```
+
+> Tip: Batching works seamlessly with Hydra’s `--multirun` functionality, enabling parallel evaluation across processors. See [Using Multiple Processors](#processors).
+
+#### Other partial evaluations
+
+By default, the evaluation includes:
+
+- Both Aria and hearing aid devices
+- Both individual and summed segment types
+
+You can reduce computation by filtering by device or segment type.
+
+**Example: Evaluate only the summed segments from the Aria glasses:**
+
+```bash
+python scripts/evaluation/evaluate.py shared.exp_name=<EXP_NAME> \
+  evaluate.devices='[aria]' \
+  evaluate.segment_types='[summed]'
+```
+
+These filters can be combined with other options.
+
+**Example: Evaluate only CPU-based metrics for 1/50th of the Aria summed segments:**
+
+```bash
+python scripts/evaluation/evaluate.py \
+  shared.exp_name=<EXP_NAME> \
+  evaluate.score_config=config/evaluation/metrics_quick.yaml \
+  evaluate.n_batches=50 \
+  evaluate.devices='[aria]' \
+  evaluate.segment_types='[summed]'
+```
+
+These configuration options offer flexibility for rapid iteration, targeted debugging, or distributing load across compute resources.
 
 ## <a id="processors">4. Using multiple processors</a>
 
 The evaluation stage can be run in parallel across multiple CPU cores using Hydra's multi-run feature.
 
-To run on a local machine with multiple cores, splitting the task into 10 batches:
+A bash script called `run_evaluation_parallel.sh` has been provided to make this easier.
+The script provides configuration for two different 'launchers':
 
-```bash
-python run_evaluation.py evaluate.n_batches=10 evaluate.batch='range(1,11)' \
- hydra/launcher=echi_submitit_local  --multirun
-```
+- `slurm`: Default option. See `config/hydra/launcher/echi_submitit_slurm` and edit to match your HPC environment.
+- `local`: Running on multiple processors on a local machine.
 
-To run on an HPC cluster with a Slurm scheduler, splitting the task into
-200 batches:
+Full usage options are shown below
 
-```bash
-python run_evaluation.py evaluate.n_batches=200 evaluate.batch='range(1,201)' \
- hydra/launcher=echi_submitit_slurm  --multirun
-```
+```sh
+Usage: ./run_evaluation_parallel.sh <EXP_NAME> <ENHANCED_DIR> [OPTIONS] [N_BATCHES]
+Runs all evaluation stages using a scheduler to parallelize the evaluation stage.
 
-- `evaluate.n_batches=10`: Informs the script to divide the data into 10 conceptual batches.
-- `evaluate.batch='range(1,11)'`: This specific Hydra syntax tells the system to
- launch multiple runs, iterating through the values generated by `range(1,11)`.
- In Python, `range(1,11)` produces numbers from 1 up to (but not including) 11,
- so this will create runs for batch numbers 1, 2, 3, 4, 5, 6, 7, 8, 9 and 10. Each of these runs will process its corresponding segment of the data.
-- `--multirun`: This is a Hydra flag that enables launching multiple jobs based on
- the sweep defined by `evaluate.batch`. These jobs may run sequentially or in
- parallel, depending on your Hydra launcher configuration (e.g., basic local
- launcher vs. a Slurm or other HPC scheduler launcher).
+Arguments:
+  EXP_NAME              Name for the experiment (used for output directories)
+  ENHANCED_DIR          Directory containing enhanced signals
+  N_BATCHES (optional)  Number of parallel processes to run for evaluation.
+                        Defaults to 40 for slurm, 10 for local.
 
-**Note on batch numbering:** If you intend to process all 10 batches, numbered for
- example from 1 to 10, you would use `evaluate.batch='range(1,11)'`.
+Options:
+  --launcher TYPE       Launcher type: 'slurm' or 'local'. Defaults to 'slurm'.
+  --dry-run            Show commands that would be run without executing them.
+  -h, --help            Display this help message and exit.
 
-If using an HPC cluster with Slurm, please review and edit
- `config/hydra/launcher/echi_submitit_slurm.yaml` to match your system's configuration.gi
+Examples:
+  ./run_evaluation_parallel.sh exp1 /path/to/enhanced                    # SLURM with 40 batches
+  ./run_evaluation_parallel.sh exp1 /path/to/enhanced --launcher local 8 # Local with 8 batches
+  ./run_evaluation_parallel.sh exp1 /path/to/enhanced --dry-run          # Show commands without running
+  ```
