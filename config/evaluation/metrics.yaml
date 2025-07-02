@@ -4,14 +4,15 @@
 # -- sdr: signal to distortion ratio
 # -- ci-sdr: scale-invariant signal to distortion ratio
 # -- si-snri: scale-invariant signal to noise ratio improvement
-- name: pysepm
 - name: signal_metric
 
-# pesq related metrics
+# Python Speech Enhancement Performance Measures (https://github.com/shimhz/pysepm)
+- name: pysepm
+
+# Perceptual Evaluation of Speech Quality (PESQ)
 - name: pesq
 
-# stoi related metrics
-# -- stoi: short-time objective intelligibility
+# Short-Time Objective Intelligibility (STOI)
 - name: stoi
 
 # torchaudio-squim

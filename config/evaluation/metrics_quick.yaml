@@ -1,0 +1,10 @@
+# GPU-free configuration for testing purposes
+
+# Python Speech Enhancement Performance Measures (https://github.com/shimhz/pysepm)
+- name: pysepm
+
+# Perceptual Evaluation of Speech Quality (PESQ)
+- name: pesq
+
+# Short-Time Objective Intelligibility (STOI)
+- name: stoi
