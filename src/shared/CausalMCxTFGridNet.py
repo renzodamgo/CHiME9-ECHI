@@ -15,11 +15,11 @@ else:
 
 
 class MCxTFGridNet(nn.Module):
-    """Offline TFGridNetV3.
+    """Online TFGridNetV3.
 
-    On top of TFGridNetV2, TFGridNetV3 slightly modifies the internal architecture
-    to make the model sampling-frequency-independent (SFI). This is achieved by
-    making all network layers independent of the input time and frequency dimensions.
+    Adapted from:
+        https://github.com/HaoFengyuan/X-TF-GridNet/blob/main/nnet/pTFGridNet.py
+        https://github.com/espnet/espnet/blob/master/espnet2/enh/separator/tfgridnetv3_separator.py
 
     Reference:
     [1] Z.-Q. Wang, S. Cornell, S. Choi, Y. Lee, B.-Y. Kim, and S. Watanabe,
@@ -28,20 +28,11 @@ class MCxTFGridNet(nn.Module):
     [2] Z.-Q. Wang, S. Cornell, S. Choi, Y. Lee, B.-Y. Kim, and S. Watanabe,
     "TF-GridNet: Making Time-Frequency Domain Models Great Again for Monaural
     Speaker Separation", in ICASSP, 2023.
-
-    NOTES:
-    As outlined in the Reference, this model works best when trained with variance
-    normalized mixture input and target, e.g., with mixture of shape [batch, samples,
-    microphones], you normalize it by dividing with torch.std(mixture, (1, 2)). You
-    must do the same for the target signals. It is encouraged to do so when not using
-    scale-invariant loss functions such as SI-SDR.
-    Specifically, use:
-        std_ = std(mix)
-        mix = mix / std_
-        tgt = tgt / std_
+    [3] Fengyuan Hao, Xiaodong Li, Chengshi Zheng,
+    "X-TF-GridNet: A time–frequency domain target speaker extraction network with
+    adaptive speaker embedding fusion", in Information Fusion, 2024.
 
     Args:
-        input_dim: placeholder, not used
         n_srcs: number of output sources/speakers.
         n_fft: stft window size.
         stride: stft stride.
