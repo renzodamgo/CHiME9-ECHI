@@ -9,12 +9,14 @@ scratch/
 # Data folders
 data/*
 !data/.gitkeep
+versa_cache
 
 # Slurm logging
 slurm/logs/*/*.out
 
 # Experiment directories
 exp
+multirun
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

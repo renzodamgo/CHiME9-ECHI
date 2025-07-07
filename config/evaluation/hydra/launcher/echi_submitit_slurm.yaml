@@ -6,7 +6,7 @@
 defaults:
   - submitit_slurm
 
-mem_per_cpu: 16GB
+mem_gb: 16
 tasks_per_node: 1
 timeout_min: 180
 additional_parameters:
@@ -16,7 +16,7 @@ setup:
   [
     "module load Anaconda3/2019.07",
     "module load libsndfile/1.0.28-GCCcore-9.3.0",
-    "conda activate echi_recipe",
+    "source activate echi_recipe",
     "export SLURM_EXPORT_ENV=ALL",
     "export PYTHONPATH=src",
   ]
