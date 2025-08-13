@@ -46,6 +46,6 @@ export PYTHONPATH="$PWD/src:$PYTHONPATH"
 # Or alternatively, run from the project directory
 cd /mnt/parscratch/users/acp24red/CHiME9-ECHI
 echo "Starting enhancement script..."
-python run_enhancement.py device=ha
+python run_evaluation.py 
 
 echo "Job completed!"
