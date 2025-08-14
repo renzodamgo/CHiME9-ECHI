@@ -68,6 +68,7 @@ class MCxTFGridNet(nn.Module):
     ):
         super().__init__()
         self.n_srcs = n_srcs
+        print(f"n_srcs: {n_srcs} (number of output sources/speakers.)")
         self.n_layers = n_layers
         self.n_imics = n_imics
 
@@ -333,9 +334,11 @@ class GridNetV3Block(nn.Module):
 
         attn_mat = torch.matmul(Q, K) / (emb_dim**0.5)  # [B', T, T]
 
-        causal_mask = torch.tril(
-            torch.ones(attn_mat.shape[-1], attn_mat.shape[-1])
-        ).bool().to(attn_mat.device)
+        causal_mask = (
+            torch.tril(torch.ones(attn_mat.shape[-1], attn_mat.shape[-1]))
+            .bool()
+            .to(attn_mat.device)
+        )
         attn_mat = attn_mat.masked_fill(~causal_mask, float("-inf"))
 
         attn_mat = F.softmax(attn_mat, dim=2)  # [B', T, T]
