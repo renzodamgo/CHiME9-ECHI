@@ -16,8 +16,8 @@
 #
 # --- LOGGING ---
 #
-#SBATCH --output=./stanage_logs/output_%A.out
-#SBATCH --error=./stanage_logs/error_%A.err
+#SBATCH --output=./stanage_logs/enhance_%A.out
+#SBATCH --error=./stanage_logs/enhance_%A.err
 # --- NOTIFICATIONS ---
 #SBATCH --mail-user=redamiangomez1@sheffield.ac.uk
 #SBATCH --mail-type=FAIL,END

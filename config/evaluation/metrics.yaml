@@ -1,34 +1,35 @@
 # signal related metrics
 # -- sir: signal to interference ratio
-# -- sar: signal to artifact ratio
-# -- sdr: signal to distortion ratio
-# -- ci-sdr: scale-invariant signal to distortion ratio
-# -- si-snri: scale-invariant signal to noise ratio improvement
+# # -- sar: signal to artifact ratio
+# # -- sdr: signal to distortion ratio
+# # -- ci-sdr: scale-invariant signal to distortion ratio
+# # -- si-snri: scale-invariant signal to noise ratio improvement
 - name: signal_metric
-
-# Python Speech Enhancement Performance Measures (https://github.com/shimhz/pysepm)
-- name: pysepm
-
-# Perceptual Evaluation of Speech Quality (PESQ)
+#
+# # Python Speech Enhancement Performance Measures (https://github.com/shimhz/pysepm)
+# - name: pysepm
+#
+# # Perceptual Evaluation of Speech Quality (PESQ)
 - name: pesq
-
-# Short-Time Objective Intelligibility (STOI)
+#
+# # Short-Time Objective Intelligibility (STOI)
 - name: stoi
-
-# torchaudio-squim
-# -- torch_squim_pesq: reference-less pesq
-# -- torch_squim_stoi: reference-less stoi
-# -- torch_squim_si_sdr: reference-less si-sdr
-# -- torch_squim_mos: MOS score with reference
-- name: squim_ref
-- name: squim_no_ref
-
-- name: nisqa
-
-- name: pseudo_mos
-  predictor_types: ["utmos", "dnsmos"]
-  predictor_args:
-    dnsmos:
-      fs: 16000
-    utmos:
-      fs: 16000
+#
+# # torchaudio-squim
+# # -- torch_squim_pesq: reference-less pesq
+# # -- torch_squim_stoi: reference-less stoi
+# # -- torch_squim_si_sdr: reference-less si-sdr
+# # -- torch_squim_mos: MOS score with reference
+# - name: squim_ref
+# - name: squim_no_ref
+#
+# - name: nisqa
+#
+# - name: pseudo_mos
+#   predictor_types: ["utmos", "dnsmos"]
+#     predictor_args:
+#         dnsmos:
+#               fs: 16000
+#                   utmos:
+#                         fs: 16000
+#

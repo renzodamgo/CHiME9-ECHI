@@ -1,0 +1,166 @@
+Installing dependencies...
+Requirement already satisfied: hydra-core in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (1.3.2)
+Requirement already satisfied: omegaconf<2.4,>=2.2 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (2.3.0)
+Requirement already satisfied: antlr4-python3-runtime==4.9.* in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (4.9.3)
+Requirement already satisfied: packaging in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (25.0)
+Requirement already satisfied: PyYAML>=5.1.0 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from omegaconf<2.4,>=2.2->hydra-core) (6.0.2)
+Channels:
+ - conda-forge
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+# All requested packages already installed.
+
+Collecting git+https://github.com/ftshijt/pysepm.git
+  Cloning https://github.com/ftshijt/pysepm.git to /tmp/job.7583389/pip-req-build-ddgd1jpp
+  Resolved https://github.com/ftshijt/pysepm.git to commit e8336117d743adf59ba29ffb844297588e80831e
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Starting enhancement script...
+[2025-08-14 00:24:19,601][root][INFO] - Hydra config:
+paths:
+  root_dir: data/working_dir
+  echi_dir: data/chime9_echi
+  exp_dir: data/working_dir/experiments/baseline
+  evaluation_dir: data/working_dir/experiments/baseline/evaluation
+  enhancement_dir: data/working_dir/experiments/baseline/enhancement
+  train_ha_dir: data/working_dir/experiments/baseline/train_ha
+  train_aria_dir: data/working_dir/experiments/baseline/train_aria
+  enhancement_output_dir: data/working_dir/experiments/baseline/enhancement/{dataset}_submission
+  signal_id: '{session}.{device}.{pid}'
+  signal_dir: data/chime9_echi/{device}/{dataset}
+  echi_signal: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  ref_signal_dir: data/chime9_echi/ref/{dataset}
+  ref_signal_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  rainbow_signal_dir: data/chime9_echi/participant/{dataset}
+  rainbow_signal_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segment_info_dir: data/chime9_echi/metadata/ref/{dataset}
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  ref_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  train_input_dir: data/working_dir/train_segments/{dataset}/{device}
+  train_input_file: data/working_dir/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  train_rainbow_file: data/working_dir/participant/{dataset}/{pid}.wav
+  train_target_dir: data/working_dir/train_segments/{dataset}/{device}_ref
+  train_target_file: data/working_dir/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  enhancement_input_dir: data/working_dir/enhancement_inputs/{device}/{dataset}
+  enhancement_input_file: data/working_dir/enhancement_inputs/{device}/{dataset}/{session}{device}.wav
+  enhancement_raindow_dir: data/working_dir/enhancement_inputs/participant
+  enhancement_rainbow_file: data/working_dir/enhancement_inputs/participant/{pid}.wav
+  enhancement_output_file: data/working_dir/experiments/baseline/enhancement/{dataset}_submission/{session}.{device}.{pid}.wav
+shared:
+  exp_name: baseline
+  model_sample_rate: 16000
+  ref_sample_rate: 16000
+  signal_bitdepth: PCM_16
+  nchannels: 1
+setup:
+  input_signal_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  segment_sample_rate: 16000
+  output_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  dataset: dev
+  devices:
+  - aria
+  - ha
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+validate:
+  dataset: dev
+  devices:
+  - aria
+  - ha
+  noisy_signal: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  enhanced_signal: data/working_dir/experiments/baseline/enhancement/{dataset}_submission/{session}.{device}.{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  expected_sample_rate: 16000
+  expected_bitdepth: PCM_16
+  expected_nchannels: 1
+  run: true
+prepare:
+  enhanced_signal: data/working_dir/experiments/baseline/enhancement/{dataset}_submission/{session}.{device}.{pid}.wav
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  segment_sample_rate: 16000
+  results_file: data/working_dir/experiments/baseline/evaluation/results/results.{dataset}.{device}.{segment_type}.json
+  segment_dir: data/working_dir/experiments/baseline/evaluation/segments/{device}/{segment_type}
+  csv_dir: data/chime9_echi/metadata/ref/dev
+  ref_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  signal_id: '{session}.{device}.{pid}'
+  score_config: config/metrics.yaml
+  dataset: dev
+  devices:
+  - aria
+  - ha
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+evaluate:
+  enhanced_dir: data/working_dir/experiments/baseline/enhancement/{dataset}_submission
+  results_file: data/working_dir/experiments/baseline/evaluation/results/results.{dataset}.{device}.{segment_type}.json
+  segment_dir: data/working_dir/experiments/baseline/evaluation/segments/{device}/{segment_type}
+  csv_dir: data/chime9_echi/metadata/ref/dev
+  ref_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  signal_id: '{session}.{device}.{pid}'
+  score_config: config/evaluation/metrics.yaml
+  use_gpu: false
+  batch: 1
+  n_batches: 1
+  dataset: dev
+  devices:
+  - aria
+  - ha
+  segment_types:
+  - individual
+  - summed
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+report:
+  devices:
+  - aria
+  - ha
+  dataset: dev
+  segment_types:
+  - individual
+  - summed
+  results_file: data/working_dir/experiments/baseline/evaluation/results/results.{dataset}.{device}.{segment_type}.json
+  report_file: data/working_dir/experiments/baseline/evaluation/reports/report.{dataset}.{device}.{segment_type}.{session}.{pid}.json
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+segment_types:
+- individual
+- summed
+devices:
+- aria
+- ha
+dataset: dev
+sample_rate: 16000
+evaluation_dir: data/working_dir/experiments/baseline/evaluation
+segment_dir: data/working_dir/experiments/baseline/evaluation/segments/{device}/{segment_type}
+results_file: data/working_dir/experiments/baseline/evaluation/results/results.{dataset}.{device}.{segment_type}.json
+report_file: data/working_dir/experiments/baseline/evaluation/reports/report.{dataset}.{device}.{segment_type}.{session}.{pid}.json
+
+[2025-08-14 00:24:19,611][root][INFO] - Preparing the ECHI dataset
+[2025-08-14 00:24:19,612][root][INFO] - Writing segments to data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+[2025-08-14 00:24:57,148][root][INFO] - Validating ECHI submission
+[2025-08-14 00:24:58,591][root][INFO] - Validation passed successfully.
+[2025-08-14 00:24:58,591][root][INFO] - Running preparation for evaluation
+[2025-08-14 00:25:46,765][root][INFO] - Running evaluate
+[2025-08-14 00:25:46,766][root][INFO] - Evaluating aria with individual segments
+[2025-08-14 00:25:46,772][root][ERROR] - Error evaluating aria with individual segments: No module named 'versa'
+[2025-08-14 00:25:46,772][root][INFO] - Evaluating aria with summed segments
+[2025-08-14 00:25:46,777][root][ERROR] - Error evaluating aria with summed segments: No module named 'versa'
+[2025-08-14 00:25:46,777][root][INFO] - Evaluating ha with individual segments
+[2025-08-14 00:25:46,781][root][ERROR] - Error evaluating ha with individual segments: No module named 'versa'
+[2025-08-14 00:25:46,781][root][INFO] - Evaluating ha with summed segments
+[2025-08-14 00:25:46,785][root][ERROR] - Error evaluating ha with summed segments: No module named 'versa'
+[2025-08-14 00:25:46,785][root][INFO] - Reporting results
+[2025-08-14 00:25:46,787][root][INFO] - Processing device: aria
+[2025-08-14 00:25:46,789][root][WARNING] - No results found for device: aria
+[2025-08-14 00:25:46,789][root][INFO] - Processing device: aria
+[2025-08-14 00:25:46,791][root][WARNING] - No results found for device: aria
+[2025-08-14 00:25:46,791][root][INFO] - Processing device: ha
+[2025-08-14 00:25:46,792][root][WARNING] - No results found for device: ha
+[2025-08-14 00:25:46,792][root][INFO] - Processing device: ha
+[2025-08-14 00:25:46,794][root][WARNING] - No results found for device: ha
+Job completed!

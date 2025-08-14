@@ -100,3 +100,4 @@ sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
 enhancement_dir: data/working_dir/experiments/baseline/enhancement
 
 [2025-08-13 23:35:35,339][root][INFO] - Preparing the ECHI dataset
+Job completed!
