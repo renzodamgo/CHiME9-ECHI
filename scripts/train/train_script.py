@@ -198,11 +198,17 @@ def run(
             loader = trainset
 
         for batch in loader:
+            # Log batch keys to understand data structure
+            logging.info(f"=== BATCH DEBUG ===")
+            logging.info(f"Batch keys: {list(batch.keys())}")
+            logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
+
             multi = (
                 ("spkid_all" in batch)
                 and ("target_all" in batch)
                 and ("spkid_lens_all" in batch)
             )
+            logging.info(f"Multi-speaker mode: {multi}")
             if multi:
                 # Prep
                 noisy = batch["noisy"].to(device, non_blocking=True)  # [B, C, Tw]
@@ -230,6 +236,20 @@ def run(
                 spk_all_for_model = spk_all_tf.permute(
                     0, 1, 3, 4, 2
                 ).contiguous()  # [B,K,T,F,2]
+
+                # Add logging for debugging tensor shapes
+                logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
+                logging.info(f"noisy shape: {noisy.shape}")
+                logging.info(f"spk_all shape: {spk_all.shape}")
+                logging.info(f"targ_all shape: {targ_all.shape}")
+                logging.info(f"noisy_tf shape: {noisy_tf.shape}")
+                logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
+                logging.info(f"spk_lens_all shape: {spk_lens_all.shape}")
+                logging.info(f"spk_all_for_model shape: {spk_all_for_model.shape}")
+                logging.info(f"Model input channels: {model_cfg.input.channels}")
+                logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
+                logging.info(f"Device: {device}")
+
                 S_hat_c = model(
                     noisy_tf, spk_all_for_model, spk_lens_all
                 )  # [B, K, T, F] (complex)
@@ -264,6 +284,18 @@ def run(
                     batch["spkid_lens"] = (
                         batch["spkid_lens"] - stft.n_fft
                     ) // stft.hop_length
+
+                # Add logging for debugging single-speaker path
+                logging.info(f"=== SINGLE-SPEAKER TRAINING DEBUG ===")
+                logging.info(f"noisy shape: {noisy.shape}")
+                logging.info(f"targets shape: {targets.shape}")
+                logging.info(f"spk_id shape: {spk_id.shape}")
+                logging.info(f"spkid_lens shape: {batch['spkid_lens'].shape}")
+                logging.info(f"Model input channels: {model_cfg.input.channels}")
+                logging.info(
+                    f"STFT n_fft: {stft.n_fft if do_stft else 'N/A'}, hop_length: {stft.hop_length if do_stft else 'N/A'}"
+                )
+                logging.info(f"Device: {device}")
 
                 optimizer.zero_grad()
 
