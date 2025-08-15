@@ -102,54 +102,77 @@ class MCxTFGridNet(nn.Module):
 
         self.deconv = nn.ConvTranspose2d(emb_dim, n_srcs * 2, ks, padding=padding)
 
-    def forward(
-        self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor
-    ) -> torch.Tensor:
-        """Forward.
-
-        Args:
-            input (torch.Tensor): batched multi-channel audio tensor with
-                    M audio channels and N samples [B, T, F]
-            ilens (torch.Tensor): input lengths [B]
-            additional (Dict or None): other data, currently unused in this model.
+    def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
+        """
+        spec: [B, M, T, F, 2]  mixture (M = n_imics)
+        spk : [B, T, F, 2] OR [B, K, T, F, 2] enrollment(s)
+        spk_lens: [B] or [B, K] STFT frame lengths for enroll(s)
 
         Returns:
-            enhanced (List[Union(torch.Tensor)]):
-                    [(B, T), ...] list of len n_srcs
-                    of mono audio tensors with T samples.
-            ilens (torch.Tensor): (B,)
-            additional (Dict or None): other data, currently unused in this model,
-                    we return it also in output.
+        if spk.ndim == 4 (single spk): [B, 1, n_srcs, T, F] complex  (backward compatible)
+        if spk.ndim == 5 (K spk):      [B, K,        T, F] complex   (n_srcs is treated as 1 here)
         """
         assert spec.size(-1) == 2, spec.shape
-        feature = spec.moveaxis(-1, 2)
-        spec = spec[:, :, 0] + 1j * spec[:, :, 1]
-
-        assert spk.size(-1) == 2, spk.shape
-        spk_feat = spk.moveaxis(-1, 1)
-
-        n_batch, mics, _, n_frames, n_freqs = feature.shape
+        feature = spec.moveaxis(-1, 2)        # [B, M, 2, T, F] -> [B, M, 2, T, F] (no-op) then…
+        feature = feature[:, :, 0]            # keep RI stacked in channel dim as in baseline
+        n_batch, mics, _, n_frames, n_freqs = spec.moveaxis(-1, 2).shape
         assert mics == self.n_imics
 
+        # --- Front-end ONCE on mixture ---
         if self.n_imics > 1:
-            feature = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
-            spk_feat = spk_feat.repeat(1, self.n_imics, 1, 1)
+            feat = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
+        else:
+            feat = feature
+        z_mix = self.conv(feat)               # [B, C, T, F]
 
-        batch = self.conv(feature)  # [B, -1, T, F]
-        spk_feat = self.conv(spk_feat)
+        # --- Handle enrollments: single or K ---
+        if spk.ndim == 4:
+            # [B, T, F, 2] -> [B, 2, T, F] -> encode -> embedding [B, C]
+            spk_feat = spk.moveaxis(-1, 1)
+            spk_feat = self.conv(spk_feat)
+            e, _ = self.aux_enc(spk_feat, spk_lens)
 
-        spk_feat, spk_pred = self.aux_enc(spk_feat, spk_lens)
+            z = z_mix
+            for i in range(self.n_layers):
+                z = self.fusions[i](e, z)
+                z = self.gridnets[i](z)
 
-        for ii in range(self.n_layers):
-            batch = self.fusions[ii](spk_feat, batch)
-            batch = self.gridnets[ii](batch)  # [B, -1, T, F]
+            out = self.deconv(z)                               # [B, n_srcs*2, T, F]
+            out = out.view(n_batch, self.n_srcs, 2, n_frames, n_freqs)
+            out = torch.complex(out[:, :, 0], out[:, :, 1])    # [B, n_srcs, T, F]
+            return out.unsqueeze(1)                            # [B, 1, n_srcs, T, F]  (compat)
 
-        batch = self.deconv(batch)  # [B, n_srcs*2, T, F]
+        elif spk.ndim == 5:
+            # [B, K, T, F, 2] -> flatten to [B*K, 2, T, F] for encoding
+            B, K, T, F, _ = spk.shape
+            spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(B * K, 2, T, F)
+            spk_feat = self.conv(spk_feat)
 
-        batch = batch.view([n_batch, self.n_srcs, 2, n_frames, n_freqs])
-        batch = torch.complex(batch[:, :, 0], batch[:, :, 1])
+            # Lens: accept [B] or [B,K]
+            if spk_lens.ndim == 1:             # same len for all K
+                spk_lens = spk_lens.unsqueeze(1).expand(B, K).reshape(B * K)
+            else:
+                spk_lens = spk_lens.reshape(B * K)
 
-        return batch.unsqueeze(1)  # , ilens, OrderedDict()
+            e, _ = self.aux_enc(spk_feat, spk_lens)           # [B*K, C]
+
+            # Tile mixture features to K speakers: [B, C, T, F] -> [B*K, C, T, F]
+            z = z_mix.unsqueeze(1).expand(B, K, *z_mix.shape[1:]).reshape(B * K, *z_mix.shape[1:])
+
+            # Shared backbone, conditioned per-(B*K) stream
+            for i in range(self.n_layers):
+                z = self.fusions[i](e, z)
+                z = self.gridnets[i](z)
+
+            # One stream per speaker (set config/model.n_srcs=1 for joint training)
+            out = self.deconv(z)                               # [B*K, 2, T, F] if n_srcs==1
+            out = out.view(B, K, 2, n_frames, n_freqs)
+            out = torch.complex(out[:, :, 0], out[:, :, 1])    # [B, K, T, F]
+            return out
+
+        else:
+            raise ValueError(f"spk must be 4D or 5D, got {spk.ndim}")
+
 
     @property
     def num_spk(self):

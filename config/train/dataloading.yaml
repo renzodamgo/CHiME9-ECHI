@@ -7,6 +7,8 @@ rainbow_signal: ${..paths.train_rainbow_file}
 sessions_file: ${..paths.sessions_file}
 segments_file: ${..paths.segment_info_file}
 
+joint_for: ["train"] 
+
 signal:
   noisy_sr: 48000
   ref_sr: 16000

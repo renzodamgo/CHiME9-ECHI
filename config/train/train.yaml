@@ -1,3 +1,4 @@
+exp_name: ${shared.exp_name}
 epochs: 100
 checkpoint_interval: 2
 lr: 1e-7

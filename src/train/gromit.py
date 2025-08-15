@@ -29,12 +29,19 @@ class LossTracker:
 
 class Gromit:
     def __init__(
-        self, epochs, loss_name, output_path, debug, wandb_entity, wandb_project
+        self,
+        epochs,
+        loss_name,
+        exp_name,
+        output_path,
+        debug,
+        wandb_entity,
+        wandb_project,
     ):
         self.debug = debug
         self.epochs = epochs
         self.loss_name = loss_name
-
+        self.exp_name = exp_name
         self.wandb_entity = wandb_entity
         self.wandb_project = wandb_project
 
@@ -74,7 +81,9 @@ class Gromit:
 
         logging.info("Training")
 
-    def epoch_report(self, epoch, do_ckpt, model: torch.nn.Module, lr: float, delim=" "):
+    def epoch_report(
+        self, epoch, do_ckpt, model: torch.nn.Module, lr: float, delim=" "
+    ):
 
         train_log = read_json(self.json_name)
         new_log = {
@@ -82,7 +91,7 @@ class Gromit:
             "train_loss": np.nan,
             "val_loss": np.nan,
             "val_stoi": np.nan,
-            "lr": lr
+            "lr": lr,
         }
 
         wlog = {}
@@ -110,7 +119,7 @@ class Gromit:
             new_log["val_loss"] = val_loss
             new_log["val_stoi"] = val_stoi
 
-            ckpt_path = self.get_ckpt_path(epoch)
+            ckpt_path = self.get_ckpt_path(epoch, self.exp_name)
             torch.save(model.state_dict(), ckpt_path)
 
         out_string += f"{delim}LR: {lr}"
@@ -150,5 +159,5 @@ class Gromit:
 
         torchaudio.save(audio_path, sample, fs)
 
-    def get_ckpt_path(self, epoch):
-        return self.ckpt_dir / f"epoch{str(epoch).zfill(3)}.pt"
+    def get_ckpt_path(self, epoch, exp_name):
+        return self.ckpt_dir / f"{exp_name}_{str(epoch).zfill(3)}.pt"

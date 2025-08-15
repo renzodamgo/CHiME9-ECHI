@@ -5,8 +5,9 @@ from tqdm import tqdm
 import logging
 from torch_stoi import NegSTOILoss
 from torch.utils.data.dataloader import DataLoader
-
+from train.joint_multi import joint_loss
 from train.echi import ECHI, collate_fn
+from train.echi import ECHIJoint, collate_fn_joint
 from shared.core_utils import get_model, get_device
 from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
@@ -16,19 +17,47 @@ torch.manual_seed(666)
 
 
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
-    data = ECHI(
-        split,
-        data_cfg.device,
-        data_cfg.noisy_signal,
-        data_cfg.ref_signal,
-        data_cfg.rainbow_signal,
-        data_cfg.sessions_file,
-        data_cfg.segments_file,
-        debug,
-    )
+    """
+    If `split` is listed in data_cfg.joint_for (e.g., ["train"]),
+    we use ECHIJoint + collate_fn_joint; otherwise the classic ECHI.
+    """
+    # Decide which dataset to use
+    joint_for = set(getattr(data_cfg, "joint_for", []))  # e.g., ["train"]
+    use_joint = split in joint_for
+
+    if use_joint:
+        data = ECHIJoint(
+            split,
+            data_cfg.device,
+            data_cfg.noisy_signal,
+            data_cfg.ref_signal,
+            data_cfg.rainbow_signal,
+            data_cfg.sessions_file,
+            data_cfg.segments_file,
+            debug,
+        )
+        chosen_collate = collate_fn_joint
+    else:
+        data = ECHI(
+            split,
+            data_cfg.device,
+            data_cfg.noisy_signal,
+            data_cfg.ref_signal,
+            data_cfg.rainbow_signal,
+            data_cfg.sessions_file,
+            data_cfg.segments_file,
+            debug,
+        )
+        chosen_collate = collate_fn
+
     data_len = len(data)
     samples = [data.__getitem__(i * data_len // 5)["id"] for i in range(1, 4)]
-    loader = DataLoader(data, **data_cfg.loader[split], collate_fn=collate_fn)
+
+    loader = DataLoader(
+        data,
+        **data_cfg.loader[split],
+        collate_fn=chosen_collate,  # <- switches automatically
+    )
 
     return loader, samples
 
@@ -117,6 +146,7 @@ def run(
     gromit = Gromit(
         train_cfg.epochs,
         train_cfg.loss.name,
+        train_cfg.exp_name,
         exp_dir,
         debug,
         wandb_entity,
@@ -168,55 +198,107 @@ def run(
             loader = trainset
 
         for batch in loader:
-
-            noisy = batch["noisy"].to(device, non_blocking=True)
-            targets = batch["target"].to(device, non_blocking=True)
-            spk_id = batch["spkid"].to(device, non_blocking=True)
-
-            noisy = prep_audio(
-                noisy, batch["fs"], input_channels, input_sr, input_rms, True
+            multi = (
+                ("spkid_all" in batch)
+                and ("target_all" in batch)
+                and ("spkid_lens_all" in batch)
             )
-            spk_id = prep_audio(spk_id, batch["fs"], 1, input_sr, input_rms, True)
+            if multi:
+                # Prep
+                noisy = batch["noisy"].to(device, non_blocking=True)  # [B, C, Tw]
+                spk_all = batch["spkid_all"].to(device, non_blocking=True)  # [B, K, Tr]
+                targ_all = batch["target_all"].to(
+                    device, non_blocking=True
+                )  # [B, K, Tw]
 
-            if do_stft:
-                noisy = stft(noisy)
-                spk_id = stft(spk_id)
-                batch["spkid_lens"] = (
-                    batch["spkid_lens"] - stft.n_fft
-                ) // stft.hop_length
+                noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
+                spk_all_tf = stft(spk_all)  # → [B, K, 2, T, F]
+                spk_lens_all = (
+                    batch["spkid_lens_all"].to(device) - stft.n_fft
+                ) // stft.hop_length  # [B, K]
 
-            optimizer.zero_grad()
+                # reference complex mixture (pick mic 0)
+                X_ref_c = torch.complex(
+                    noisy_tf[:, 0, :, :, 0], noisy_tf[:, 0, :, :, 1]
+                )  # [B, T, F]
+                Y_ref_tf = stft(targ_all)  # [B, K, 2, T, F]
+                Y_ref_c = torch.complex(
+                    Y_ref_tf[:, :, 0], Y_ref_tf[:, :, 1]
+                )  # [B, K, T, F]
 
-            processed = model(noisy, spk_id, batch["spkid_lens"]).squeeze(1)
+                # Model (multi-speaker forward we added in MCxTFGridNet)
+                spk_all_for_model = spk_all_tf.permute(
+                    0, 1, 3, 4, 2
+                ).contiguous()  # [B,K,T,F,2]
+                S_hat_c = model(
+                    noisy_tf, spk_all_for_model, spk_lens_all
+                )  # [B, K, T, F] (complex)
 
-            if do_stft:
-                processed = stft.inverse(processed)
+                # Joint loss (use the tiny helper from earlier message or inline your own)
+                loss, stats = joint_loss(
+                    S_hat_c=S_hat_c,
+                    X_ref_c=X_ref_c,
+                    Y_ref_c=Y_ref_c,
+                    y_wav=targ_all,
+                    istft_fn=lambda C: stft.inverse(C),
+                    lambda_mix=0.1,
+                    lambda_xtalk=0.1,
+                    use_sisdr=True,
+                )
 
-            processed, targets, use_val = check_lengths(
-                batch["id"], processed, targets, "train", do_stft
-            )
-            if not use_val:
-                continue
+                processed = stft.inverse(S_hat_c)  # [B, K, Tw] for preview/saving
 
-            loss = loss_fn(processed, targets)
+            else:
+                noisy = batch["noisy"].to(device, non_blocking=True)
+                targets = batch["target"].to(device, non_blocking=True)
+                spk_id = batch["spkid"].to(device, non_blocking=True)
 
-            loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), train_cfg.clip_grad_norm)
-            optimizer.step()
+                noisy = prep_audio(
+                    noisy, batch["fs"], input_channels, input_sr, input_rms, True
+                )
+                spk_id = prep_audio(spk_id, batch["fs"], 1, input_sr, input_rms, True)
 
-            gromit.train_loss.update(loss.detach())
+                if do_stft:
+                    noisy = stft(noisy)
+                    spk_id = stft(spk_id)
+                    batch["spkid_lens"] = (
+                        batch["spkid_lens"] - stft.n_fft
+                    ) // stft.hop_length
 
-            save_sample(
-                model_cfg.input.sample_rate,
-                processed,
-                batch["id"],
-                trainsaves,
-                "train",
-                epoch,
-                batch["noisy"],
-                batch["target"],
-                gromit,
-            )
+                optimizer.zero_grad()
+
+                processed = model(noisy, spk_id, batch["spkid_lens"]).squeeze(1)
+
+                if do_stft:
+                    processed = stft.inverse(processed)
+
+                processed, targets, use_val = check_lengths(
+                    batch["id"], processed, targets, "train", do_stft
+                )
+                if not use_val:
+                    continue
+
+                loss = loss_fn(processed, targets)
+
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), train_cfg.clip_grad_norm
+                )
+                optimizer.step()
+
+                gromit.train_loss.update(loss.detach())
+
+                save_sample(
+                    model_cfg.input.sample_rate,
+                    processed,
+                    batch["id"],
+                    trainsaves,
+                    "train",
+                    epoch,
+                    batch["noisy"],
+                    batch["target"],
+                    gromit,
+                )
 
         do_checkpoint = (epoch % ckpt_interval == 0) or (
             (epoch + 1) == train_cfg.epochs
@@ -287,7 +369,10 @@ def run(
                 lr_scheduler.step(gromit.val_loss.get_average())
 
         gromit.epoch_report(
-            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
+            epoch,
+            do_checkpoint,
+            model,
+            optimizer.param_groups[0]["lr"],
         )
 
 
