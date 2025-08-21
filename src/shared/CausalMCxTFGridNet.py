@@ -80,8 +80,8 @@ class MCxTFGridNet(nn.Module):
         )
 
         self.spk_conv = nn.Sequential(
-            nn.Conv2d(in_channels=2, out_channels=self.emb_dim, kernel_size=(3, 3), padding=(1, 1)),
-            LayerNormalization(self.emb_dim, eps=self.eps),
+            nn.Conv2d(in_channels=2, out_channels=emb_dim, kernel_size=(3, 3), padding=(1, 1)),
+            LayerNormalization(emb_dim, eps=eps),
         )
         
         self.aux_enc = AuxEncoder(emb_dim, n_srcs)
