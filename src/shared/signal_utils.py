@@ -194,26 +194,48 @@ class STFTWrapper(torch.nn.Module):
         return X
 
     def inverse(self, X: torch.Tensor) -> torch.Tensor:
+        # Accept [..., F, T] or [..., T, F]; real/imag or complex
         if not X.is_complex():
             X = X.contiguous()
             X = torch.complex(X[..., 0], X[..., 1])
 
-        do_reshape = X.ndim == 4
-        if do_reshape:
-            # Multichannel input
-            batch, chan, freq, frames = X.shape
-            X = X.reshape(batch * chan, freq, frames)
+        n_freqs = self.n_fft // 2 + 1
+
+        # Ensure last two dims are [F, T] for torch.istft
+        if X.size(-2) == n_freqs and X.size(-1) != n_freqs:
+            C_FT = X  # already [*, F, T]
+        elif X.size(-1) == n_freqs:
+            # [*, T, F] -> [*, F, T]
+            perm = list(range(X.ndim))
+            perm[-2], perm[-1] = perm[-1], perm[-2]
+            C_FT = X.permute(*perm).contiguous()
+        else:
+            raise RuntimeError(
+                f"Cannot find freq bins among last two dims: {tuple(X.shape)} "
+                f"(expected one of them to be {n_freqs})."
+            )
+
+        front_shape = C_FT.shape[:-2]  # any leading dims, e.g. [B], [B,K], [B,C], ...
+        F, T = C_FT.shape[-2], C_FT.shape[-1]
+        C_flat = C_FT.reshape(-1, F, T)
+
+        # Make sure window matches device/dtype
+        win = self.window
+        if win is not None and (
+            win.device != C_flat.device or win.dtype != C_flat.real.dtype
+        ):
+            win = win.to(device=C_flat.device, dtype=C_flat.real.dtype)
 
         x = torch.istft(
-            X,
+            C_flat,
             n_fft=self.n_fft,
             hop_length=self.hop_length,
             win_length=self.win_length,
-            window=self.window,
+            window=win,
             center=True,
+            normalized=False,
+            onesided=True,
+            return_complex=False,
         )
 
-        if do_reshape:
-            x = x.reshape(batch, chan, -1)
-
-        return x
+        return x.reshape(*front_shape, -1)
