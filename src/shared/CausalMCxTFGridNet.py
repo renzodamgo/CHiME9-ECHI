@@ -80,10 +80,12 @@ class MCxTFGridNet(nn.Module):
         )
 
         self.spk_conv = nn.Sequential(
-            nn.Conv2d(in_channels=2, out_channels=emb_dim, kernel_size=(3, 3), padding=(1, 1)),
+            nn.Conv2d(
+                in_channels=2, out_channels=emb_dim, kernel_size=(3, 3), padding=(1, 1)
+            ),
             LayerNormalization(emb_dim, eps=eps),
         )
-        
+
         self.aux_enc = AuxEncoder(emb_dim, n_srcs)
 
         self.fusions = nn.ModuleList([])
@@ -126,17 +128,17 @@ class MCxTFGridNet(nn.Module):
             # spec: [B, M, F, T, 2]  (common in your logs)
             T, F = D3, D2
             feat = (
-                spec.permute(0, 1, 4, 3, 2)   # [B, M, 2, T, F]
-                    .contiguous()
-                    .view(B, M * 2, T, F)     # [B, 2*M, T, F]
+                spec.permute(0, 1, 4, 3, 2)  # [B, M, 2, T, F]
+                .contiguous()
+                .view(B, M * 2, T, F)  # [B, 2*M, T, F]
             )
         else:
             # spec: [B, M, T, F, 2]
             T, F = D2, D3
             feat = (
-                spec.permute(0, 1, 4, 2, 3)   # [B, M, 2, T, F]
-                    .contiguous()
-                    .view(B, M * 2, T, F)     # [B, 2*M, T, F]
+                spec.permute(0, 1, 4, 2, 3)  # [B, M, 2, T, F]
+                .contiguous()
+                .view(B, M * 2, T, F)  # [B, 2*M, T, F]
             )
 
         n_batch, mics, n_frames, n_freqs = B, M, T, F
@@ -147,13 +149,13 @@ class MCxTFGridNet(nn.Module):
         #     feat = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
         # else:
         #     feat = feature
-        z_mix = self.conv(feat)               # [B, C, T, F]
+        z_mix = self.conv(feat)  # [B, C, T, F]
 
         # --- Handle enrollments: single or K ---
         if spk.ndim == 4:
             # [B, T, F, 2] -> [B, 2, T, F] -> encode -> embedding [B, C]
-            spk_feat = spk.permute(0, 3, 1, 2)     # [B, 2, T, F]
-            spk_feat = self.spk_conv(spk_feat)     # [B, C, T, F]
+            spk_feat = spk.permute(0, 3, 1, 2)  # [B, 2, T, F]
+            spk_feat = self.spk_conv(spk_feat)  # [B, C, T, F]
             e, _ = self.aux_enc(spk_feat, spk_lens)
 
             z = z_mix
@@ -161,27 +163,33 @@ class MCxTFGridNet(nn.Module):
                 z = self.fusions[i](e, z)
                 z = self.gridnets[i](z)
 
-            out = self.deconv(z)                               # [B, n_srcs*2, T, F]
+            out = self.deconv(z)  # [B, n_srcs*2, T, F]
             out = out.view(n_batch, self.n_srcs, 2, n_frames, n_freqs)
-            out = torch.complex(out[:, :, 0], out[:, :, 1])    # [B, n_srcs, T, F]
-            return out.unsqueeze(1)                            # [B, 1, n_srcs, T, F]  (compat)
+            out = torch.complex(out[:, :, 0], out[:, :, 1])  # [B, n_srcs, T, F]
+            return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]  (compat)
 
         elif spk.ndim == 5:
             # [B, K, T, F, 2] -> flatten to [B*K, 2, T, F] for encoding
             B, K, T, F, _ = spk.shape
-            spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(B * K, 2, T, F)  # [B*K, 2, T, F]
-            spk_feat = self.spk_conv(spk_feat)                             # [B*K, C, T, F]
+            spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(
+                B * K, 2, T, F
+            )  # [B*K, 2, T, F]
+            spk_feat = self.spk_conv(spk_feat)  # [B*K, C, T, F]
 
             # Lens: accept [B] or [B,K]
-            if spk_lens.ndim == 1:             # same len for all K
+            if spk_lens.ndim == 1:  # same len for all K
                 spk_lens = spk_lens.unsqueeze(1).expand(B, K).reshape(B * K)
             else:
                 spk_lens = spk_lens.reshape(B * K)
 
-            e, _ = self.aux_enc(spk_feat, spk_lens)           # [B*K, C]
+            e, _ = self.aux_enc(spk_feat, spk_lens)  # [B*K, C]
 
             # Tile mixture features to K speakers: [B, C, T, F] -> [B*K, C, T, F]
-            z = z_mix.unsqueeze(1).expand(B, K, *z_mix.shape[1:]).reshape(B * K, *z_mix.shape[1:])
+            z = (
+                z_mix.unsqueeze(1)
+                .expand(B, K, *z_mix.shape[1:])
+                .reshape(B * K, *z_mix.shape[1:])
+            )
 
             # Shared backbone, conditioned per-(B*K) stream
             for i in range(self.n_layers):
@@ -189,14 +197,13 @@ class MCxTFGridNet(nn.Module):
                 z = self.gridnets[i](z)
 
             # One stream per speaker (set config/model.n_srcs=1 for joint training)
-            out = self.deconv(z)                               # [B*K, 2, T, F] if n_srcs==1
+            out = self.deconv(z)  # [B*K, 2, T, F] if n_srcs==1
             out = out.view(B, K, 2, n_frames, n_freqs)
-            out = torch.complex(out[:, :, 0], out[:, :, 1])    # [B, K, T, F]
+            out = torch.complex(out[:, :, 0], out[:, :, 1])  # [B, K, T, F]
             return out
 
         else:
             raise ValueError(f"spk must be 4D or 5D, got {spk.ndim}")
-
 
     @property
     def num_spk(self):
@@ -563,6 +570,17 @@ class EnUnetModule(nn.Module):
             self.decoder.append(Deconv2dUnit(k2, cout, 2))
         self.out_pool = nn.AvgPool2d((3, 1))
 
+    @staticmethod
+    def _match_spatial(a: torch.Tensor, b: torch.Tensor):
+        # a, b: [B, C, T, F] -> crop both to min(T,F)
+        T = min(a.size(-2), b.size(-2))
+        F = min(a.size(-1), b.size(-1))
+        if a.size(-2) != T or a.size(-1) != F:
+            a = a[..., :T, :F]
+        if b.size(-2) != T or b.size(-1) != F:
+            b = b[..., :T, :F]
+        return a, b
+
     def forward(self, x: torch.Tensor):
         x_resi = self.in_conv(x)
         x = x_resi
@@ -570,16 +588,19 @@ class EnUnetModule(nn.Module):
         for i in range(len(self.encoder)):
             x = self.encoder[i](x)
             x_list.append(x)
-        x = self.decoder[0](x)
-        for i in range(1, len(self.decoder)):
 
-            x = self.decoder[i](torch.cat([x, x_list[-(i + 1)]], dim=1))
+        # deepest level
+        x = self.decoder[0](x)
+
+        # up path with skip connections (crop before concat)
+        for i in range(1, len(self.decoder)):
+            skip = x_list[-(i + 1)]
+            x_c, skip_c = self._match_spatial(x, skip)
+            x = self.decoder[i](torch.cat([x_c, skip_c], dim=1))
 
         x_resi = x_resi + x
-
         return self.out_pool(x_resi)
-
-
+    
 class GateConv2d(nn.Module):
     def __init__(self, cin: int, cout: int, k: tuple, s: tuple):
         super(GateConv2d, self).__init__()
