@@ -113,16 +113,35 @@ class MCxTFGridNet(nn.Module):
         if spk.ndim == 5 (K spk):      [B, K,        T, F] complex   (n_srcs is treated as 1 here)
         """
         assert spec.size(-1) == 2, spec.shape
-        feature = spec.moveaxis(-1, 2)        # [B, M, 2, T, F] -> [B, M, 2, T, F] (no-op) then…
-        feature = feature[:, :, 0]            # keep RI stacked in channel dim as in baseline
-        n_batch, mics, _, n_frames, n_freqs = spec.moveaxis(-1, 2).shape
+        B, M, D2, D3, RI = spec.shape
+        assert RI == 2
+
+        # Decide which axis is F vs T (F is usually the smaller one, e.g., 65)
+        if D2 <= D3:
+            # spec: [B, M, F, T, 2]  (common in your logs)
+            T, F = D3, D2
+            feat = (
+                spec.permute(0, 1, 4, 3, 2)   # [B, M, 2, T, F]
+                    .contiguous()
+                    .view(B, M * 2, T, F)     # [B, 2*M, T, F]
+            )
+        else:
+            # spec: [B, M, T, F, 2]
+            T, F = D2, D3
+            feat = (
+                spec.permute(0, 1, 4, 2, 3)   # [B, M, 2, T, F]
+                    .contiguous()
+                    .view(B, M * 2, T, F)     # [B, 2*M, T, F]
+            )
+
+        n_batch, mics, n_frames, n_freqs = B, M, T, F
         assert mics == self.n_imics
 
         # --- Front-end ONCE on mixture ---
-        if self.n_imics > 1:
-            feat = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
-        else:
-            feat = feature
+        # if self.n_imics > 1:
+        #     feat = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
+        # else:
+        #     feat = feature
         z_mix = self.conv(feat)               # [B, C, T, F]
 
         # --- Handle enrollments: single or K ---

@@ -250,16 +250,8 @@ def run(
                 logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
                 logging.info(f"Device: {device}")
 
-                B, M, T, F, RI = noisy_tf.shape
-                assert RI == 2, f"Expected RI=2, got {RI}"
-
-                noisy_feat = (
-                    noisy_tf.permute(0, 1, 4, 2, 3)  # [B, M, 2, T, F]
-                    .contiguous()
-                    .view(B, M * 2, T, F)  # [B, 2*M, T, F]
-                )
                 S_hat_c = model(
-                    noisy_feat, spk_all_for_model, spk_lens_all
+                    noisy_tf, spk_all_for_model, spk_lens_all
                 )  # [B, K, T, F] (complex)
 
                 # Joint loss (use the tiny helper from earlier message or inline your own)
