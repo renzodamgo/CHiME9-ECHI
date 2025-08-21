@@ -79,6 +79,11 @@ class MCxTFGridNet(nn.Module):
             LayerNormalization(emb_dim, eps=eps),
         )
 
+        self.spk_conv = nn.Sequential(
+            nn.Conv2d(in_channels=2, out_channels=self.emb_dim, kernel_size=(3, 3), padding=(1, 1)),
+            LayerNormalization(self.emb_dim, eps=self.eps),
+        )
+        
         self.aux_enc = AuxEncoder(emb_dim, n_srcs)
 
         self.fusions = nn.ModuleList([])
@@ -147,8 +152,8 @@ class MCxTFGridNet(nn.Module):
         # --- Handle enrollments: single or K ---
         if spk.ndim == 4:
             # [B, T, F, 2] -> [B, 2, T, F] -> encode -> embedding [B, C]
-            spk_feat = spk.moveaxis(-1, 1)
-            spk_feat = self.conv(spk_feat)
+            spk_feat = spk.permute(0, 3, 1, 2)     # [B, 2, T, F]
+            spk_feat = self.spk_conv(spk_feat)     # [B, C, T, F]
             e, _ = self.aux_enc(spk_feat, spk_lens)
 
             z = z_mix
@@ -164,8 +169,8 @@ class MCxTFGridNet(nn.Module):
         elif spk.ndim == 5:
             # [B, K, T, F, 2] -> flatten to [B*K, 2, T, F] for encoding
             B, K, T, F, _ = spk.shape
-            spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(B * K, 2, T, F)
-            spk_feat = self.conv(spk_feat)
+            spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(B * K, 2, T, F)  # [B*K, 2, T, F]
+            spk_feat = self.spk_conv(spk_feat)                             # [B*K, C, T, F]
 
             # Lens: accept [B] or [B,K]
             if spk_lens.ndim == 1:             # same len for all K
