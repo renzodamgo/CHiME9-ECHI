@@ -568,7 +568,7 @@ class EnUnetModule(nn.Module):
         self.decoder = nn.ModuleList([Deconv2dUnit(k2, cout, 1)])
         for i in range(1, scale):
             self.decoder.append(Deconv2dUnit(k2, cout, 2))
-        self.out_pool = nn.AvgPool2d((3, 1))
+        self.out_pool = nn.AvgPool2d((3, 1), ceil_mode=True)
 
     @staticmethod
     def _match_spatial(a: torch.Tensor, b: torch.Tensor):
