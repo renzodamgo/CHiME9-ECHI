@@ -16,6 +16,31 @@ from shared.signal_utils import STFTWrapper, match_length, prep_audio
 torch.manual_seed(666)
 
 
+# Replace the old lambda with a rank-agnostic helper
+def istft_fn_nd(C: torch.Tensor, stft):
+    """
+    C: complex STFT with last two dims being (T,F) or (F,T).
+       Works for shapes [B,K,T,F], [B,T,F], [T,F], etc.
+    """
+    assert torch.is_complex(C), f"Expected complex STFT, got {C.dtype}"
+    n_freqs = stft.n_fft // 2 + 1
+
+    if C.size(-2) == n_freqs and C.size(-1) != n_freqs:
+        # already [*, F, T]
+        C_FT = C
+    elif C.size(-1) == n_freqs:
+        # [*, T, F] -> [*, F, T]
+        perm = list(range(C.ndim))
+        perm[-2], perm[-1] = perm[-1], perm[-2]
+        C_FT = C.permute(*perm).contiguous()
+    else:
+        raise RuntimeError(
+            f"Can't find freq bins among last two dims: {tuple(C.shape)} (n_freqs={n_freqs})"
+        )
+
+    return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
+
+
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     """
     If `split` is listed in data_cfg.joint_for (e.g., ["train"]),
@@ -259,6 +284,29 @@ def run(
                 logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
                 logging.info(f"Device: {device}")
 
+                def istft_fn_nd(C: torch.Tensor):
+                    """
+                    C: complex STFT with last two dims being (T,F) or (F,T).
+                    Works for shapes [B,K,T,F], [B,T,F], [T,F], etc.
+                    """
+                    assert torch.is_complex(C), f"Expected complex STFT, got {C.dtype}"
+                    n_freqs = stft.n_fft // 2 + 1
+
+                    if C.size(-2) == n_freqs and C.size(-1) != n_freqs:
+                        # already [*, F, T]
+                        C_FT = C
+                    elif C.size(-1) == n_freqs:
+                        # [*, T, F] -> [*, F, T]
+                        perm = list(range(C.ndim))
+                        perm[-2], perm[-1] = perm[-1], perm[-2]
+                        C_FT = C.permute(*perm).contiguous()
+                    else:
+                        raise RuntimeError(
+                            f"Can't find freq bins among last two dims: {tuple(C.shape)} (n_freqs={n_freqs})"
+                        )
+
+                    return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
+
                 S_hat_c = model(
                     noisy_tf, spk_all_for_model, spk_lens_all
                 )  # [B, K, T, F] (complex)
@@ -269,7 +317,7 @@ def run(
                     X_ref_c=X_ref_c,
                     Y_ref_c=Y_ref_c,
                     y_wav=targ_all,
-                    istft_fn=lambda C: stft.inverse(C.permute(0, 2, 1)),
+                    istft_fn=istft_fn_nd,
                     lambda_mix=0.1,
                     lambda_xtalk=0.1,
                     use_sisdr=True,
