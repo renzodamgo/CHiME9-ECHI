@@ -234,8 +234,12 @@ def run(
 
                 # Model (multi-speaker forward we added in MCxTFGridNet)
                 spk_all_for_model = spk_all_tf.permute(
-                    0, 1, 3, 4, 2
-                ).contiguous()  # [B,K,T,F,2]
+                    0, 1, 3, 2, 4
+                ).contiguous()  # [B,K, T,  F, 2]
+
+                assert (
+                    spk_all_for_model.shape[-1] == 2
+                ), f"Expected RI last, got {spk_all_for_model.shape}"
 
                 # Add logging for debugging tensor shapes
                 logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
