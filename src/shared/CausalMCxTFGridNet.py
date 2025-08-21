@@ -598,9 +598,11 @@ class EnUnetModule(nn.Module):
             x_c, skip_c = self._match_spatial(x, skip)
             x = self.decoder[i](torch.cat([x_c, skip_c], dim=1))
 
+        x_resi, x = self._match_spatial(x_resi, x)
         x_resi = x_resi + x
         return self.out_pool(x_resi)
-    
+
+
 class GateConv2d(nn.Module):
     def __init__(self, cin: int, cout: int, k: tuple, s: tuple):
         super(GateConv2d, self).__init__()
