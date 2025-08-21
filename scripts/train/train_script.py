@@ -225,12 +225,17 @@ def run(
 
                 # reference complex mixture (pick mic 0)
                 X_ref_c = torch.complex(
-                    noisy_tf[:, 0, :, :, 0], noisy_tf[:, 0, :, :, 1]
-                )  # [B, T, F]
+                    noisy_tf[:, 0, ..., 0], noisy_tf[:, 0, ..., 1]
+                )  # [B, F, T], complex
+                X_ref_c = X_ref_c.permute(0, 2, 1).contiguous()  # [B, T, F], complex
                 Y_ref_tf = stft(targ_all)  # [B, K, 2, T, F]
+                # Build complex from last-dim RI, then permute to [B, K, T, F] to match S_hat_c
                 Y_ref_c = torch.complex(
-                    Y_ref_tf[:, :, 0], Y_ref_tf[:, :, 1]
-                )  # [B, K, T, F]
+                    Y_ref_tf[..., 0], Y_ref_tf[..., 1]
+                )  # [B, K, F, T], complex
+                Y_ref_c = Y_ref_c.permute(
+                    0, 1, 3, 2
+                ).contiguous()  # [B, K, T, F], complex
 
                 # Model (multi-speaker forward we added in MCxTFGridNet)
                 spk_all_for_model = spk_all_tf.permute(
