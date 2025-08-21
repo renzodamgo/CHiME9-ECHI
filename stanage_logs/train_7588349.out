@@ -1,0 +1,206 @@
+Installing dependencies...
+Requirement already satisfied: hydra-core in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (1.3.2)
+Requirement already satisfied: omegaconf<2.4,>=2.2 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (2.3.0)
+Requirement already satisfied: antlr4-python3-runtime==4.9.* in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (4.9.3)
+Requirement already satisfied: packaging in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (25.0)
+Requirement already satisfied: PyYAML>=5.1.0 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from omegaconf<2.4,>=2.2->hydra-core) (6.0.2)
+Channels:
+ - conda-forge
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+# All requested packages already installed.
+
+Collecting git+https://github.com/ftshijt/pysepm.git
+  Cloning https://github.com/ftshijt/pysepm.git to /tmp/job.7588349/pip-req-build-b42nn57p
+  Resolved https://github.com/ftshijt/pysepm.git to commit e8336117d743adf59ba29ffb844297588e80831e
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Starting enhancement script...
+[2025-08-15 07:48:32,541][root][INFO] - Hydra config:
+paths:
+  root_dir: data/working_dir
+  echi_dir: data/chime9_echi
+  exp_dir: data/working_dir/experiments/ha-joint
+  evaluation_dir: data/working_dir/experiments/ha-joint/evaluation
+  enhancement_dir: data/working_dir/experiments/ha-joint/enhancement
+  train_ha_dir: data/working_dir/experiments/ha-joint/train_ha
+  train_aria_dir: data/working_dir/experiments/ha-joint/train_aria
+  enhancement_output_dir: data/working_dir/experiments/ha-joint/enhancement/{dataset}_submission
+  signal_id: '{session}.{device}.{pid}'
+  signal_dir: data/chime9_echi/{device}/{dataset}
+  echi_signal: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  ref_signal_dir: data/chime9_echi/ref/{dataset}
+  ref_signal_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  rainbow_signal_dir: data/chime9_echi/participant/{dataset}
+  rainbow_signal_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segment_info_dir: data/chime9_echi/metadata/ref/{dataset}
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  ref_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  train_input_dir: data/working_dir/train_segments/{dataset}/{device}
+  train_input_file: data/working_dir/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  train_rainbow_file: data/working_dir/participant/{dataset}/{pid}.wav
+  train_target_dir: data/working_dir/train_segments/{dataset}/{device}_ref
+  train_target_file: data/working_dir/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  enhancement_input_dir: data/working_dir/enhancement_inputs/{device}/{dataset}
+  enhancement_input_file: data/working_dir/enhancement_inputs/{device}/{dataset}/{session}{device}.wav
+  enhancement_raindow_dir: data/working_dir/enhancement_inputs/participant
+  enhancement_rainbow_file: data/working_dir/enhancement_inputs/participant/{pid}.wav
+  enhancement_output_file: data/working_dir/experiments/ha-joint/enhancement/{dataset}_submission/{session}.{device}.{pid}.wav
+shared:
+  exp_name: ha-joint
+  model_sample_rate: 16000
+  ref_sample_rate: 16000
+  signal_bitdepth: PCM_16
+  nchannels: 1
+unpack:
+  noisy_input_file: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  rainbow_input_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  ref_input_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  model_sample_rate: 16000
+  ref_sample_rate: 16000
+  noisy_output_dir: data/working_dir/train_segments/{dataset}/{device}
+  rainbow_output_file: data/working_dir/participant/{dataset}/{pid}.wav
+  ref_output_dir: data/working_dir/train_segments/{dataset}/{device}_ref
+  dataset:
+  - train
+  - dev
+  devices: ha
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+dataloading:
+  device: ha
+  noisy_signal: data/working_dir/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  ref_signal: data/working_dir/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  rainbow_signal: data/working_dir/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segments_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  joint_for:
+  - train
+  signal:
+    noisy_sr: 48000
+    ref_sr: 16000
+    spkid_sr: 48000
+  loader:
+    train:
+      batch_size: 1
+      num_workers: 4
+      shuffle: true
+      pin_memory: true
+    dev:
+      batch_size: 1
+      num_workers: 4
+      shuffle: false
+      pin_memory: true
+train:
+  exp_name: ha-joint
+  epochs: 100
+  checkpoint_interval: 2
+  lr: 1.0e-07
+  clip_grad_norm: 1.0
+  schedule_lr:
+    name: plateau_reduce
+    params:
+      mode: min
+      factor: 0.5
+      patience: 2
+      threshold: 0.01
+      min_lr: 1.0e-10
+  loss:
+    name: spec
+    kwargs:
+      fft_size: 1024
+      hop_size: 256
+      win_length: 1024
+      window: hann_window
+      w_sc: 1.0
+      w_log_mag: 1.0
+      w_lin_mag: 0.0
+      w_phs: 0.0
+      sample_rate: null
+      scale: null
+      n_bins: null
+      perceptual_weighting: false
+      scale_invariance: true
+      eps: 1.0e-08
+      output: loss
+      reduction: mean
+      mag_distance: L1
+  run: true
+model:
+  name: baseline
+  input:
+    sample_rate: 16000
+    channels: 4
+    rms: 0.0
+    use_spkid: true
+    type: stft
+    stft:
+      n_fft: 128
+      win_length: 128
+      hop_length: 64
+      window: hann
+  params:
+    n_srcs: 1
+    n_imics: 4
+    n_layers: 3
+    lstm_hidden_units: 128
+    attn_n_head: 4
+    attn_qk_output_channel: 128
+    emb_dim: 64
+    emb_ks: 4
+    emb_hs: 1
+    activation: prelu
+    eps: 1.0e-05
+wandb:
+  entity: renzodamian
+  project: CHiME9-ECHI
+device: ha
+audio_channels: 4
+model_sample_rate: 16000
+ref_sample_rate: 16000
+debug: false
+train_dir: data/working_dir/experiments/ha-joint/train_ha
+
+{'noisy_input_file': '${..paths.echi_signal}', 'rainbow_input_file': '${..paths.rainbow_signal_file}', 'ref_input_file': '${..paths.ref_signal_file}', 'segment_info_file': '${..paths.segment_info_file}', 'model_sample_rate': '${..model_sample_rate}', 'ref_sample_rate': '${..ref_sample_rate}', 'noisy_output_dir': '${..paths.train_input_dir}', 'rainbow_output_file': '${..paths.train_rainbow_file}', 'ref_output_dir': '${..paths.train_target_dir}', 'dataset': ['train', 'dev'], 'devices': '${..device}', 'sessions_file': '${..paths.sessions_file}', 'run': True}
+[2025-08-15 07:48:32,542][root][INFO] - Preparing the ECHI dataset
+[2025-08-15 07:48:32,560][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P019.wav not found
+[2025-08-15 07:48:32,577][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P024.wav not found
+[2025-08-15 07:48:32,593][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P121.wav not found
+[2025-08-15 07:48:32,596][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P087.wav not found
+[2025-08-15 07:48:32,610][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P083.wav not found
+[2025-08-15 07:48:32,618][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P119.wav not found
+  0%|          | 0/120 [00:00<?, ?it/s]  1%|          | 1/120 [00:00<00:17,  6.74it/s]  2%|▏         | 2/120 [00:00<00:15,  7.48it/s]  2%|▎         | 3/120 [00:00<00:14,  8.21it/s]  3%|▎         | 4/120 [00:00<00:14,  8.14it/s]  4%|▍         | 5/120 [00:00<00:13,  8.53it/s]  6%|▌         | 7/120 [00:00<00:09, 11.56it/s]  8%|▊         | 9/120 [00:00<00:09, 11.65it/s]  9%|▉         | 11/120 [00:04<01:22,  1.33it/s] 10%|█         | 12/120 [00:04<01:06,  1.63it/s] 12%|█▏        | 14/120 [00:04<00:43,  2.43it/s] 13%|█▎        | 16/120 [00:05<00:31,  3.33it/s] 15%|█▌        | 18/120 [00:05<00:23,  4.43it/s] 17%|█▋        | 20/120 [00:05<00:17,  5.65it/s] 18%|█▊        | 22/120 [00:05<00:14,  6.77it/s] 20%|██        | 24/120 [00:05<00:12,  7.78it/s] 22%|██▏       | 26/120 [00:08<00:54,  1.72it/s] 22%|██▎       | 27/120 [00:12<01:38,  1.05s/it] 23%|██▎       | 28/120 [00:16<02:32,  1.65s/it] 24%|██▍       | 29/120 [00:19<02:57,  1.95s/it] 25%|██▌       | 30/120 [00:22<03:22,  2.25s/it] 26%|██▌       | 31/120 [00:25<03:54,  2.63s/it] 27%|██▋       | 32/120 [00:29<04:02,  2.76s/it] 28%|██▊       | 33/120 [00:32<04:05,  2.82s/it] 28%|██▊       | 34/120 [00:35<04:15,  2.97s/it] 29%|██▉       | 35/120 [00:38<04:12,  2.97s/it] 30%|███       | 36/120 [00:41<04:06,  2.94s/it] 31%|███       | 37/120 [00:44<04:16,  3.09s/it] 32%|███▏      | 38/120 [00:47<04:12,  3.07s/it] 32%|███▎      | 39/120 [00:50<04:02,  2.99s/it] 33%|███▎      | 40/120 [00:54<04:19,  3.25s/it] 34%|███▍      | 41/120 [00:57<04:09,  3.15s/it] 35%|███▌      | 42/120 [01:00<03:57,  3.05s/it] 36%|███▌      | 43/120 [01:03<04:08,  3.23s/it] 37%|███▋      | 44/120 [01:06<04:02,  3.19s/it] 38%|███▊      | 45/120 [01:10<04:05,  3.28s/it] 38%|███▊      | 46/120 [01:14<04:14,  3.44s/it] 39%|███▉      | 47/120 [01:17<04:01,  3.30s/it] 40%|████      | 48/120 [01:20<03:50,  3.20s/it] 41%|████      | 49/120 [01:23<03:49,  3.23s/it] 42%|████▏     | 50/120 [01:26<03:41,  3.17s/it] 42%|████▎     | 51/120 [01:29<03:36,  3.13s/it] 43%|████▎     | 52/120 [01:33<03:43,  3.29s/it] 44%|████▍     | 53/120 [01:35<03:30,  3.14s/it] 45%|████▌     | 54/120 [01:38<03:19,  3.02s/it] 46%|████▌     | 55/120 [01:42<03:26,  3.18s/it] 47%|████▋     | 56/120 [01:45<03:19,  3.12s/it] 48%|████▊     | 57/120 [01:48<03:14,  3.09s/it] 48%|████▊     | 58/120 [01:51<03:21,  3.25s/it] 49%|████▉     | 59/120 [01:54<03:09,  3.11s/it] 50%|█████     | 60/120 [01:57<03:03,  3.06s/it] 51%|█████     | 61/120 [02:01<03:13,  3.27s/it] 52%|█████▏    | 62/120 [02:04<03:03,  3.17s/it] 52%|█████▎    | 63/120 [02:07<02:57,  3.11s/it] 53%|█████▎    | 64/120 [02:10<02:59,  3.21s/it] 54%|█████▍    | 65/120 [02:13<02:53,  3.15s/it] 55%|█████▌    | 66/120 [02:16<02:47,  3.11s/it] 56%|█████▌    | 67/120 [02:20<02:54,  3.28s/it] 57%|█████▋    | 68/120 [02:23<02:47,  3.22s/it] 57%|█████▊    | 69/120 [02:26<02:40,  3.14s/it] 58%|█████▊    | 70/120 [02:29<02:34,  3.09s/it] 59%|█████▉    | 71/120 [02:31<02:21,  2.88s/it] 60%|██████    | 72/120 [02:34<02:12,  2.76s/it] 61%|██████    | 73/120 [02:38<02:37,  3.34s/it] 62%|██████▏   | 74/120 [02:42<02:31,  3.28s/it] 62%|██████▎   | 75/120 [02:45<02:22,  3.18s/it] 63%|██████▎   | 76/120 [02:48<02:23,  3.26s/it] 64%|██████▍   | 77/120 [02:51<02:16,  3.17s/it] 65%|██████▌   | 78/120 [02:54<02:09,  3.08s/it] 66%|██████▌   | 79/120 [02:57<02:10,  3.17s/it] 67%|██████▋   | 80/120 [03:00<02:04,  3.11s/it] 68%|██████▊   | 81/120 [03:03<01:58,  3.04s/it] 68%|██████▊   | 82/120 [03:07<02:06,  3.33s/it] 69%|██████▉   | 83/120 [03:10<02:00,  3.26s/it] 70%|███████   | 84/120 [03:13<01:53,  3.16s/it] 71%|███████   | 85/120 [03:17<01:54,  3.28s/it] 72%|███████▏  | 86/120 [03:20<01:48,  3.18s/it] 72%|███████▎  | 87/120 [03:23<01:44,  3.18s/it] 73%|███████▎  | 88/120 [03:27<01:52,  3.53s/it] 74%|███████▍  | 89/120 [03:30<01:44,  3.37s/it] 75%|███████▌  | 90/120 [03:33<01:37,  3.26s/it] 76%|███████▌  | 91/120 [03:37<01:38,  3.40s/it] 77%|███████▋  | 92/120 [03:40<01:32,  3.30s/it] 78%|███████▊  | 93/120 [03:43<01:27,  3.26s/it] 78%|███████▊  | 94/120 [03:47<01:28,  3.39s/it] 79%|███████▉  | 95/120 [03:50<01:21,  3.24s/it] 80%|████████  | 96/120 [03:53<01:15,  3.17s/it] 81%|████████  | 97/120 [03:57<01:18,  3.40s/it] 82%|████████▏ | 98/120 [04:00<01:12,  3.28s/it] 82%|████████▎ | 99/120 [04:03<01:07,  3.21s/it] 83%|████████▎ | 100/120 [04:06<01:07,  3.36s/it] 84%|████████▍ | 101/120 [04:09<01:01,  3.26s/it] 85%|████████▌ | 102/120 [04:12<00:57,  3.20s/it] 86%|████████▌ | 103/120 [04:17<00:59,  3.49s/it] 87%|████████▋ | 104/120 [04:19<00:52,  3.30s/it] 88%|████████▊ | 105/120 [04:22<00:47,  3.17s/it] 88%|████████▊ | 106/120 [04:26<00:45,  3.26s/it] 89%|████████▉ | 107/120 [04:29<00:40,  3.15s/it] 90%|█████████ | 108/120 [04:32<00:37,  3.15s/it] 91%|█████████ | 109/120 [04:35<00:36,  3.29s/it] 92%|█████████▏| 110/120 [04:39<00:32,  3.22s/it] 92%|█████████▎| 111/120 [04:42<00:28,  3.19s/it] 93%|█████████▎| 112/120 [04:46<00:27,  3.44s/it] 94%|█████████▍| 113/120 [04:49<00:23,  3.31s/it] 95%|█████████▌| 114/120 [04:52<00:19,  3.17s/it] 96%|█████████▌| 115/120 [04:56<00:17,  3.48s/it] 97%|█████████▋| 116/120 [04:59<00:13,  3.38s/it] 98%|█████████▊| 117/120 [05:02<00:09,  3.27s/it] 98%|█████████▊| 118/120 [05:06<00:06,  3.40s/it] 99%|█████████▉| 119/120 [05:09<00:03,  3.26s/it]100%|██████████| 120/120 [05:12<00:00,  3.18s/it]100%|██████████| 120/120 [05:12<00:00,  2.60s/it]
+  0%|          | 0/120 [00:00<?, ?it/s]  1%|          | 1/120 [00:00<01:14,  1.60it/s]  2%|▏         | 2/120 [00:01<01:10,  1.67it/s]  2%|▎         | 3/120 [00:01<01:06,  1.76it/s]  3%|▎         | 4/120 [00:02<01:07,  1.71it/s]  4%|▍         | 5/120 [00:03<01:49,  1.05it/s]  5%|▌         | 6/120 [00:04<01:38,  1.16it/s]  6%|▌         | 7/120 [00:05<01:20,  1.41it/s]  7%|▋         | 8/120 [00:05<01:12,  1.55it/s]  8%|▊         | 9/120 [00:06<01:07,  1.64it/s]  8%|▊         | 10/120 [00:06<01:07,  1.64it/s]  9%|▉         | 11/120 [00:07<01:03,  1.71it/s] 10%|█         | 12/120 [00:07<00:59,  1.81it/s] 11%|█         | 13/120 [00:08<01:10,  1.53it/s] 12%|█▏        | 14/120 [00:08<01:00,  1.74it/s] 12%|█▎        | 15/120 [00:09<01:01,  1.69it/s] 13%|█▎        | 16/120 [00:10<01:05,  1.58it/s] 14%|█▍        | 17/120 [00:10<00:56,  1.84it/s] 15%|█▌        | 18/120 [00:11<00:57,  1.77it/s] 16%|█▌        | 19/120 [00:11<00:54,  1.85it/s] 17%|█▋        | 20/120 [00:12<00:57,  1.75it/s] 18%|█▊        | 21/120 [00:12<00:51,  1.93it/s] 18%|█▊        | 22/120 [00:13<00:52,  1.88it/s] 19%|█▉        | 23/120 [00:13<00:49,  1.97it/s] 20%|██        | 24/120 [00:14<00:57,  1.68it/s] 21%|██        | 25/120 [00:15<01:00,  1.57it/s] 22%|██▏       | 26/120 [00:15<00:58,  1.62it/s] 22%|██▎       | 27/120 [00:17<01:34,  1.02s/it] 23%|██▎       | 28/120 [00:18<01:19,  1.16it/s] 24%|██▍       | 29/120 [00:18<01:08,  1.33it/s] 25%|██▌       | 30/120 [00:19<01:03,  1.41it/s] 26%|██▌       | 31/120 [00:19<00:56,  1.56it/s] 27%|██▋       | 32/120 [00:22<01:34,  1.08s/it] 28%|██▊       | 33/120 [00:22<01:16,  1.14it/s] 28%|██▊       | 34/120 [00:23<01:07,  1.27it/s] 29%|██▉       | 35/120 [00:23<01:02,  1.36it/s] 30%|███       | 36/120 [00:24<00:57,  1.46it/s] 31%|███       | 37/120 [00:25<01:07,  1.23it/s] 32%|███▏      | 38/120 [00:25<01:03,  1.30it/s] 32%|███▎      | 39/120 [00:26<00:57,  1.42it/s] 33%|███▎      | 40/120 [00:27<00:51,  1.55it/s] 34%|███▍      | 41/120 [00:27<00:51,  1.53it/s] 35%|███▌      | 42/120 [00:28<00:47,  1.63it/s] 36%|███▌      | 43/120 [00:28<00:49,  1.56it/s] 37%|███▋      | 44/120 [00:29<00:48,  1.57it/s] 38%|███▊      | 45/120 [00:30<00:47,  1.59it/s] 38%|███▊      | 46/120 [00:30<00:42,  1.75it/s] 39%|███▉      | 47/120 [00:31<00:39,  1.84it/s] 40%|████      | 48/120 [00:31<00:40,  1.77it/s] 41%|████      | 49/120 [00:33<00:55,  1.28it/s] 42%|████▏     | 50/120 [00:33<00:50,  1.39it/s] 42%|████▎     | 51/120 [00:34<00:45,  1.52it/s] 43%|████▎     | 52/120 [00:34<00:40,  1.67it/s] 44%|████▍     | 53/120 [00:34<00:35,  1.90it/s] 45%|████▌     | 54/120 [00:35<00:33,  1.99it/s] 46%|████▌     | 55/120 [00:35<00:33,  1.97it/s] 47%|████▋     | 56/120 [00:36<00:32,  1.95it/s] 48%|████▊     | 57/120 [00:36<00:32,  1.91it/s] 48%|████▊     | 58/120 [00:37<00:33,  1.88it/s] 49%|████▉     | 59/120 [00:37<00:30,  2.02it/s] 50%|█████     | 60/120 [00:38<00:28,  2.13it/s] 51%|█████     | 61/120 [00:38<00:30,  1.92it/s] 52%|█████▏    | 62/120 [00:39<00:30,  1.93it/s] 52%|█████▎    | 63/120 [00:39<00:29,  1.95it/s] 53%|█████▎    | 64/120 [00:40<00:28,  1.97it/s] 54%|█████▍    | 65/120 [00:41<00:28,  1.93it/s] 55%|█████▌    | 66/120 [00:41<00:27,  1.99it/s] 56%|█████▌    | 67/120 [00:41<00:26,  2.00it/s] 57%|█████▋    | 68/120 [00:42<00:26,  1.97it/s] 57%|█████▊    | 69/120 [00:47<01:39,  1.94s/it] 58%|█████▊    | 70/120 [00:48<01:12,  1.44s/it] 59%|█████▉    | 71/120 [00:48<00:55,  1.12s/it] 60%|██████    | 72/120 [00:48<00:44,  1.07it/s] 61%|██████    | 73/120 [00:49<00:41,  1.14it/s] 62%|██████▏   | 74/120 [00:50<00:35,  1.29it/s] 62%|██████▎   | 75/120 [00:50<00:31,  1.41it/s] 63%|██████▎   | 76/120 [00:51<00:27,  1.60it/s] 64%|██████▍   | 77/120 [00:52<00:30,  1.43it/s] 65%|██████▌   | 78/120 [00:52<00:26,  1.59it/s] 66%|██████▌   | 79/120 [00:52<00:22,  1.80it/s] 67%|██████▋   | 80/120 [00:53<00:22,  1.81it/s] 68%|██████▊   | 81/120 [00:53<00:19,  1.98it/s] 68%|██████▊   | 82/120 [00:54<00:20,  1.90it/s] 69%|██████▉   | 83/120 [00:55<00:22,  1.67it/s] 70%|███████   | 84/120 [00:55<00:21,  1.67it/s] 71%|███████   | 85/120 [00:56<00:20,  1.74it/s] 72%|███████▏  | 86/120 [00:56<00:18,  1.84it/s] 72%|███████▎  | 87/120 [00:57<00:16,  2.03it/s] 73%|███████▎  | 88/120 [00:57<00:15,  2.06it/s] 74%|███████▍  | 89/120 [00:58<00:14,  2.09it/s] 75%|███████▌  | 90/120 [00:58<00:14,  2.03it/s] 76%|███████▌  | 91/120 [00:59<00:14,  1.97it/s] 77%|███████▋  | 92/120 [00:59<00:14,  1.87it/s] 78%|███████▊  | 93/120 [01:00<00:14,  1.92it/s] 78%|███████▊  | 94/120 [01:00<00:13,  1.89it/s] 79%|███████▉  | 95/120 [01:01<00:12,  1.98it/s] 80%|████████  | 96/120 [01:01<00:12,  1.99it/s] 81%|████████  | 97/120 [01:02<00:12,  1.85it/s] 82%|████████▏ | 98/120 [01:02<00:12,  1.82it/s] 82%|████████▎ | 99/120 [01:03<00:11,  1.79it/s] 83%|████████▎ | 100/120 [01:04<00:11,  1.70it/s] 84%|████████▍ | 101/120 [01:04<00:10,  1.85it/s] 85%|████████▌ | 102/120 [01:11<00:46,  2.58s/it] 86%|████████▌ | 103/120 [01:12<00:33,  1.95s/it] 87%|████████▋ | 104/120 [01:12<00:23,  1.47s/it] 88%|████████▊ | 105/120 [01:13<00:17,  1.15s/it] 88%|████████▊ | 106/120 [01:13<00:13,  1.01it/s] 89%|████████▉ | 107/120 [01:14<00:11,  1.15it/s] 90%|█████████ | 108/120 [01:15<00:09,  1.22it/s] 91%|█████████ | 109/120 [01:15<00:07,  1.39it/s] 92%|█████████▏| 110/120 [01:16<00:06,  1.50it/s] 92%|█████████▎| 111/120 [01:16<00:05,  1.56it/s] 93%|█████████▎| 112/120 [01:17<00:05,  1.57it/s] 94%|█████████▍| 113/120 [01:17<00:04,  1.57it/s] 95%|█████████▌| 114/120 [01:18<00:03,  1.67it/s] 96%|█████████▌| 115/120 [01:19<00:03,  1.64it/s] 97%|█████████▋| 116/120 [01:19<00:02,  1.67it/s] 98%|█████████▊| 117/120 [01:20<00:01,  1.64it/s] 98%|█████████▊| 118/120 [01:20<00:01,  1.65it/s] 99%|█████████▉| 119/120 [01:21<00:00,  1.80it/s]100%|██████████| 120/120 [01:21<00:00,  1.80it/s]100%|██████████| 120/120 [01:21<00:00,  1.47it/s]
+/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/torch_stoi/stoi.py:77: UserWarning: "sinc_interpolation" resampling method name is being deprecated and replaced by "sinc_interp_hann" in the next release. The default behavior remains unchanged.
+  self.resample = torchaudio.transforms.Resample(
+n_srcs: 1 (number of output sources/speakers.)
+Error executing job with overrides: ['device=ha', 'shared.exp_name=ha-joint', 'dataloading.joint_for=[train]']
+Traceback (most recent call last):
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/run_train.py", line 22, in main
+    run(
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/scripts/train/train_script.py", line 189, in run
+    gromit.start_training()
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/src/train/gromit.py", line 75, in start_training
+    wandb.init(
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1620, in init
+    wandb._sentry.reraise(e)
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/analytics/sentry.py", line 157, in reraise
+    raise exc.with_traceback(sys.exc_info()[2])
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 1548, in init
+    wi.maybe_login(init_settings)
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/sdk/wandb_init.py", line 191, in maybe_login
+    wandb_login._login(
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 315, in _login
+    key, key_status = wlogin.prompt_api_key(referrer=referrer)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/wandb/sdk/wandb_login.py", line 243, in prompt_api_key
+    raise UsageError("api_key not configured (no-tty). call " + directive)
+wandb.errors.errors.UsageError: api_key not configured (no-tty). call wandb.login(key=[your_api_key])
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+Job completed!

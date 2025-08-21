@@ -1,0 +1,226 @@
+Installing dependencies...
+Requirement already satisfied: hydra-core in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (1.3.2)
+Requirement already satisfied: omegaconf<2.4,>=2.2 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (2.3.0)
+Requirement already satisfied: antlr4-python3-runtime==4.9.* in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (4.9.3)
+Requirement already satisfied: packaging in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from hydra-core) (25.0)
+Requirement already satisfied: PyYAML>=5.1.0 in /users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages (from omegaconf<2.4,>=2.2->hydra-core) (6.0.2)
+Channels:
+ - conda-forge
+ - defaults
+Platform: linux-64
+Collecting package metadata (repodata.json): ...working... done
+Solving environment: ...working... done
+
+# All requested packages already installed.
+
+Collecting git+https://github.com/ftshijt/pysepm.git
+  Cloning https://github.com/ftshijt/pysepm.git to /tmp/job.7588509/pip-req-build-vo9pao6b
+  Resolved https://github.com/ftshijt/pysepm.git to commit e8336117d743adf59ba29ffb844297588e80831e
+  Preparing metadata (pyproject.toml): started
+  Preparing metadata (pyproject.toml): finished with status 'done'
+Starting enhancement script...
+[2025-08-15 10:35:17,084][root][INFO] - Hydra config:
+paths:
+  root_dir: data/working_dir
+  echi_dir: data/chime9_echi
+  exp_dir: data/working_dir/experiments/ha-joint
+  evaluation_dir: data/working_dir/experiments/ha-joint/evaluation
+  enhancement_dir: data/working_dir/experiments/ha-joint/enhancement
+  train_ha_dir: data/working_dir/experiments/ha-joint/train_ha
+  train_aria_dir: data/working_dir/experiments/ha-joint/train_aria
+  enhancement_output_dir: data/working_dir/experiments/ha-joint/enhancement/{dataset}_submission
+  signal_id: '{session}.{device}.{pid}'
+  signal_dir: data/chime9_echi/{device}/{dataset}
+  echi_signal: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  ref_signal_dir: data/chime9_echi/ref/{dataset}
+  ref_signal_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  rainbow_signal_dir: data/chime9_echi/participant/{dataset}
+  rainbow_signal_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segment_info_dir: data/chime9_echi/metadata/ref/{dataset}
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  ref_segment_dir: data/working_dir/ref_segments/{dataset}/{device}/{segment_type}
+  train_input_dir: data/working_dir/train_segments/{dataset}/{device}
+  train_input_file: data/working_dir/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  train_rainbow_file: data/working_dir/participant/{dataset}/{pid}.wav
+  train_target_dir: data/working_dir/train_segments/{dataset}/{device}_ref
+  train_target_file: data/working_dir/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  enhancement_input_dir: data/working_dir/enhancement_inputs/{device}/{dataset}
+  enhancement_input_file: data/working_dir/enhancement_inputs/{device}/{dataset}/{session}{device}.wav
+  enhancement_raindow_dir: data/working_dir/enhancement_inputs/participant
+  enhancement_rainbow_file: data/working_dir/enhancement_inputs/participant/{pid}.wav
+  enhancement_output_file: data/working_dir/experiments/ha-joint/enhancement/{dataset}_submission/{session}.{device}.{pid}.wav
+shared:
+  exp_name: ha-joint
+  model_sample_rate: 16000
+  ref_sample_rate: 16000
+  signal_bitdepth: PCM_16
+  nchannels: 1
+unpack:
+  noisy_input_file: data/chime9_echi/{device}/{dataset}/{session}.{device}.wav
+  rainbow_input_file: data/chime9_echi/participant/{dataset}/{pid}.wav
+  ref_input_file: data/chime9_echi/ref/{dataset}/{session}.{device}.{pid}.wav
+  segment_info_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  model_sample_rate: 16000
+  ref_sample_rate: 16000
+  noisy_output_dir: data/working_dir/train_segments/{dataset}/{device}
+  rainbow_output_file: data/working_dir/participant/{dataset}/{pid}.wav
+  ref_output_dir: data/working_dir/train_segments/{dataset}/{device}_ref
+  dataset:
+  - train
+  - dev
+  devices: ha
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  run: true
+dataloading:
+  device: ha
+  noisy_signal: data/working_dir/train_segments/{dataset}/{device}/{session}.{device}.{pid}.{segment}.wav
+  ref_signal: data/working_dir/train_segments/{dataset}/{device}_ref/{session}.{device}.{pid}.{segment}.wav
+  rainbow_signal: data/working_dir/participant/{dataset}/{pid}.wav
+  sessions_file: data/chime9_echi/metadata/sessions.{dataset}.csv
+  segments_file: data/chime9_echi/metadata/ref/{dataset}/{session}.{device}.{pid}.csv
+  joint_for:
+  - train
+  signal:
+    noisy_sr: 48000
+    ref_sr: 16000
+    spkid_sr: 48000
+  loader:
+    train:
+      batch_size: 1
+      num_workers: 4
+      shuffle: true
+      pin_memory: true
+    dev:
+      batch_size: 1
+      num_workers: 4
+      shuffle: false
+      pin_memory: true
+train:
+  exp_name: ha-joint
+  epochs: 100
+  checkpoint_interval: 2
+  lr: 1.0e-07
+  clip_grad_norm: 1.0
+  schedule_lr:
+    name: plateau_reduce
+    params:
+      mode: min
+      factor: 0.5
+      patience: 2
+      threshold: 0.01
+      min_lr: 1.0e-10
+  loss:
+    name: spec
+    kwargs:
+      fft_size: 1024
+      hop_size: 256
+      win_length: 1024
+      window: hann_window
+      w_sc: 1.0
+      w_log_mag: 1.0
+      w_lin_mag: 0.0
+      w_phs: 0.0
+      sample_rate: null
+      scale: null
+      n_bins: null
+      perceptual_weighting: false
+      scale_invariance: true
+      eps: 1.0e-08
+      output: loss
+      reduction: mean
+      mag_distance: L1
+  run: true
+model:
+  name: baseline
+  input:
+    sample_rate: 16000
+    channels: 4
+    rms: 0.0
+    use_spkid: true
+    type: stft
+    stft:
+      n_fft: 128
+      win_length: 128
+      hop_length: 64
+      window: hann
+  params:
+    n_srcs: 1
+    n_imics: 4
+    n_layers: 3
+    lstm_hidden_units: 128
+    attn_n_head: 4
+    attn_qk_output_channel: 128
+    emb_dim: 64
+    emb_ks: 4
+    emb_hs: 1
+    activation: prelu
+    eps: 1.0e-05
+wandb:
+  entity: renzodamian
+  project: CHiME9-ECHI
+device: ha
+audio_channels: 4
+model_sample_rate: 16000
+ref_sample_rate: 16000
+debug: false
+train_dir: data/working_dir/experiments/ha-joint/train_ha
+
+{'noisy_input_file': '${..paths.echi_signal}', 'rainbow_input_file': '${..paths.rainbow_signal_file}', 'ref_input_file': '${..paths.ref_signal_file}', 'segment_info_file': '${..paths.segment_info_file}', 'model_sample_rate': '${..model_sample_rate}', 'ref_sample_rate': '${..ref_sample_rate}', 'noisy_output_dir': '${..paths.train_input_dir}', 'rainbow_output_file': '${..paths.train_rainbow_file}', 'ref_output_dir': '${..paths.train_target_dir}', 'dataset': ['train', 'dev'], 'devices': '${..device}', 'sessions_file': '${..paths.sessions_file}', 'run': True}
+[2025-08-15 10:35:17,097][root][INFO] - Preparing the ECHI dataset
+[2025-08-15 10:35:17,135][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P119.wav not found
+[2025-08-15 10:35:17,180][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P121.wav not found
+[2025-08-15 10:35:17,181][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P087.wav not found
+[2025-08-15 10:35:17,192][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P024.wav not found
+[2025-08-15 10:35:17,196][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P083.wav not found
+[2025-08-15 10:35:17,214][root][WARNING] - Rainbow file data/chime9_echi/participant/train/P019.wav not found
+  0%|          | 0/120 [00:00<?, ?it/s]  1%|          | 1/120 [00:00<00:14,  7.95it/s]  2%|▏         | 2/120 [00:00<00:15,  7.53it/s]  2%|▎         | 3/120 [00:00<00:14,  8.04it/s]  3%|▎         | 4/120 [00:00<00:14,  8.12it/s]  5%|▌         | 6/120 [00:00<00:12,  9.30it/s]  7%|▋         | 8/120 [00:00<00:09, 11.65it/s]  8%|▊         | 10/120 [00:01<00:10, 10.89it/s] 10%|█         | 12/120 [00:01<00:10, 10.43it/s] 12%|█▏        | 14/120 [00:01<00:09, 10.84it/s] 13%|█▎        | 16/120 [00:01<00:09, 10.86it/s] 15%|█▌        | 18/120 [00:01<00:09, 10.59it/s] 17%|█▋        | 20/120 [00:01<00:08, 11.12it/s] 18%|█▊        | 22/120 [00:02<00:08, 11.22it/s] 20%|██        | 24/120 [00:02<00:10,  9.43it/s] 21%|██        | 25/120 [00:02<00:10,  9.21it/s] 22%|██▎       | 27/120 [00:02<00:09,  9.42it/s] 24%|██▍       | 29/120 [00:02<00:09,  9.70it/s] 25%|██▌       | 30/120 [00:03<00:09,  9.44it/s] 26%|██▌       | 31/120 [00:03<00:09,  9.26it/s] 27%|██▋       | 32/120 [00:03<00:09,  9.33it/s] 28%|██▊       | 34/120 [00:03<00:08, 10.00it/s] 29%|██▉       | 35/120 [00:03<00:09,  9.27it/s] 31%|███       | 37/120 [00:03<00:08,  9.41it/s] 32%|███▎      | 39/120 [00:03<00:08, 10.04it/s] 34%|███▍      | 41/120 [00:04<00:07, 10.65it/s] 36%|███▌      | 43/120 [00:04<00:07, 10.65it/s] 38%|███▊      | 45/120 [00:04<00:08,  8.97it/s] 39%|███▉      | 47/120 [00:04<00:07,  9.13it/s] 41%|████      | 49/120 [00:04<00:07, 10.09it/s] 42%|████▎     | 51/120 [00:05<00:07,  9.23it/s] 44%|████▍     | 53/120 [00:05<00:06, 10.52it/s] 46%|████▌     | 55/120 [00:05<00:06, 10.75it/s] 48%|████▊     | 57/120 [00:05<00:05, 10.80it/s] 49%|████▉     | 59/120 [00:05<00:05, 11.64it/s] 51%|█████     | 61/120 [00:06<00:05, 11.35it/s] 52%|█████▎    | 63/120 [00:06<00:04, 11.67it/s] 54%|█████▍    | 65/120 [00:06<00:04, 12.19it/s] 56%|█████▌    | 67/120 [00:06<00:04, 12.41it/s] 57%|█████▊    | 69/120 [00:06<00:04, 11.43it/s] 59%|█████▉    | 71/120 [00:06<00:03, 12.79it/s] 61%|██████    | 73/120 [00:07<00:04, 11.26it/s] 62%|██████▎   | 75/120 [00:07<00:04, 10.75it/s] 64%|██████▍   | 77/120 [00:07<00:03, 11.35it/s] 66%|██████▌   | 79/120 [00:07<00:03, 12.27it/s] 68%|██████▊   | 81/120 [00:07<00:03, 12.17it/s] 69%|██████▉   | 83/120 [00:07<00:03, 10.62it/s] 71%|███████   | 85/120 [00:08<00:03, 10.81it/s] 73%|███████▎  | 88/120 [00:08<00:02, 12.78it/s] 75%|███████▌  | 90/120 [00:08<00:02, 11.72it/s] 77%|███████▋  | 92/120 [00:08<00:02, 11.45it/s] 78%|███████▊  | 94/120 [00:08<00:02, 11.09it/s] 80%|████████  | 96/120 [00:09<00:02, 11.36it/s] 82%|████████▏ | 98/120 [00:09<00:02, 10.84it/s] 83%|████████▎ | 100/120 [00:09<00:01, 10.41it/s] 85%|████████▌ | 102/120 [00:09<00:01, 10.47it/s] 87%|████████▋ | 104/120 [00:09<00:01, 11.49it/s] 88%|████████▊ | 106/120 [00:09<00:01, 11.52it/s] 90%|█████████ | 108/120 [00:10<00:01, 11.19it/s] 92%|█████████▏| 110/120 [00:10<00:00, 11.10it/s] 93%|█████████▎| 112/120 [00:10<00:00,  9.92it/s] 95%|█████████▌| 114/120 [00:10<00:00,  9.65it/s] 96%|█████████▌| 115/120 [00:10<00:00,  9.59it/s] 97%|█████████▋| 116/120 [00:11<00:00,  9.40it/s] 98%|█████████▊| 118/120 [00:11<00:00, 10.00it/s]100%|██████████| 120/120 [00:11<00:00,  9.80it/s]100%|██████████| 120/120 [00:11<00:00, 10.52it/s]
+  0%|          | 0/120 [00:00<?, ?it/s]  2%|▏         | 2/120 [00:00<00:11, 10.05it/s]  3%|▎         | 4/120 [00:00<00:09, 11.77it/s]  5%|▌         | 6/120 [00:00<00:09, 11.92it/s]  8%|▊         | 9/120 [00:00<00:07, 14.28it/s]  9%|▉         | 11/120 [00:00<00:08, 13.36it/s] 11%|█         | 13/120 [00:00<00:07, 13.51it/s] 12%|█▎        | 15/120 [00:01<00:07, 14.86it/s] 14%|█▍        | 17/120 [00:01<00:06, 15.11it/s] 16%|█▌        | 19/120 [00:01<00:06, 14.76it/s] 18%|█▊        | 21/120 [00:01<00:07, 13.90it/s] 19%|█▉        | 23/120 [00:01<00:07, 13.31it/s] 21%|██        | 25/120 [00:01<00:07, 12.13it/s] 22%|██▎       | 27/120 [00:02<00:08, 11.25it/s] 24%|██▍       | 29/120 [00:02<00:07, 11.47it/s] 26%|██▌       | 31/120 [00:02<00:07, 11.98it/s] 28%|██▊       | 33/120 [00:02<00:07, 11.93it/s] 29%|██▉       | 35/120 [00:02<00:07, 12.13it/s] 31%|███       | 37/120 [00:02<00:06, 12.15it/s] 32%|███▎      | 39/120 [00:03<00:06, 12.05it/s] 34%|███▍      | 41/120 [00:03<00:06, 12.76it/s] 36%|███▌      | 43/120 [00:03<00:05, 12.91it/s] 38%|███▊      | 45/120 [00:03<00:06, 11.82it/s] 39%|███▉      | 47/120 [00:03<00:05, 12.17it/s] 41%|████      | 49/120 [00:03<00:05, 13.65it/s] 42%|████▎     | 51/120 [00:03<00:05, 13.72it/s] 45%|████▌     | 54/120 [00:04<00:04, 16.24it/s] 47%|████▋     | 56/120 [00:04<00:04, 15.66it/s] 48%|████▊     | 58/120 [00:04<00:04, 14.83it/s] 50%|█████     | 60/120 [00:04<00:03, 15.89it/s] 52%|█████▏    | 62/120 [00:04<00:03, 15.30it/s] 53%|█████▎    | 64/120 [00:04<00:04, 13.94it/s] 55%|█████▌    | 66/120 [00:04<00:03, 14.71it/s] 57%|█████▋    | 68/120 [00:05<00:03, 13.50it/s] 58%|█████▊    | 70/120 [00:05<00:03, 14.52it/s] 60%|██████    | 72/120 [00:05<00:03, 14.40it/s] 62%|██████▏   | 74/120 [00:05<00:03, 12.39it/s] 63%|██████▎   | 76/120 [00:05<00:03, 13.08it/s] 65%|██████▌   | 78/120 [00:05<00:03, 13.93it/s] 67%|██████▋   | 80/120 [00:05<00:02, 15.14it/s] 68%|██████▊   | 82/120 [00:06<00:02, 14.72it/s] 70%|███████   | 84/120 [00:06<00:03, 11.98it/s] 72%|███████▏  | 86/120 [00:06<00:02, 12.87it/s] 74%|███████▍  | 89/120 [00:06<00:02, 14.35it/s] 76%|███████▌  | 91/120 [00:06<00:02, 14.36it/s] 78%|███████▊  | 93/120 [00:06<00:02, 13.15it/s] 79%|███████▉  | 95/120 [00:07<00:01, 14.13it/s] 81%|████████  | 97/120 [00:07<00:01, 13.09it/s] 82%|████████▎ | 99/120 [00:07<00:01, 13.06it/s] 84%|████████▍ | 101/120 [00:07<00:01, 12.23it/s] 86%|████████▌ | 103/120 [00:07<00:01, 12.82it/s] 88%|████████▊ | 106/120 [00:07<00:00, 14.66it/s] 90%|█████████ | 108/120 [00:08<00:00, 13.17it/s] 92%|█████████▏| 110/120 [00:08<00:00, 13.90it/s] 93%|█████████▎| 112/120 [00:08<00:00, 12.88it/s] 95%|█████████▌| 114/120 [00:08<00:00, 12.99it/s] 97%|█████████▋| 116/120 [00:08<00:00, 11.37it/s] 98%|█████████▊| 118/120 [00:08<00:00, 11.45it/s]100%|██████████| 120/120 [00:09<00:00, 12.01it/s]100%|██████████| 120/120 [00:09<00:00, 13.21it/s]
+/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/torch_stoi/stoi.py:77: UserWarning: "sinc_interpolation" resampling method name is being deprecated and replaced by "sinc_interp_hann" in the next release. The default behavior remains unchanged.
+  self.resample = torchaudio.transforms.Resample(
+wandb: Currently logged in as: renzodamian (rdamian) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in data/working_dir/experiments/ha-joint/train_ha/wandb/run-20250815_103541-j5td7zvv
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run train_ha
+wandb: ⭐️ View project at https://wandb.ai/renzodamian/CHiME9-ECHI
+wandb: 🚀 View run at https://wandb.ai/renzodamian/CHiME9-ECHI/runs/j5td7zvv
+n_srcs: 1 (number of output sources/speakers.)
+[2025-08-15 10:35:42,676][root][INFO] - Training
+[2025-08-15 10:35:43,166][root][INFO] - === BATCH DEBUG ===
+[2025-08-15 10:35:43,167][root][INFO] - Batch keys: ['id', 'fs', 'noisy', 'noisy_lens', 'target_all', 'target_lens_all', 'spkid_all', 'spkid_lens_all']
+[2025-08-15 10:35:43,167][root][INFO] - Batch ID: ['train_02_ha_seg031']
+[2025-08-15 10:35:43,167][root][INFO] - Multi-speaker mode: True
+[2025-08-15 10:35:43,337][root][INFO] - === MULTI-SPEAKER TRAINING DEBUG ===
+[2025-08-15 10:35:43,338][root][INFO] - noisy shape: torch.Size([1, 4, 41920])
+[2025-08-15 10:35:43,338][root][INFO] - spk_all shape: torch.Size([1, 3, 489920])
+[2025-08-15 10:35:43,338][root][INFO] - targ_all shape: torch.Size([1, 3, 41920])
+[2025-08-15 10:35:43,338][root][INFO] - noisy_tf shape: torch.Size([1, 4, 65, 656, 2])
+[2025-08-15 10:35:43,339][root][INFO] - spk_all_tf shape: torch.Size([1, 3, 65, 7656, 2])
+[2025-08-15 10:35:43,339][root][INFO] - spk_lens_all shape: torch.Size([1, 3])
+[2025-08-15 10:35:43,339][root][INFO] - spk_all_for_model shape: torch.Size([1, 3, 7656, 2, 65])
+[2025-08-15 10:35:43,340][root][INFO] - Model input channels: 4
+[2025-08-15 10:35:43,340][root][INFO] - STFT n_fft: 128, hop_length: 64
+[2025-08-15 10:35:43,340][root][INFO] - Device: cuda
+Error executing job with overrides: ['device=ha', 'shared.exp_name=ha-joint', 'dataloading.joint_for=[train]']
+Traceback (most recent call last):
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/run_train.py", line 22, in main
+    run(
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/scripts/train/train_script.py", line 253, in run
+    S_hat_c = model(
+              ^^^^^^
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/users/acp24red/.conda/envs/echi_recipe/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/parscratch/users/acp24red/CHiME9-ECHI/src/shared/CausalMCxTFGridNet.py", line 123, in forward
+    feat = feature.reshape(n_batch, 2 * mics, n_frames, n_freqs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: shape '[1, 8, 65, 656]' is invalid for input of size 170560
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mtrain_ha[0m at: [34mhttps://wandb.ai/renzodamian/CHiME9-ECHI/runs/j5td7zvv[0m
+Job completed!

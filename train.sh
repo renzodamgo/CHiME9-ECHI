@@ -2,7 +2,7 @@
 #
 #SLUdRM CONFIGURATION FOR A SINGLE, SEQUENTIAL JOB --- 
 #
-#SBATCH --job-name=eval 
+#SBATCH --job-name=train 
 #
 # --- ADD THIS LINE TO SELECT THE GPU PARTITION ---
 #SBATCH --partition=gpu
@@ -16,8 +16,8 @@
 #
 # --- LOGGING ---
 #
-#SBATCH --output=./stanage_logs/evaluation_%A.out
-#SBATCH --error=./stanage_logs/evaluation_%A.err
+#SBATCH --output=./stanage_logs/train_%A.out
+#SBATCH --error=./stanage_logs/train_%A.err
 # --- NOTIFICATIONS ---
 #SBATCH --mail-user=redamiangomez1@sheffield.ac.uk
 #SBATCH --mail-type=FAIL,END
@@ -31,6 +31,10 @@ eval "$(conda shell.bash hook)"
 # Activate environment
 conda activate echi_recipe
 
+# Add Wandb API KEY
+export WANDB_API_KEY=51b622235d92829d6361ce45296c77c501810656
+export WANDB_PROJECT=echi-train
+
 # Install missing dependencies
 echo "Installing dependencies..."
 pip install hydra-core
@@ -42,16 +46,16 @@ export CFLAGS="-std=c99"
 
 # Install pysepm if not already installed
 pip install git+https://github.com/ftshijt/pysepm.git --no-build-isolation --no-deps
+export HYDRA_FULL_ERROR=1
 export PYTHONPATH="$PWD/src:$PYTHONPATH"
 # Or alternatively, run from the project directory
 cd /mnt/parscratch/users/acp24red/CHiME9-ECHI
 echo "Starting enhancement script..."
 # Show error outputs on normal output to see all live updates on evaluation_%A.out
 exec 2>&1
-python run_evaluation.py \
-  evaluate.score_config=config/evaluation/metrics.yaml \
-  evaluate.devices='[ha]' \
-  report.devices='[ha]' \
-  report.segment_types='[individual,summed]'
+python run_train.py --config-name main_ha \
+  device=ha \
+  shared.exp_name=ha-joint \
+  dataloading.joint_for=[train] \
 
 echo "Job completed!"
