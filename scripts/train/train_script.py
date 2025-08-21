@@ -269,7 +269,7 @@ def run(
                     X_ref_c=X_ref_c,
                     Y_ref_c=Y_ref_c,
                     y_wav=targ_all,
-                    istft_fn=lambda C: stft.inverse(C),
+                    istft_fn=lambda C: stft.inverse(C.permute(0, 2, 1)),
                     lambda_mix=0.1,
                     lambda_xtalk=0.1,
                     use_sisdr=True,
