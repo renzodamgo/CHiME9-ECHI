@@ -12,6 +12,7 @@ from shared.core_utils import get_model, get_device
 from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
 from shared.signal_utils import STFTWrapper, match_length, prep_audio
+from torch.amp import autocast
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -309,7 +310,7 @@ def run(
 
                     return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
 
-                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+                with autocast("cuda", dtype=torch.bfloat16):
 
                     S_hat_c = model(
                         noisy_tf, spk_all_for_model, spk_lens_all

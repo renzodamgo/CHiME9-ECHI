@@ -165,8 +165,11 @@ class MCxTFGridNet(nn.Module):
 
             out = self.deconv(z)  # [B, n_srcs*2, T, F]
             out = out.view(n_batch, self.n_srcs, 2, n_frames, n_freqs)
-            out = torch.complex(out[:, :, 0], out[:, :, 1])  # [B, n_srcs, T, F]
-            return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]  (compat)
+            # Cast re/im to fp32, then pack into complex64
+            re = out[:, :, 0].to(torch.float32)
+            im = out[:, :, 1].to(torch.float32)
+            out = torch.complex(re, im)  # [B, n_srcs, T, F] complex64
+            return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]
 
         elif spk.ndim == 5:
             # [B, K, T, F, 2] -> flatten to [B*K, 2, T, F] for encoding
@@ -199,7 +202,9 @@ class MCxTFGridNet(nn.Module):
             # One stream per speaker (set config/model.n_srcs=1 for joint training)
             out = self.deconv(z)  # [B*K, 2, T, F] if n_srcs==1
             out = out.view(B, K, 2, n_frames, n_freqs)
-            out = torch.complex(out[:, :, 0], out[:, :, 1])  # [B, K, T, F]
+            re = out[:, :, 0].to(torch.float32)
+            im = out[:, :, 1].to(torch.float32)
+            out = torch.complex(re, im)  # [B, K, T, F] complex64
             return out
 
         else:
