@@ -319,18 +319,20 @@ def run(
 
                     return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
 
+                optimizer.zero_grad(set_to_none=True)
                 with autocast("cuda", dtype=torch.bfloat16):
-
-                    S_hat_c = model(
-                        noisy_tf, spk_all_for_model, spk_lens_all
-                    )  # [B, K, T, F] (complex)
-
-                    # Joint loss (use the tiny helper from earlier message or inline your own)
+                    S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                     loss, stats = joint_loss(
                         S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
 
-                processed = stft.inverse(S_hat_c)  # [B, K, Tw] for preview/saving
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(
+                    model.parameters(), train_cfg.clip_grad_norm
+                )
+                optimizer.step()
+
+                gromit.train_loss.update(loss.detach().item())
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
@@ -401,6 +403,7 @@ def run(
         )
 
         if do_checkpoint:
+            logging.info(f"=== CHECKPOINT {epoch} ===")
             model.eval()
             if debug:
                 loader = tqdm(devset, desc="Validation loop")
