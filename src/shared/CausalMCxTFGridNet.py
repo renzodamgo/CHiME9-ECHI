@@ -172,45 +172,48 @@ class MCxTFGridNet(nn.Module):
             return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]
 
         elif spk.ndim == 5:
-            # spk: [B, K, T, F, 2]  (RI last)
+            # spk: [B, K, T, F, 2], spec: [B, M, Tm, Fm, 2]
             B, K, T, F, _ = spk.shape
 
-            # ---- Encode enrollments (vectorized; light) ----
+            # --- Encode enrollments in parallel over BK ---
             spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(
                 B * K, 2, T, F
-            )  # [B*K, 2, T, F]
-            spk_feat = self.spk_conv(spk_feat)  # [B*K, C, T, F]
+            )  # [BK, 2, T, F]
+            # Use a 2-channel conv for RI enrollments (falls back to self.conv if needed)
+            spk_feat = (self.spk_conv if hasattr(self, "spk_conv") else self.conv)(
+                spk_feat
+            )
 
-            # Lens: accept [B] or [B,K]
+            # Lens: accept [B] or [B,K] and flatten to [BK]
             if spk_lens.ndim == 1:
                 spk_lens = spk_lens.unsqueeze(1).expand(B, K).reshape(B * K)
             else:
                 spk_lens = spk_lens.reshape(B * K)
 
-            e, _ = self.aux_enc(spk_feat, spk_lens)  # [B*K, C]
-            e = e.view(B, K, -1)  # [B, K, C]
+            e, _ = self.aux_enc(spk_feat, spk_lens)  # [BK, C]
 
-            # Joint K-speaker path assumes n_srcs == 1
-            assert self.n_srcs == 1, "K-speaker joint path assumes n_srcs=1"
+            # --- Tile mixture features to K speakers (parallel BK) ---
+            # z_mix: [B, C, Tm, Fm] -> [BK, C, Tm, Fm]
+            z = (
+                z_mix.unsqueeze(1)
+                .expand(B, K, *z_mix.shape[1:])
+                .reshape(B * K, *z_mix.shape[1:])
+            )
 
-            # ---- Process speakers sequentially (reuse z_mix; no B×K tiling) ----
-            outs = []
-            for k in range(K):
-                e_k = e[:, k, :]  # [B, C]
-                z = z_mix  # [B, C, Tm, Fm] from mixture
+            # --- Shared backbone conditioned by per-speaker embeddings ---
+            for i in range(self.n_layers):
+                z = self.fusions[i](e, z)  # e: [BK, C], z: [BK, C, Tm, Fm]
+                z = self.gridnets[i](z)
 
-                for i in range(self.n_layers):
-                    z = self.fusions[i](e_k, z)
-                    z = self.gridnets[i](z)
+            # --- Head & complex projection ---
+            out_ri = self.deconv(z)  # [BK, 2, Tm, Fm]
+            Tm, Fm = out_ri.shape[-2], out_ri.shape[-1]
+            out_ri = out_ri.view(B, K, 2, Tm, Fm)  # [B, K, 2, Tm, Fm]
 
-                out_k = self.deconv(z)  # [B, 2, Tm, Fm]
-                outs.append(out_k)
-
-            # [B, K, 2, Tm, Fm] -> complex [B, K, Tm, Fm] (BF16-safe)
-            out_ri = torch.stack(outs, dim=1)
+            # torch.complex doesn’t accept bf16; cast channels to fp32 first
             re = out_ri[:, :, 0].to(torch.float32)
             im = out_ri[:, :, 1].to(torch.float32)
-            out = torch.complex(re, im)  # [B, K, Tm, Fm]
+            out = torch.complex(re, im)  # [B, K, Tm, Fm] (complex64)
             return out
 
         else:
