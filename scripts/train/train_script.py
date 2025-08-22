@@ -225,9 +225,18 @@ def run(
         else:
             loader = trainset
 
-        for batch in loader:
+        try:
+            num_batches = len(loader)
+        except TypeError:
+            num_batches = None
+
+        for batch_idx, batch in enumerate(loader, start=1):
+            global_step = (epoch * (num_batches or 0)) + (batch_idx - 1)
+            bn = f"{batch_idx}" + (f"/{num_batches}" if num_batches else "")
             # Log batch keys to understand data structure
-            logging.info(f"=== BATCH DEBUG ===")
+            logging.info(
+                f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
+            )
             logging.info(f"Batch keys: {list(batch.keys())}")
             logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
 
