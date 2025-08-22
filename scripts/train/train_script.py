@@ -318,14 +318,7 @@ def run(
 
                     # Joint loss (use the tiny helper from earlier message or inline your own)
                     loss, stats = joint_loss(
-                        S_hat_c=S_hat_c,
-                        X_ref_c=X_ref_c,
-                        Y_ref_c=Y_ref_c,
-                        y_wav=targ_all,
-                        istft_fn=istft_fn_nd,
-                        lambda_mix=0.1,
-                        lambda_xtalk=0.1,
-                        use_sisdr=True,
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
 
                 processed = stft.inverse(
