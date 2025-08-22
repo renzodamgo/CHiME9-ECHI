@@ -98,7 +98,7 @@ class Gromit:
 
         train_loss = self.train_loss.get_average()
         out_string = f"{delim}Epoch {epoch+1} report"
-        out_string += f"{delim}Train loss: {train_loss:.2f}"
+        out_string += f"{delim}Train loss: {train_loss:.6f}"
         self.train_loss.reset(epoch)
 
         wlog[f"train_{self.loss_name}"] = train_loss
@@ -107,8 +107,8 @@ class Gromit:
         if do_ckpt:
             val_loss = self.val_loss.get_average()
             val_stoi = self.val_stoi.get_average()
-            out_string += f"{delim}Val loss: {val_loss:.2f}"
-            out_string += f"{delim}Val stoi: {val_stoi:.2f}"
+            out_string += f"{delim}Val loss: {val_loss:.6f}"
+            out_string += f"{delim}Val stoi: {val_stoi:.6f}"
             self.val_loss.reset(epoch)
             self.val_stoi.reset(epoch)
 
