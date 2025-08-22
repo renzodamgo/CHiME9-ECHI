@@ -4,13 +4,12 @@
 #
 #SBATCH --job-name=train 
 #
-# --- ADD THIS LINE TO SELECT THE GPU PARTITION ---
 #SBATCH --partition=gpu
-# --- REQUEST A GPU ---
+#SBATCH --qos=gpu
 #SBATCH --gres=gpu:1
+#SBATCH --mem=82G
 #
 #SBATCH --nodes=1
-#SBATCH --mem=16G
 #SBATCH --cpus-per-task=4
 #SBATCH --time=12:00:00
 #
