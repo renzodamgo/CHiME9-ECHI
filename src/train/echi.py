@@ -265,14 +265,14 @@ class ECHIJoint(ECHI):
         out = {"id": meta["id"]}
 
         # --- Noisy (C, Tw) ---
-        noisy, nfs = torchaudio.load(str(meta["noisy"]))         # [C, Tw]
+        noisy, nfs = torchaudio.load(str(meta["noisy"]))  # [C, Tw]
         Tw = noisy.shape[-1]
 
         # --- K targets -> [K, Tw], aligned to noisy ---
         targets, tfs_set = [], set()
         for p in meta["target_all"]:
-            t, tfs = torchaudio.load(str(p))                     # [1, L]
-            t = t.squeeze(0)                                     # [L]
+            t, tfs = torchaudio.load(str(p))  # [1, L]
+            t = t.squeeze(0)  # [L]
             L = t.shape[-1]
             if L > Tw:
                 t = t[..., :Tw]
@@ -282,13 +282,13 @@ class ECHIJoint(ECHI):
             tfs_set.add(tfs)
         assert len(tfs_set) == 1, f"Inconsistent fs for targets: {tfs_set}"
         tfs = tfs_set.pop()
-        targets = torch.stack(targets, dim=0)                    # [K, Tw]
+        targets = torch.stack(targets, dim=0)  # [K, Tw]
 
         # --- K enrollments (Rainbow) keep long -> [K, Tr_max] + per-speaker lens
         spks, sfs_set, spk_lens = [], set(), []
         for p in meta["spkid_all"]:
-            s, sfs = torchaudio.load(str(p))                     # [1, Lr]
-            s = s.squeeze(0)                                     # [Lr]
+            s, sfs = torchaudio.load(str(p))  # [1, Lr]
+            s = s.squeeze(0)  # [Lr]
             spk_lens.append(s.shape[-1])
             spks.append(s)
             sfs_set.add(sfs)
@@ -298,72 +298,86 @@ class ECHIJoint(ECHI):
 
         assert nfs == tfs == sfs, f"Sampling rate mismatch: {nfs}, {tfs}, {sfs}"
 
-        out["noisy"] = noisy                # [C, Tw]
-        out["target_all"] = targets         # [K, Tw]  (aligned!)
-        out["spkid_all"] = spks             # [K, Tr_max]
+        out["noisy"] = noisy  # [C, Tw]
+        out["target_all"] = targets  # [K, Tw]  (aligned!)
+        out["spkid_all"] = spks  # [K, Tr_max]
         out["fs"] = nfs
 
         # lengths (useful downstream)
         K = targets.shape[0]
         out["noisy_lens"] = torch.tensor([Tw], dtype=torch.long)
-        out["target_lens_all"] = torch.full((K,), Tw, dtype=torch.long)     # per speaker (all Tw)
-        out["spkid_lens_all"] = torch.tensor(spk_lens, dtype=torch.long)    # per speaker true lens
+        out["target_lens_all"] = torch.full(
+            (K,), Tw, dtype=torch.long
+        )  # per speaker (all Tw)
+        out["spkid_lens_all"] = torch.tensor(
+            spk_lens, dtype=torch.long
+        )  # per speaker true lens
 
         return out
 
 
-
 def collate_fn_joint(batch: list[dict]):
+    """
+    Pads to:
+      noisy         -> [B, C, Tw],    noisy_lens: [B]
+      target_all    -> [B, K, Tw],    target_lens_all: [B, K]
+      spkid_all     -> [B, K, Tr],    spkid_lens_all:  [B, K]
+    Plus: id (list[str]) and fs (int)
+    """
     ids = [x["id"] for x in batch]
     fs = batch[0]["fs"]
+    max_samples = int(MAX_TRAIN_SECS * fs)
+    max_enroll = int(MAX_ENROLL_SECS * fs)
 
+    # ---- per-item random crop (SAME crop for noisy + ALL K targets) ----
+    for x in batch:
+        Tw = x["target_all"].size(1)
+        if Tw > max_samples:
+            # random crop; if you want hop alignment, snap 'start' to multiples of 64
+            start = torch.randint(0, Tw - max_samples + 1, (1,)).item()
+            end = start + max_samples
+            x["noisy"] = x["noisy"][..., start:end]  # [C, max_samples]
+            x["target_all"] = x["target_all"][..., start:end]  # [K, max_samples]
+        # (optional) trim enrollments to a fixed window; they’re pooled by AuxEncoder
+        if x["spkid_all"].size(1) > max_enroll:
+            x["spkid_all"] = x["spkid_all"][..., :max_enroll]  # [K, max_enroll]
+
+    # ---- now do your usual padding/packing ----
     from shared.signal_utils import combine_audio_list
+
     noisy = [x["noisy"] for x in batch]
-    noisy_padded, noisy_lens = combine_audio_list(noisy)  # [B, C, Tw_max], [B]
+    noisy_padded, noisy_lens = combine_audio_list(noisy)  # [B, C, Tw], [B]
 
-    # enforce constant K
     K = batch[0]["target_all"].size(0)
-    assert all(x["target_all"].size(0) == K for x in batch), "Inconsistent K across batch"
+    assert all(
+        x["target_all"].size(0) == K for x in batch
+    ), "Inconsistent K across batch"
 
-    B = len(batch)
-    device = noisy_padded.device
-    dtype  = noisy_padded.dtype
-    Tw_max = noisy_padded.shape[-1]
-
-    # --- Targets: align to each sample's noisy length, then pad to Tw_max
-    target_all = torch.zeros(B, K, Tw_max, device=device, dtype=dtype)
-    target_lens_all = torch.zeros(B, K, dtype=torch.long, device=device)
+    # targets
+    max_Tw = max(x["target_all"].size(1) for x in batch)
+    target_all = torch.zeros(len(batch), K, max_Tw)
+    target_lens_all = torch.zeros(len(batch), K, dtype=torch.long)
     for b, x in enumerate(batch):
-        tgt = x["target_all"]                    # [K, Tw_b] (already cropped to its noisy in __getitem__)
-        Tw_b = int(noisy_lens[b].item())
-        Tb = tgt.shape[-1]
-        if Tb > Tw_b:
-            tgt = tgt[..., :Tw_b]
-        elif Tb < Tw_b:
-            tgt = torch.nn.functional.pad(tgt, (0, Tw_b - Tb))
-        target_all[b, :, :Tw_b] = tgt
-        target_lens_all[b, :] = Tw_b             # same Tw_b for all K
+        Tw = x["target_all"].size(1)
+        target_all[b, :, :Tw] = x["target_all"]
+        target_lens_all[b].fill_(Tw)  # all K share same crop
 
-    # --- Enrollments: pad across batch; keep per-speaker lens if provided
+    # enrollments
     max_Tr = max(x["spkid_all"].size(1) for x in batch)
-    spkid_all = torch.zeros(B, K, max_Tr, device=device, dtype=dtype)
-    spkid_lens_all = torch.zeros(B, K, dtype=torch.long, device=device)
+    spkid_all = torch.zeros(len(batch), K, max_Tr)
+    spkid_lens_all = torch.zeros(len(batch), K, dtype=torch.long)
     for b, x in enumerate(batch):
-        S = x["spkid_all"]                       # [K, Tr_b]
-        Tr_b = S.shape[1]
-        spkid_all[b, :, :Tr_b] = S
-        if "spkid_lens_all" in x:
-            spkid_lens_all[b] = x["spkid_lens_all"]
-        else:
-            spkid_lens_all[b] = Tr_b
+        Tr = x["spkid_all"].size(1)
+        spkid_all[b, :, :Tr] = x["spkid_all"]
+        spkid_lens_all[b].fill_(Tr)
 
     return {
         "id": ids,
         "fs": fs,
-        "noisy": noisy_padded,                   # [B, C, Tw_max]
-        "noisy_lens": noisy_lens,               # [B]
-        "target_all": target_all,               # [B, K, Tw_max]  (aligned to noisy!)
-        "target_lens_all": target_lens_all,     # [B, K]
-        "spkid_all": spkid_all,                 # [B, K, Tr_max]
-        "spkid_lens_all": spkid_lens_all,       # [B, K]
+        "noisy": noisy_padded,
+        "noisy_lens": noisy_lens,
+        "target_all": target_all,
+        "target_lens_all": target_lens_all,
+        "spkid_all": spkid_all,
+        "spkid_lens_all": spkid_lens_all,
     }
