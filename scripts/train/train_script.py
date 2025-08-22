@@ -238,7 +238,7 @@ def run(
                 f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
             )
             logging.info(f"Batch keys: {list(batch.keys())}")
-            logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
+            # logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
 
             multi = (
                 ("spkid_all" in batch)
@@ -284,17 +284,17 @@ def run(
                 ), f"Expected RI last, got {spk_all_for_model.shape}"
 
                 # Add logging for debugging tensor shapes
-                logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
-                logging.info(f"noisy shape: {noisy.shape}")
-                logging.info(f"spk_all shape: {spk_all.shape}")
-                logging.info(f"targ_all shape: {targ_all.shape}")
-                logging.info(f"noisy_tf shape: {noisy_tf.shape}")
-                logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
-                logging.info(f"spk_lens_all shape: {spk_lens_all.shape}")
-                logging.info(f"spk_all_for_model shape: {spk_all_for_model.shape}")
-                logging.info(f"Model input channels: {model_cfg.input.channels}")
-                logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
-                logging.info(f"Device: {device}")
+                # logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
+                # logging.info(f"noisy shape: {noisy.shape}")
+                # logging.info(f"spk_all shape: {spk_all.shape}")
+                # logging.info(f"targ_all shape: {targ_all.shape}")
+                # logging.info(f"noisy_tf shape: {noisy_tf.shape}")
+                # logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
+                # logging.info(f"spk_lens_all shape: {spk_lens_all.shape}")
+                # logging.info(f"spk_all_for_model shape: {spk_all_for_model.shape}")
+                # logging.info(f"Model input channels: {model_cfg.input.channels}")
+                # logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
+                # logging.info(f"Device: {device}")
 
                 def istft_fn_nd(C: torch.Tensor):
                     """
