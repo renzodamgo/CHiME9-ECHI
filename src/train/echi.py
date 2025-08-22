@@ -326,6 +326,8 @@ def collate_fn_joint(batch: list[dict]):
     """
     ids = [x["id"] for x in batch]
     fs = batch[0]["fs"]
+    MAX_TRAIN_SECS = 6.0
+    MAX_ENROLL_SECS = 10.0
     max_samples = int(MAX_TRAIN_SECS * fs)
     max_enroll = int(MAX_ENROLL_SECS * fs)
 
