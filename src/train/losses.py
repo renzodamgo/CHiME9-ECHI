@@ -30,8 +30,11 @@ def get_loss(name, params=None):
         raise ValueError(f"Unknown loss name: {name}")
 
 
+# losses.py
 def get_lrmethod(name: str, optim, params):
     if name == "plateau_reduce":
+        # ensure we always have a floor
+        params = dict(min_lr=1e-5, **(params or {}))
         return torch.optim.lr_scheduler.ReduceLROnPlateau(optim, **params)
     else:
         raise ValueError(f"LR Scheduler {name} not implemented. Add code here")

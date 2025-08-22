@@ -9,9 +9,12 @@ schedule_lr:
   params:
     mode: min
     factor: 0.5
-    patience: 2
+    patience: 3
     threshold: 0.01
-    min_lr: 1e-10
+    threshold_mode: rel
+    cooldown: 1
+    min_lr: 1e-5
+    verbose: true
 
 loss:
   name: spec

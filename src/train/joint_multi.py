@@ -1,6 +1,7 @@
 # train/losses/joint_multi.py
 import torch
 import torch.nn.functional as F
+import logging
 
 
 def _l1_complex(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
@@ -60,4 +61,5 @@ def joint_loss(
         "L_sep": L_sep.detach(),
         "SI_SDR": sisdr.detach(),
     }
+    logging.info(f"Stats: {stats}")
     return loss, stats
