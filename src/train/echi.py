@@ -7,7 +7,7 @@ from typing import List
 from pathlib import Path
 import csv
 from shared.signal_utils import combine_audio_list
-
+import torch.nn.functional as F
 
 from typing import Any
 
@@ -259,93 +259,111 @@ class ECHIJoint(ECHI):
                 break
 
     def __getitem__(self, index):
+        import torch.nn.functional as F
+
         meta = self.manifest[index]
         out = {"id": meta["id"]}
 
-        # noisy (C, Tw)
-        noisy, nfs = torchaudio.load(str(meta["noisy"]))
+        # --- Noisy (C, Tw) ---
+        noisy, nfs = torchaudio.load(str(meta["noisy"]))         # [C, Tw]
+        Tw = noisy.shape[-1]
 
-        # K targets (1, Tw) each -> stack to [K, Tw]
-        targets = []
-        tfs_set = set()
+        # --- K targets -> [K, Tw], aligned to noisy ---
+        targets, tfs_set = [], set()
         for p in meta["target_all"]:
-            t, tfs = torchaudio.load(str(p))
-            t = t.squeeze(0)
+            t, tfs = torchaudio.load(str(p))                     # [1, L]
+            t = t.squeeze(0)                                     # [L]
+            L = t.shape[-1]
+            if L > Tw:
+                t = t[..., :Tw]
+            elif L < Tw:
+                t = F.pad(t, (0, Tw - L))
             targets.append(t)
             tfs_set.add(tfs)
         assert len(tfs_set) == 1, f"Inconsistent fs for targets: {tfs_set}"
-        targets = torch.nn.utils.rnn.pad_sequence(targets, batch_first=True)  # [K, Tw]
         tfs = tfs_set.pop()
+        targets = torch.stack(targets, dim=0)                    # [K, Tw]
 
-        # K enrollments (Rainbow), variable length -> [K, Tr]
-        spks = []
-        sfs_set = set()
+        # --- K enrollments (Rainbow) keep long -> [K, Tr_max] + per-speaker lens
+        spks, sfs_set, spk_lens = [], set(), []
         for p in meta["spkid_all"]:
-            s, sfs = torchaudio.load(str(p))
-            s = s.squeeze(0)
+            s, sfs = torchaudio.load(str(p))                     # [1, Lr]
+            s = s.squeeze(0)                                     # [Lr]
+            spk_lens.append(s.shape[-1])
             spks.append(s)
             sfs_set.add(sfs)
         assert len(sfs_set) == 1, f"Inconsistent fs for spkids: {sfs_set}"
-        spks = torch.nn.utils.rnn.pad_sequence(spks, batch_first=True)  # [K, Tr]
         sfs = sfs_set.pop()
+        spks = torch.nn.utils.rnn.pad_sequence(spks, batch_first=True)  # [K, Tr_max]
 
         assert nfs == tfs == sfs, f"Sampling rate mismatch: {nfs}, {tfs}, {sfs}"
 
-        out["noisy"] = noisy
-        out["target_all"] = targets
-        out["spkid_all"] = spks
+        out["noisy"] = noisy                # [C, Tw]
+        out["target_all"] = targets         # [K, Tw]  (aligned!)
+        out["spkid_all"] = spks             # [K, Tr_max]
         out["fs"] = nfs
+
+        # lengths (useful downstream)
+        K = targets.shape[0]
+        out["noisy_lens"] = torch.tensor([Tw], dtype=torch.long)
+        out["target_lens_all"] = torch.full((K,), Tw, dtype=torch.long)     # per speaker (all Tw)
+        out["spkid_lens_all"] = torch.tensor(spk_lens, dtype=torch.long)    # per speaker true lens
+
         return out
 
 
+
 def collate_fn_joint(batch: list[dict]):
-    """
-    Pads to:
-      noisy         -> [B, C, Tw],    noisy_lens: [B]
-      target_all    -> [B, K, Tw],    target_lens_all: [B, K]
-      spkid_all     -> [B, K, Tr],    spkid_lens_all:  [B, K]
-    Plus: id (list[str]) and fs (int)
-    """
     ids = [x["id"] for x in batch]
     fs = batch[0]["fs"]
 
-    # noisy
     from shared.signal_utils import combine_audio_list
-
     noisy = [x["noisy"] for x in batch]
-    noisy_padded, noisy_lens = combine_audio_list(noisy)  # [B, C, Tw], [B]
+    noisy_padded, noisy_lens = combine_audio_list(noisy)  # [B, C, Tw_max], [B]
 
-    # K may vary between batches if something went wrong; enforce constant K
+    # enforce constant K
     K = batch[0]["target_all"].size(0)
-    assert all(
-        x["target_all"].size(0) == K for x in batch
-    ), "Inconsistent K across batch"
+    assert all(x["target_all"].size(0) == K for x in batch), "Inconsistent K across batch"
 
-    # targets
-    max_Tw = max(x["target_all"].size(1) for x in batch)
-    target_all = torch.zeros(len(batch), K, max_Tw)
-    target_lens_all = torch.zeros(len(batch), K, dtype=torch.long)
+    B = len(batch)
+    device = noisy_padded.device
+    dtype  = noisy_padded.dtype
+    Tw_max = noisy_padded.shape[-1]
+
+    # --- Targets: align to each sample's noisy length, then pad to Tw_max
+    target_all = torch.zeros(B, K, Tw_max, device=device, dtype=dtype)
+    target_lens_all = torch.zeros(B, K, dtype=torch.long, device=device)
     for b, x in enumerate(batch):
-        Tw = x["target_all"].size(1)
-        target_all[b, :, :Tw] = x["target_all"]
-        target_lens_all[b] = Tw
+        tgt = x["target_all"]                    # [K, Tw_b] (already cropped to its noisy in __getitem__)
+        Tw_b = int(noisy_lens[b].item())
+        Tb = tgt.shape[-1]
+        if Tb > Tw_b:
+            tgt = tgt[..., :Tw_b]
+        elif Tb < Tw_b:
+            tgt = torch.nn.functional.pad(tgt, (0, Tw_b - Tb))
+        target_all[b, :, :Tw_b] = tgt
+        target_lens_all[b, :] = Tw_b             # same Tw_b for all K
 
-    # enrollments
+    # --- Enrollments: pad across batch; keep per-speaker lens if provided
     max_Tr = max(x["spkid_all"].size(1) for x in batch)
-    spkid_all = torch.zeros(len(batch), K, max_Tr)
-    spkid_lens_all = torch.zeros(len(batch), K, dtype=torch.long)
+    spkid_all = torch.zeros(B, K, max_Tr, device=device, dtype=dtype)
+    spkid_lens_all = torch.zeros(B, K, dtype=torch.long, device=device)
     for b, x in enumerate(batch):
-        Tr = x["spkid_all"].size(1)
-        spkid_all[b, :, :Tr] = x["spkid_all"]
-        spkid_lens_all[b] = Tr
+        S = x["spkid_all"]                       # [K, Tr_b]
+        Tr_b = S.shape[1]
+        spkid_all[b, :, :Tr_b] = S
+        if "spkid_lens_all" in x:
+            spkid_lens_all[b] = x["spkid_lens_all"]
+        else:
+            spkid_lens_all[b] = Tr_b
 
     return {
         "id": ids,
         "fs": fs,
-        "noisy": noisy_padded,
-        "noisy_lens": noisy_lens,
-        "target_all": target_all,
-        "target_lens_all": target_lens_all,
-        "spkid_all": spkid_all,
-        "spkid_lens_all": spkid_lens_all,
+        "noisy": noisy_padded,                   # [B, C, Tw_max]
+        "noisy_lens": noisy_lens,               # [B]
+        "target_all": target_all,               # [B, K, Tw_max]  (aligned to noisy!)
+        "target_lens_all": target_lens_all,     # [B, K]
+        "spkid_all": spkid_all,                 # [B, K, Tr_max]
+        "spkid_lens_all": spkid_lens_all,       # [B, K]
     }
