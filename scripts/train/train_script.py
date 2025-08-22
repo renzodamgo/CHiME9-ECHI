@@ -328,7 +328,9 @@ def run(
                         use_sisdr=True,
                     )
 
-                processed = stft.inverse(S_hat_c)  # [B, K, Tw] for preview/saving
+                processed = stft.inverse(
+                    S_hat_c, lengths=batch["target_lens_all"]
+                )  # [B, K, Tw] for preview/saving
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
@@ -429,7 +431,9 @@ def run(
                     processed = model(noisy, spk_id, batch["spkid_lens"]).squeeze(1)
 
                     if do_stft:
-                        processed = stft.inverse(processed)
+                        processed = stft.inverse(
+                            processed, lengths=batch["target_lens_all"]
+                        )
 
                     processed, targets, use_val = check_lengths(
                         batch["id"], processed, targets, "val", do_stft

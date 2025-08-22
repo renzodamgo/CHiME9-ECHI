@@ -1,7 +1,7 @@
 import torch
 import torchaudio
 import logging
-
+from typing import Optional, Union
 
 def get_rms(signal: torch.Tensor) -> torch.Tensor:
     """
@@ -193,49 +193,69 @@ class STFTWrapper(torch.nn.Module):
 
         return X
 
-    def inverse(self, X: torch.Tensor) -> torch.Tensor:
-        # Accept [..., F, T] or [..., T, F]; real/imag or complex
+    def inverse(self, X: torch.Tensor, lengths: Optional[Union[int, torch.Tensor]] = None) -> torch.Tensor:
+        """
+        Inverse STFT that:
+        • accepts [..., F, T] or [..., T, F] (RI or complex)
+        • accepts per-sample output lengths to make time-domain signals match exactly
+
+        Args:
+        X: complex (or RI) STFT with last two dims (F,T) or (T,F)
+        lengths: None | int | Tensor matching the 'front' dims of X (e.g., [B,K])
+        """
+        # ---- complexify if RI ----
         if not X.is_complex():
             X = X.contiguous()
             X = torch.complex(X[..., 0], X[..., 1])
 
+        # ---- normalize layout to [*, F, T] ----
         n_freqs = self.n_fft // 2 + 1
-
-        # Ensure last two dims are [F, T] for torch.istft
         if X.size(-2) == n_freqs and X.size(-1) != n_freqs:
-            C_FT = X  # already [*, F, T]
+            C_FT = X  # [*, F, T]
         elif X.size(-1) == n_freqs:
-            # [*, T, F] -> [*, F, T]
             perm = list(range(X.ndim))
-            perm[-2], perm[-1] = perm[-1], perm[-2]
+            perm[-2], perm[-1] = perm[-1], perm[-2]  # [*, T, F] -> [*, F, T]
             C_FT = X.permute(*perm).contiguous()
         else:
-            raise RuntimeError(
-                f"Cannot find freq bins among last two dims: {tuple(X.shape)} "
-                f"(expected one of them to be {n_freqs})."
-            )
+            raise RuntimeError(f"Cannot find freq bins among last two dims: {tuple(X.shape)} (expected {n_freqs}).")
 
-        front_shape = C_FT.shape[:-2]  # any leading dims, e.g. [B], [B,K], [B,C], ...
+        front_shape = C_FT.shape[:-2]
         F, T = C_FT.shape[-2], C_FT.shape[-1]
-        C_flat = C_FT.reshape(-1, F, T)
+        C_flat = C_FT.reshape(-1, F, T)  # [N, F, T], N = prod(front_shape)
 
-        # Make sure window matches device/dtype
+        # ---- window on correct device/dtype ----
         win = self.window
-        if win is not None and (
-            win.device != C_flat.device or win.dtype != C_flat.real.dtype
-        ):
-            win = win.to(device=C_flat.device, dtype=C_flat.real.dtype)
+        if win is not None:
+            target_dtype = C_flat.real.dtype  # float32 for complex64, etc.
+            if win.device != C_flat.device or win.dtype != target_dtype:
+                win = win.to(device=C_flat.device, dtype=target_dtype)
 
-        x = torch.istft(
-            C_flat,
-            n_fft=self.n_fft,
-            hop_length=self.hop_length,
-            win_length=self.win_length,
-            window=win,
-            center=True,
-            normalized=False,
-            onesided=True,
-            return_complex=False,
-        )
+        # ---- handle lengths ----
+        if lengths is None:
+            x = torch.istft(
+                C_flat, n_fft=self.n_fft, hop_length=self.hop_length, win_length=self.win_length,
+                window=win, center=True, normalized=False, onesided=True, return_complex=False
+            )
+        else:
+            if isinstance(lengths, int):
+                # same length for all items
+                x = torch.istft(
+                    C_flat, n_fft=self.n_fft, hop_length=self.hop_length, win_length=self.win_length,
+                    window=win, center=True, normalized=False, onesided=True, length=int(lengths),
+                    return_complex=False
+                )
+            else:
+                # tensor of lengths matching front dims
+                L = lengths.reshape(-1).to(device=C_flat.device, dtype=torch.long)  # [N]
+                assert L.numel() == C_flat.size(0), f"lengths {tuple(L.shape)} must match front dims {front_shape}"
+                # Per-item iSTFT with given length
+                xs = []
+                for i in range(C_flat.size(0)):
+                    xs.append(torch.istft(
+                        C_flat[i], n_fft=self.n_fft, hop_length=self.hop_length, win_length=self.win_length,
+                        window=win, center=True, normalized=False, onesided=True, length=int(L[i]),
+                        return_complex=False
+                    ))
+                x = torch.stack(xs, dim=0)  # [N, Tw]
 
         return x.reshape(*front_shape, -1)
