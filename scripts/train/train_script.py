@@ -13,6 +13,8 @@ from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
 from shared.signal_utils import STFTWrapper, match_length, prep_audio
 
+torch.backends.cuda.matmul.allow_tf32 = True
+torch.backends.cudnn.allow_tf32 = True
 torch.manual_seed(666)
 
 
@@ -307,21 +309,23 @@ def run(
 
                     return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
 
-                S_hat_c = model(
-                    noisy_tf, spk_all_for_model, spk_lens_all
-                )  # [B, K, T, F] (complex)
+                with torch.cuda.amp.autocast(dtype=torch.bfloat16):
 
-                # Joint loss (use the tiny helper from earlier message or inline your own)
-                loss, stats = joint_loss(
-                    S_hat_c=S_hat_c,
-                    X_ref_c=X_ref_c,
-                    Y_ref_c=Y_ref_c,
-                    y_wav=targ_all,
-                    istft_fn=istft_fn_nd,
-                    lambda_mix=0.1,
-                    lambda_xtalk=0.1,
-                    use_sisdr=True,
-                )
+                    S_hat_c = model(
+                        noisy_tf, spk_all_for_model, spk_lens_all
+                    )  # [B, K, T, F] (complex)
+
+                    # Joint loss (use the tiny helper from earlier message or inline your own)
+                    loss, stats = joint_loss(
+                        S_hat_c=S_hat_c,
+                        X_ref_c=X_ref_c,
+                        Y_ref_c=Y_ref_c,
+                        y_wav=targ_all,
+                        istft_fn=istft_fn_nd,
+                        lambda_mix=0.1,
+                        lambda_xtalk=0.1,
+                        use_sisdr=True,
+                    )
 
                 processed = stft.inverse(S_hat_c)  # [B, K, Tw] for preview/saving
 
