@@ -172,39 +172,45 @@ class MCxTFGridNet(nn.Module):
             return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]
 
         elif spk.ndim == 5:
-            # [B, K, T, F, 2] -> flatten to [B*K, 2, T, F] for encoding
+            # spk: [B, K, T, F, 2]  (RI last)
             B, K, T, F, _ = spk.shape
+
+            # ---- Encode enrollments (vectorized; light) ----
             spk_feat = spk.permute(0, 1, 4, 2, 3).reshape(
                 B * K, 2, T, F
             )  # [B*K, 2, T, F]
             spk_feat = self.spk_conv(spk_feat)  # [B*K, C, T, F]
 
             # Lens: accept [B] or [B,K]
-            if spk_lens.ndim == 1:  # same len for all K
+            if spk_lens.ndim == 1:
                 spk_lens = spk_lens.unsqueeze(1).expand(B, K).reshape(B * K)
             else:
                 spk_lens = spk_lens.reshape(B * K)
 
             e, _ = self.aux_enc(spk_feat, spk_lens)  # [B*K, C]
+            e = e.view(B, K, -1)  # [B, K, C]
 
-            # Tile mixture features to K speakers: [B, C, T, F] -> [B*K, C, T, F]
-            z = (
-                z_mix.unsqueeze(1)
-                .expand(B, K, *z_mix.shape[1:])
-                .reshape(B * K, *z_mix.shape[1:])
-            )
+            # Joint K-speaker path assumes n_srcs == 1
+            assert self.n_srcs == 1, "K-speaker joint path assumes n_srcs=1"
 
-            # Shared backbone, conditioned per-(B*K) stream
-            for i in range(self.n_layers):
-                z = self.fusions[i](e, z)
-                z = self.gridnets[i](z)
+            # ---- Process speakers sequentially (reuse z_mix; no B×K tiling) ----
+            outs = []
+            for k in range(K):
+                e_k = e[:, k, :]  # [B, C]
+                z = z_mix  # [B, C, Tm, Fm] from mixture
 
-            # One stream per speaker (set config/model.n_srcs=1 for joint training)
-            out = self.deconv(z)  # [B*K, 2, T, F] if n_srcs==1
-            out = out.view(B, K, 2, n_frames, n_freqs)
-            re = out[:, :, 0].to(torch.float32)
-            im = out[:, :, 1].to(torch.float32)
-            out = torch.complex(re, im)  # [B, K, T, F] complex64
+                for i in range(self.n_layers):
+                    z = self.fusions[i](e_k, z)
+                    z = self.gridnets[i](z)
+
+                out_k = self.deconv(z)  # [B, 2, Tm, Fm]
+                outs.append(out_k)
+
+            # [B, K, 2, Tm, Fm] -> complex [B, K, Tm, Fm] (BF16-safe)
+            out_ri = torch.stack(outs, dim=1)
+            re = out_ri[:, :, 0].to(torch.float32)
+            im = out_ri[:, :, 1].to(torch.float32)
+            out = torch.complex(re, im)  # [B, K, Tm, Fm]
             return out
 
         else:
