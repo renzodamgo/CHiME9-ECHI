@@ -87,6 +87,10 @@ def joint_loss(
             ]
         )
     )
+    # Are the K streams basically the same?
+    diff01 = torch.mean(torch.abs(s_hat_wav[:, 0] - s_hat_wav[:, 1])).item()
+    diff12 = torch.mean(torch.abs(s_hat_wav[:, 1] - s_hat_wav[:, 2])).item()
+    logging.info(f"Mean |s0-s1|: {diff01:.3e} | |s1-s2|: {diff12:.3e}")
 
     stats = {
         "loss": loss.detach(),
