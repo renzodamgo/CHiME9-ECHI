@@ -81,6 +81,20 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
     diff12 = torch.mean(torch.abs(s_hat_wav[:, 1] - s_hat_wav[:, 2])).item()
     logging.info(f"Mean |s0-s1|: {diff01:.3e} | |s1-s2|: {diff12:.3e}")
 
+    # Are K outputs distinct?
+    diff01 = torch.mean(torch.abs(s_hat_wav[:, 0] - s_hat_wav[:, 1])).item()
+    diff12 = torch.mean(torch.abs(s_hat_wav[:, 1] - s_hat_wav[:, 2])).item()
+    logging.info(f"Mean |s0-s1|: {diff01:.3e} | |s1-s2|: {diff12:.3e}")
+
+    # Correlation with aligned refs (should trend upward over training)
+    def _corr(a, b):
+        num = (a * b).sum()
+        den = a.pow(2).sum().sqrt() * b.pow(2).sum().sqrt() + 1e-12
+        return (num / den).item()
+
+    for k in range(s_hat_wav.shape[1]):
+        logging.info(f"corr(k={k}): {_corr(s_hat_wav[0,k], y_wav_aligned[0,k]):.3f}")
+
     stats = {
         "loss": float(loss.detach()),
         "L_sep": float(L_sep.detach()),
