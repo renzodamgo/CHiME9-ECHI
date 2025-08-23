@@ -1,6 +1,6 @@
 exp_name: ${shared.exp_name}
 epochs: 100
-checkpoint_interval: 2
+checkpoint_interval: 4
 lr: 3e-4
 clip_grad_norm: 1.0
 

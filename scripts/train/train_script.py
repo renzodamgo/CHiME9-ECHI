@@ -430,7 +430,7 @@ def run(
                     gromit,
                 )
 
-        do_checkpoint = (epoch % ckpt_interval == 0) or (
+        do_checkpoint = (epoch % ckpt_interval == 0 and epoch > 0) or (
             (epoch + 1) == train_cfg.epochs
         )
 
