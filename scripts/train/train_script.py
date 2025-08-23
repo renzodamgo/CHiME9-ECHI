@@ -258,9 +258,8 @@ def run(
 
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
                 spk_all_tf = stft(spk_all)  # [B, K, 2, T, F]
-                spk_all_for_model = spk_all_tf.permute(
-                    0, 1, 3, 4, 2
-                ).contiguous()  # [B, K, T, F, 2]
+                # [B,K,2,T,F] -> [B,K,T,F,2]
+                spk_all_for_model = spk_all_tf.permute(0, 1, 3, 4, 2).contiguous()
                 assert (
                     spk_all_for_model.shape[-1] == 2
                 ), f"Expected RI last, got {spk_all_for_model.shape}"
@@ -284,17 +283,17 @@ def run(
                 ).contiguous()  # [B, K, T, F], complex
 
                 # Add logging for debugging tensor shapes
-                # logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
-                # logging.info(f"noisy shape: {noisy.shape}")
-                # logging.info(f"spk_all shape: {spk_all.shape}")
-                # logging.info(f"targ_all shape: {targ_all.shape}")
-                # logging.info(f"noisy_tf shape: {noisy_tf.shape}")
-                # logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
-                # logging.info(f"spk_lens_all shape: {spk_lens_all.shape}")
-                # logging.info(f"spk_all_for_model shape: {spk_all_for_model.shape}")
-                # logging.info(f"Model input channels: {model_cfg.input.channels}")
-                # logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
-                # logging.info(f"Device: {device}")
+                logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
+                logging.info(f"noisy shape: {noisy.shape}")
+                logging.info(f"spk_all shape: {spk_all.shape}")
+                logging.info(f"targ_all shape: {targ_all.shape}")
+                logging.info(f"noisy_tf shape: {noisy_tf.shape}")
+                logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
+                logging.info(f"spk_lens_all shape: {spk_lens_all.shape}")
+                logging.info(f"spk_all_for_model shape: {spk_all_for_model.shape}")
+                logging.info(f"Model input channels: {model_cfg.input.channels}")
+                logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
+                logging.info(f"Device: {device}")
 
                 def istft_fn_nd(C: torch.Tensor):
                     """
