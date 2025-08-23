@@ -56,6 +56,38 @@ def joint_loss(
     w_sep, w_time = weights
     loss = w_sep * L_sep + w_time * (-sisdr)  # maximize SI-SDR => minimize -SI-SDR
 
+    # 1) iSTFT round-trip on the **reference** STFT
+    y_wav_rt = stft.inverse(Y_ref_c, lengths=batch["target_lens_all"])
+    mse_rt = torch.mean(
+        (y_wav_rt - batch["target_all"].to(y_wav_rt.device)) ** 2
+    ).item()
+    logging.info(f"Roundtrip MSE (ref STFT -> iSTFT): {mse_rt:.3e}")
+
+    # 2) Shape equality after inverse
+    logging.info(
+        f"s_hat_wav {tuple(s_hat_wav.shape)} vs y_wav {tuple(batch['target_all'].shape)}"
+    )
+
+    # 3) Energy/scale audit
+    def _pow_db(x):
+        return (x.float().pow(2).mean().clamp_min(1e-12)).log10().mul_(10).item()
+
+    logging.info(
+        f"Power dB | s_hat: {_pow_db(s_hat_wav)} | y_ref: {_pow_db(batch['target_all'])}"
+    )
+
+    # 4) Per-K SI-SDR (helps catch a K/channel mixup)
+    sisdr_per_k = _sisdr(s_hat_wav, batch["target_all"].to(s_hat_wav.device))  # [B,K]
+    logging.info(
+        "SI_SDR per K: "
+        + ", ".join(
+            [
+                f"{k}:{v.mean().item():.1f}"
+                for k, v in enumerate(sisdr_per_k.unbind(dim=1))
+            ]
+        )
+    )
+
     stats = {
         "loss": loss.detach(),
         "L_sep": L_sep.detach(),
