@@ -257,13 +257,14 @@ def run(
                 )  # [B, K, Tw]
 
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
-                spk_all_tf = stft(spk_all)  # [B, K, 2, T, F]
-                logging.info(f"spk_all_tf shape: {spk_all_tf.shape}")
-                # [B,K,2,T,F] -> [B,K,T,F,2]
-                spk_all_for_model = spk_all_tf.permute(0, 1, 3, 4, 2).contiguous()
-                assert (
-                    spk_all_for_model.shape[-1] == 2
-                ), f"Expected RI last, got {spk_all_for_model.shape}"
+                spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
+                # spk_all_tf: [B,K,F,T,2] -> [B,K,T,F,2]
+                spk_all_for_model = spk_all_tf.permute(0, 1, 3, 2, 4).contiguous()
+                assert spk_all_for_model.shape[-1] == 2 and spk_all_for_model.shape[
+                    -2
+                ] == getattr(
+                    stft, "n_freqs", stft.n_fft // 2 + 1
+                ), f"Expected [B,K,T,F,2], got {spk_all_for_model.shape}"
 
                 spk_lens_all = (
                     batch["spkid_lens_all"].to(device) - stft.n_fft
