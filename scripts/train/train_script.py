@@ -256,6 +256,10 @@ def run(
                     device, non_blocking=True
                 )  # [B, K, Tw]
 
+                logging.info(f"noisy shape: {noisy.shape}")
+                logging.info(f"spk_all shape: {spk_all.shape}")
+                logging.info(f"targ_all shape: {targ_all.shape}")
+
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
                 spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
                 # spk_all_tf: [B,K,F,T,2] -> [B,K,T,F,2]
@@ -326,6 +330,7 @@ def run(
                     loss, stats = joint_loss(
                         S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
+                    # def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
 
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(

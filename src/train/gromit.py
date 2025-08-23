@@ -104,21 +104,21 @@ class Gromit:
         wlog[f"train_{self.loss_name}"] = train_loss
         new_log["train_loss"] = train_loss
 
+        val_loss = self.val_loss.get_average()
+        val_stoi = self.val_stoi.get_average()
+        out_string += f"{delim}Val loss: {val_loss:.6f}"
+        out_string += f"{delim}Val stoi: {val_stoi:.6f}"
+        self.val_loss.reset(epoch)
+        self.val_stoi.reset(epoch)
+
+        wlog[f"val_{self.loss_name}"] = val_loss
+        wlog["val_stoi"] = val_stoi
+        wlog["lr"] = lr
+
+        new_log["val_loss"] = val_loss
+        new_log["val_stoi"] = val_stoi
+
         if do_ckpt:
-            val_loss = self.val_loss.get_average()
-            val_stoi = self.val_stoi.get_average()
-            out_string += f"{delim}Val loss: {val_loss:.6f}"
-            out_string += f"{delim}Val stoi: {val_stoi:.6f}"
-            self.val_loss.reset(epoch)
-            self.val_stoi.reset(epoch)
-
-            wlog[f"val_{self.loss_name}"] = val_loss
-            wlog["val_stoi"] = val_stoi
-            wlog["lr"] = lr
-
-            new_log["val_loss"] = val_loss
-            new_log["val_stoi"] = val_stoi
-
             ckpt_path = self.get_ckpt_path(epoch, self.exp_name)
             torch.save(model.state_dict(), ckpt_path)
             logging.info(f"SAVED CHECKPOINT {epoch} to {ckpt_path}")
