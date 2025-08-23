@@ -77,6 +77,9 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
 
     w_sep, w_time = weights
     loss = w_sep * L_sep + w_time * (-sisdr)
+    diff01 = torch.mean(torch.abs(s_hat_wav[:, 0] - s_hat_wav[:, 1])).item()
+    diff12 = torch.mean(torch.abs(s_hat_wav[:, 1] - s_hat_wav[:, 2])).item()
+    logging.info(f"Mean |s0-s1|: {diff01:.3e} | |s1-s2|: {diff12:.3e}")
 
     stats = {
         "loss": float(loss.detach()),
