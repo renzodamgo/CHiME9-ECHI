@@ -218,6 +218,8 @@ def run(
 
     # Train this fine chap
     for epoch in range(train_cfg.epochs):
+        if torch.cuda.is_available():
+            torch.cuda.reset_peak_memory_stats()
         model.train()
 
         if debug:
@@ -330,15 +332,40 @@ def run(
                 torch.nn.utils.clip_grad_norm_(
                     model.parameters(), train_cfg.clip_grad_norm
                 )
+                with torch.no_grad():
+                    grad_sq = 0.0
+                    param_sq = 0.0
+                    for p in model.parameters():
+                        if p.grad is not None:
+                            grad_sq += p.grad.detach().pow(2).sum().item()
+                        param_sq += p.detach().pow(2).sum().item()
+                    stats["grad_norm"] = grad_sq**0.5
+                    stats["param_norm"] = param_sq**0.5
+
+                    # LR from the first param group (adjust if you use multiple groups)
+                    stats["lr"] = optimizer.param_groups[0]["lr"]
+
+                    # VRAM
+                    if torch.cuda.is_available():
+                        stats["vram_alloc_MB"] = torch.cuda.memory_allocated() / 1024**2
+                        stats["vram_reserved_MB"] = (
+                            torch.cuda.memory_reserved() / 1024**2
+                        )
+                        stats["vram_max_alloc_MB"] = (
+                            torch.cuda.max_memory_allocated() / 1024**2
+                        )
+                # --- end added block ---
                 optimizer.step()
 
                 gromit.train_loss.update(loss.detach())
-                stats["lr"] = optimizer.param_groups[0]["lr"]
-                if torch.cuda.is_available():
-                    stats["vram_alloc_MB"] = torch.cuda.memory_allocated() / 1024**2
-                    stats["vram_reserved_MB"] = torch.cuda.memory_reserved() / 1024**2
 
-                logging.info(f"Stats: {stats}")
+                logging.info(
+                    "Stats: %s",
+                    {
+                        k: (float(v) if isinstance(v, torch.Tensor) else v)
+                        for k, v in stats.items()
+                    },
+                )
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
