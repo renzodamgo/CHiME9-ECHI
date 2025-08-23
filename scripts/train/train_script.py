@@ -332,7 +332,7 @@ def run(
                 )
                 optimizer.step()
 
-                gromit.train_loss.update(loss.detach().item())
+                gromit.train_loss.update(loss.detach())
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
