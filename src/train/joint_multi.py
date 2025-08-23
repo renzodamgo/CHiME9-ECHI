@@ -60,8 +60,9 @@ def joint_loss(
         "loss": loss.detach(),
         "L_sep": L_sep.detach(),
         "SI_SDR": sisdr.detach(),
+        "w_sep": w_sep,
+        "w_time": w_time,
     }
-    logging.info(f"Stats: {stats}")
     return loss, stats
 
 

@@ -333,6 +333,12 @@ def run(
                 optimizer.step()
 
                 gromit.train_loss.update(loss.detach())
+                stats["lr"] = optimizer.param_groups[0]["lr"]
+                if torch.cuda.is_available():
+                    stats["vram_alloc_MB"] = torch.cuda.memory_allocated() / 1024**2
+                    stats["vram_reserved_MB"] = torch.cuda.memory_reserved() / 1024**2
+
+                logging.info(f"Stats: {stats}")
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
