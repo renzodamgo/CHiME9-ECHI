@@ -1,11 +1,10 @@
-# train/losses/joint_multi.py
+import itertools
 import torch
 import torch.nn.functional as F
 import logging
 
 
-def _l1_complex(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
-    # Both complex, same layout; crop to common [T,F] just in case
+def _l1_complex(a, b):
     T = min(a.size(-2), b.size(-2))
     Freq = min(a.size(-1), b.size(-1))
     if a.size(-2) != T or b.size(-2) != T or a.size(-1) != Freq or b.size(-1) != Freq:
@@ -14,111 +13,81 @@ def _l1_complex(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     return F.l1_loss(a.real, b.real) + F.l1_loss(a.imag, b.imag)
 
 
-def _sisdr(x: torch.Tensor, s: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    # x,s: [..., T] (same length)
-    s_energy = (s * s).sum(-1, keepdim=True) + eps
-    proj = (x * s).sum(-1, keepdim=True) * s / s_energy
-    e = x - proj
-    return 10.0 * torch.log10(((proj * proj).sum(-1) + eps) / ((e * e).sum(-1) + eps))
+def _sisdr(x, s, eps=1e-8):
+    # x,s: [B,K,T] or [B,1,T]; returns [B,K]
+    x_zm = x - x.mean(dim=-1, keepdim=True)
+    s_zm = s - s.mean(dim=-1, keepdim=True)
+    t = (
+        torch.sum(x_zm * s_zm, dim=-1, keepdim=True)
+        / (torch.sum(s_zm**2, dim=-1, keepdim=True) + eps)
+    ) * s_zm
+    e = x_zm - t
+    return 10 * torch.log10(
+        (torch.sum(t**2, dim=-1) + eps) / (torch.sum(e**2, dim=-1) + eps)
+    )
 
 
-def _vad_from_tf(Yc, thr_db=-40.0, eps=1e-10):
-    # Yc: [B,K,T,F] complex
-    p = (Yc.real**2 + Yc.imag**2).mean(dim=-1)  # [B,K,T]
-    db = 10.0 * torch.log10(p + eps)
-    return db > thr_db  # bool [B,K,T]
+def _permute(x, perms):  # x: [B,K,...]
+    B, K = x.shape[:2]
+    return torch.stack([x[b, list(perms[b])].contiguous() for b in range(B)], dim=0)
 
 
-def joint_loss(
-    S_hat_c: torch.Tensor,  # [B,K,T,F] complex, model output
-    Y_ref_c: torch.Tensor,  # [B,K,T,F] complex, reference target STFT
-    batch: dict,
-    stft,  # your STFT wrapper (with inverse(X, lengths=...))
-    weights=(1.0, 1.0),  # e.g., (w_sep, w_time)
-):
+def _pit_best_perm(pred_wav, ref_wav):
+    # pred_wav, ref_wav: [B,K,T]
+    B, K, T = pred_wav.shape
+    perms = list(itertools.permutations(range(K)))
+    best = []
+    for b in range(B):
+        # pairwise SI-SDR [K,K]
+        S = []
+        for i in range(K):
+            # broadcast to [1,K,T] for ref_wav[b]
+            s = _sisdr(
+                pred_wav[b, i][None, None, :].expand(1, K, T), ref_wav[b][None, :, :]
+            ).squeeze(
+                0
+            )  # [K]
+            S.append(s)
+        S = torch.stack(S, dim=0)  # [K,K]
+        scores = [S[range(K), p].sum() for p in perms]
+        j = int(torch.argmax(torch.stack(scores)))
+        best.append(perms[j])
+    return best  # list of tuples per B
+
+
+def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
+    """
+    S_hat_c: [B,K,T,F] complex (or RI convertible before call)
+    Y_ref_c: [B,K,T,F] complex
+    """
     B, K = S_hat_c.shape[:2]
 
-    # --- 1) STFT-domain separation loss (shape-safe) ---
-    L_sep = 0.0
-    for k in range(K):
-        L_sep = L_sep + _l1_complex(S_hat_c[:, k], Y_ref_c[:, k])
-    L_sep = L_sep / K
+    # Time-domain signals
+    s_hat_wav = stft.inverse(S_hat_c, lengths=batch["target_lens_all"])  # [B,K,T]
+    y_wav = batch["target_all"].to(s_hat_wav.device)  # [B,K,T]
 
-    # --- 2) Time-domain SI-SDR using exact lengths ---
-    # Use target_lens_all (samples) so iSTFT returns exact per-(B,K) lengths
-    tgt_lens = batch["target_lens_all"]  # [B,K], on CPU or GPU
-    s_hat_wav = stft.inverse(S_hat_c, lengths=tgt_lens)  # [B,K,Tw_true]
-    y_wav = batch["target_all"].to(s_hat_wav.device)  # [B,K,Tw_true]
+    # PIT: find best permutation by SI-SDR
+    best_perm = _pit_best_perm(s_hat_wav, y_wav)
+    y_wav_aligned = _permute(y_wav, best_perm)
+    Y_ref_c_aligned = _permute(Y_ref_c, best_perm)
 
-    sisdr = _sisdr(s_hat_wav, y_wav).mean()  # scalar
+    # Losses
+    L_sep = torch.abs(S_hat_c - Y_ref_c_aligned).mean()  # STFT L1
+    sisdr = _sisdr(s_hat_wav, y_wav_aligned).mean()  # SI-SDR on aligned
 
-    # --- Weighted sum ---
     w_sep, w_time = weights
-    loss = w_sep * L_sep + w_time * (-sisdr)  # maximize SI-SDR => minimize -SI-SDR
-
-    # 1) iSTFT round-trip on the **reference** STFT
-    y_wav_rt = stft.inverse(Y_ref_c, lengths=batch["target_lens_all"])
-    mse_rt = torch.mean(
-        (y_wav_rt - batch["target_all"].to(y_wav_rt.device)) ** 2
-    ).item()
-    logging.info(f"Roundtrip MSE (ref STFT -> iSTFT): {mse_rt:.3e}")
-
-    # 2) Shape equality after inverse
-    logging.info(
-        f"s_hat_wav {tuple(s_hat_wav.shape)} vs y_wav {tuple(batch['target_all'].shape)}"
-    )
-
-    # 3) Energy/scale audit
-    def _pow_db(x):
-        return (x.float().pow(2).mean().clamp_min(1e-12)).log10().mul_(10).item()
-
-    logging.info(
-        f"Power dB | s_hat: {_pow_db(s_hat_wav)} | y_ref: {_pow_db(batch['target_all'])}"
-    )
-
-    # 4) Per-K SI-SDR (helps catch a K/channel mixup)
-    sisdr_per_k = _sisdr(s_hat_wav, batch["target_all"].to(s_hat_wav.device))  # [B,K]
-    logging.info(
-        "SI_SDR per K: "
-        + ", ".join(
-            [
-                f"{k}:{v.mean().item():.1f}"
-                for k, v in enumerate(sisdr_per_k.unbind(dim=1))
-            ]
-        )
-    )
-    # Are the K streams basically the same?
-    diff01 = torch.mean(torch.abs(s_hat_wav[:, 0] - s_hat_wav[:, 1])).item()
-    diff12 = torch.mean(torch.abs(s_hat_wav[:, 1] - s_hat_wav[:, 2])).item()
-    logging.info(f"Mean |s0-s1|: {diff01:.3e} | |s1-s2|: {diff12:.3e}")
+    loss = w_sep * L_sep + w_time * (-sisdr)
 
     stats = {
-        "loss": loss.detach(),
-        "L_sep": L_sep.detach(),
-        "SI_SDR": sisdr.detach(),
-        "w_sep": w_sep,
-        "w_time": w_time,
+        "loss": float(loss.detach()),
+        "L_sep": float(L_sep.detach()),
+        "SI_SDR": float(sisdr.detach()),
+        "S_hat_c": S_hat_c.shape,
+        "Y_ref_c": Y_ref_c.shape,
+        "s_hat_wav": s_hat_wav.shape,
+        "y_wav": y_wav.shape,
+        "y_wav_aligned": y_wav_aligned.shape,
+        "Y_ref_c_aligned": Y_ref_c_aligned.shape,
     }
+    logging.info(f"Stats: {stats}")
     return loss, stats
-
-
-# def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
-#     # STFT-domain L1 on complex spectra (avg over B,K,T,F)
-#     L_sep = torch.abs(S_hat_c - Y_ref_c).mean()
-
-#     # Time-domain SI-SDR in fp32 with exact per-(B,K) lengths
-#     with torch.cuda.amp.autocast(enabled=False):
-#         s_hat_wav = stft.inverse(S_hat_c.float(), lengths=batch["target_lens_all"])
-#         y_wav = batch["target_all"].to(s_hat_wav.device).float()
-#         sisdr = _sisdr(s_hat_wav, y_wav).mean()
-
-#     w_sep, w_time = weights
-#     loss = w_sep * L_sep + w_time * (-sisdr)
-
-#     stats = {
-#         "loss": loss.detach(),
-#         "L_sep": L_sep.detach(),
-#         "SI_SDR": sisdr.detach(),
-#     }
-#     logging.info(f"Stats: {stats}")
-#     return loss, stats

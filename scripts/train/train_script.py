@@ -257,7 +257,14 @@ def run(
                 )  # [B, K, Tw]
 
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
-                spk_all_tf = stft(spk_all)  # → [B, K, 2, T, F]
+                spk_all_tf = stft(spk_all)  # [B, K, 2, T, F]
+                spk_all_for_model = spk_all_tf.permute(
+                    0, 1, 3, 4, 2
+                ).contiguous()  # [B, K, T, F, 2]
+                assert (
+                    spk_all_for_model.shape[-1] == 2
+                ), f"Expected RI last, got {spk_all_for_model.shape}"
+
                 spk_lens_all = (
                     batch["spkid_lens_all"].to(device) - stft.n_fft
                 ) // stft.hop_length  # [B, K]
@@ -275,15 +282,6 @@ def run(
                 Y_ref_c = Y_ref_c.permute(
                     0, 1, 3, 2
                 ).contiguous()  # [B, K, T, F], complex
-
-                # Model (multi-speaker forward we added in MCxTFGridNet)
-                spk_all_for_model = spk_all_tf.permute(
-                    0, 1, 3, 2, 4
-                ).contiguous()  # [B,K, T,  F, 2]
-
-                assert (
-                    spk_all_for_model.shape[-1] == 2
-                ), f"Expected RI last, got {spk_all_for_model.shape}"
 
                 # Add logging for debugging tensor shapes
                 # logging.info(f"=== MULTI-SPEAKER TRAINING DEBUG ===")
