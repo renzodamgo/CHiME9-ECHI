@@ -468,13 +468,6 @@ def run(
                         device, non_blocking=True
                     )  # [B,K,Tw]
 
-                    noisy = prep_audio(
-                        noisy, batch["fs"], input_channels, input_sr, input_rms, True
-                    )
-                    spk_all = prep_audio(
-                        spk_all, batch["fs"], 1, input_sr, input_rms, True
-                    )
-
                     assert do_stft, "Joint validation expects STFT path."
                     noisy_tf = stft(noisy)  # [B,M,T,F,2]
                     spk_all_tf = stft(spk_all)  # [B,K,F,T,2]
