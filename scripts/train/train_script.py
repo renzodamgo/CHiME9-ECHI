@@ -436,7 +436,7 @@ def run(
                     gromit,
                 )
 
-            if num_batches > 500:
+            if batch_idx > 500:
                 break
 
         do_checkpoint = (epoch % ckpt_interval == 0 and epoch > 0) or (
