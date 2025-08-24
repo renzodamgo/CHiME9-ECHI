@@ -7,7 +7,7 @@ rainbow_signal: ${..paths.train_rainbow_file}
 sessions_file: ${..paths.sessions_file}
 segments_file: ${..paths.segment_info_file}
 
-joint_for: ["train"] 
+joint_for: ["train", "dev"]
 
 signal:
   noisy_sr: 48000
@@ -25,4 +25,3 @@ loader:
     num_workers: 4
     shuffle: false
     pin_memory: true
-

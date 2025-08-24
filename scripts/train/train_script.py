@@ -439,17 +439,104 @@ def run(
             (epoch + 1) == train_cfg.epochs
         )
 
-        if do_checkpoint:
-            logging.info(f"=== CHECKPOINT {epoch} ===")
-            model.eval()
-            if debug:
-                loader = tqdm(devset, desc="Validation loop")
-            else:
-                loader = devset
+        # --- VALIDATION: run every epoch ---
+        logging.info(f"=== VALIDATION epoch {epoch} ===")
+        model.eval()
 
-            with torch.no_grad():
-                for batch in loader:
+        # (recommended) reset epoch metrics
+        gromit.val_loss.reset()
+        gromit.val_stoi.reset()
 
+        loader = tqdm(devset, desc="Validation loop") if debug else devset
+        with torch.no_grad():
+            for batch in loader:
+
+                multi = (
+                    ("spkid_all" in batch)
+                    and ("target_all" in batch)
+                    and ("spkid_lens_all" in batch)
+                )
+
+                if multi:
+                    # ---------- MULTI-SPEAKER DEV ----------
+                    noisy = batch["noisy"].to(device, non_blocking=True)  # [B,C,Tw]
+                    spk_all = batch["spkid_all"].to(
+                        device, non_blocking=True
+                    )  # [B,K,Tr]
+                    targ_all = batch["target_all"].to(
+                        device, non_blocking=True
+                    )  # [B,K,Tw]
+
+                    # prep (waveform rms/resample as needed)
+                    noisy = prep_audio(
+                        noisy, batch["fs"], input_channels, input_sr, input_rms, True
+                    )
+                    spk_all = prep_audio(
+                        spk_all, batch["fs"], 1, input_sr, input_rms, True
+                    )
+
+                    if do_stft:
+                        noisy_tf = stft(noisy)  # [B,M,T,F,2]
+                        spk_all_tf = stft(spk_all)  # [B,K,F,T,2]
+                        spk_all_for_model = spk_all_tf.permute(
+                            0, 1, 3, 2, 4
+                        )  # [B,K,T,F,2]
+                        spk_lens_all = (
+                            batch["spkid_lens_all"] - stft.n_fft
+                        ) // stft.hop_length
+                        # forward
+                        S_hat_c = model(
+                            noisy_tf, spk_all_for_model, spk_lens_all
+                        )  # [B,K,T,F] complex
+                        # build Y_ref_c to compute spec loss in the same domain
+                        Y_ref_tf = stft(targ_all)  # [B,K,2,T,F]
+                        Y_ref_c = (
+                            torch.complex(Y_ref_tf[..., 0], Y_ref_tf[..., 1])
+                            .permute(0, 1, 3, 2)
+                            .contiguous()
+                        )  # [B,K,T,F]
+                        # loss (same as train)
+                        val_loss, _ = joint_loss(
+                            S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                        )
+                        # time signals for STOI
+                        s_hat_wav = stft.inverse(S_hat_c)  # [B,K,T]
+                        y_wav = targ_all.to(device)  # [B,K,T]
+                    else:
+                        # if you ever run wave-in/wave-out joint
+                        raise RuntimeError(
+                            "Joint validation without STFT not implemented here."
+                        )
+
+                    # aggregate loss over batch
+                    gromit.val_loss.update(val_loss.detach())
+
+                    # ---- STOI per stream k, masked by real lengths ----
+                    # Use noisy_lens if that’s the per-utterance valid length; else use target lengths.
+                    for b in range(s_hat_wav.size(0)):
+                        for k in range(s_hat_wav.size(1)):
+                            L = int(
+                                batch["noisy_lens"][b]
+                            )  # or batch["target_lens_all"][b,k] if available
+                            proc = s_hat_wav[b, k, :L].unsqueeze(0)
+                            targ = y_wav[b, k, :L].unsqueeze(0)
+                            stoi_score = stoi_fn(proc, targ)  # NegSTOILoss
+                            gromit.val_stoi.update(-stoi_score[0])
+
+                    # save samples only when checkpointing
+                    if do_checkpoint:
+                        # pick one speaker to dump, or loop k (careful: lots of files)
+                        k0 = 0
+                        gromit.save_sample(
+                            s_hat_wav[:, k0].detach().cpu(),
+                            model_cfg.input.sample_rate,
+                            "dev",
+                            epoch,
+                            batch["id"],  # adjust if id is per-B only
+                            "proc_k0",
+                        )
+                else:
+                    # ---------- SINGLE-SPEAKER DEV (your existing path) ----------
                     noisy = batch["noisy"].to(device, non_blocking=True)
                     targets = batch["target"].to(device, non_blocking=True)
                     spk_id = batch["spkid"].to(device, non_blocking=True)
@@ -478,6 +565,8 @@ def run(
                     )
 
                     loss = loss_fn(processed, targets)
+
+                    # STOI: mask by true lengths
                     stoi_processed = processed.reshape(-1, processed.shape[-1])
                     for length, proc, targ in zip(
                         batch["noisy_lens"], stoi_processed, targets
@@ -485,30 +574,32 @@ def run(
                         stoi_score = stoi_fn(
                             proc[:length].unsqueeze(0), targ[:length].unsqueeze(0)
                         )
-                        gromit.val_stoi.update(-stoi_score[0])
+                        gromit.val_stoi.update(
+                            -stoi_score[0]
+                        )  # (your code logs negative)
 
                     gromit.val_loss.update(loss.detach())
 
-                    save_sample(
-                        model_cfg.input.sample_rate,
-                        processed,
-                        batch["id"],
-                        devsaves,
-                        "dev",
-                        epoch,
-                        batch["noisy"],
-                        batch["target"],
-                        gromit,
-                    )
+                    # only dump audio samples when checkpointing
+                    if do_checkpoint:
+                        save_sample(
+                            model_cfg.input.sample_rate,
+                            processed,
+                            batch["id"],
+                            devsaves,
+                            "dev",
+                            epoch,
+                            batch["noisy"],
+                            batch["target"],
+                            gromit,
+                        )
 
-            if do_lrschedule:
-                lr_scheduler.step(gromit.val_loss.get_average())
+        # step LR *every epoch* using current val loss
+        if do_lrschedule:
+            lr_scheduler.step(gromit.val_loss.get_average())
 
         gromit.epoch_report(
-            epoch,
-            do_checkpoint,
-            model,
-            optimizer.param_groups[0]["lr"],
+            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
         )
 
 
