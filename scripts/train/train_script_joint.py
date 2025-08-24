@@ -287,14 +287,9 @@ def run(
             do_stft,
             debug,
             do_checkpoint,
-        )
-
-        # step LR *every epoch* using current val loss
-        if do_lrschedule:
-            lr_scheduler.step(gromit.val_loss.get_average())
-
-        gromit.epoch_report(
-            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
+            lr_scheduler,
+            do_lrschedule,
+            optimizer,
         )
 
 
@@ -310,6 +305,9 @@ def validate(
     do_stft,
     debug,
     do_checkpoint,
+    lr_scheduler,
+    do_lrschedule,
+    optimizer,
 ):
     # --- VALIDATION: run every epoch ---
     logging.info(f"=== VALIDATION epoch {epoch} ===")
@@ -389,6 +387,11 @@ def validate(
                     batch["id"],
                     "proc_k0",
                 )
+            # step LR *every epoch* using current val loss
+    if do_lrschedule:
+        lr_scheduler.step(gromit.val_loss.get_average())
+
+    gromit.epoch_report(epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"])
 
 
 @hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")
