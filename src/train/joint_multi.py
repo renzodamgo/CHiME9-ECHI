@@ -154,7 +154,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
 
     # Try preferred: _sisdr(x, y, lengths=...)
     # try:
-    sisdr = _sisdr(s_hat_wav, y_wav, lengths=tgt_lens).mean()
+    sisdr = _sisdr(s_hat_wav, y_wav).mean()
     # except TypeError:
     #     # Fallback: mask invalid tail before computing SI-SDR if your impl supports masks
     #     mask = _crop_to_lengths(y_wav, tgt_lens)  # [B,K,T]
