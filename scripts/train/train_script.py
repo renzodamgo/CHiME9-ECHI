@@ -511,19 +511,32 @@ def run(
                     )  # ~0.768s@10kHz
 
                     B, K = s_hat_wav.shape[:2]
+                    total_pairs = B * K
+                    done_pairs = 0
+                    valid_pairs = 0
                     for b in range(B):
                         for k in range(K):
                             L = int(batch["target_lens_all"][b, k])
                             L = min(L, s_hat_wav.size(-1), y_wav.size(-1))
+                            done_pairs += 1
                             if L >= min_stoi_len:
                                 proc = s_hat_wav[b, k, :L].unsqueeze(0).contiguous()
                                 targ = y_wav[b, k, :L].unsqueeze(0).contiguous()
                                 try:
                                     stoi_score = stoi_fn(proc, targ)  # NegSTOILoss
                                     gromit.val_stoi.update(-stoi_score[0])
+                                    valid_pairs += 1
                                 except RuntimeError:
                                     pass  # skip pathological clips
-                    # Only save samples when checkpointing (avoid file explosion)
+
+                            # --- log every 10% ---
+                            if done_pairs % max(1, total_pairs // 10) == 0:
+                                pct = 100.0 * done_pairs / total_pairs
+                                logging.info(
+                                    f"STOI progress: {pct:.1f}% "
+                                    f"({done_pairs}/{total_pairs}, valid={valid_pairs})"
+                                )
+
                     if do_checkpoint:
                         k0 = 0
                         gromit.save_sample(
