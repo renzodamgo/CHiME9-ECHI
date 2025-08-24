@@ -467,38 +467,42 @@ def run(
                         device, non_blocking=True
                     )  # [B,K,Tw]
 
-                    # prep (waveform rms/resample as needed)
-                    noisy = prep_audio(
-                        noisy, batch["fs"], input_channels, input_sr, input_rms, True
-                    )
-                    spk_all = prep_audio(
-                        spk_all, batch["fs"], 1, input_sr, input_rms, True
-                    )
+                    noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
+                    spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
+                    spk_all_for_model = spk_all_tf.permute(0, 1, 3, 2, 4).contiguous()
+
+                    assert spk_all_for_model.shape[-1] == 2 and spk_all_for_model.shape[
+                        -2
+                    ] == getattr(
+                        stft, "n_freqs", stft.n_fft // 2 + 1
+                    ), f"Expected [B,K,T,F,2], got {spk_all_for_model.shape}"
 
                     if do_stft:
-                        noisy_tf = stft(noisy)  # [B,M,T,F,2]
-                        spk_all_tf = stft(spk_all)  # [B,K,F,T,2]
-                        spk_all_for_model = spk_all_tf.permute(
-                            0, 1, 3, 2, 4
-                        )  # [B,K,T,F,2]
                         spk_lens_all = (
-                            batch["spkid_lens_all"] - stft.n_fft
-                        ) // stft.hop_length
-                        # forward
-                        S_hat_c = model(
-                            noisy_tf, spk_all_for_model, spk_lens_all
-                        )  # [B,K,T,F] complex
-                        # build Y_ref_c to compute spec loss in the same domain
-                        Y_ref_tf = stft(targ_all)  # [B,K,2,T,F]
-                        Y_ref_c = (
-                            torch.complex(Y_ref_tf[..., 0], Y_ref_tf[..., 1])
-                            .permute(0, 1, 3, 2)
-                            .contiguous()
-                        )  # [B,K,T,F]
-                        # loss (same as train)
-                        val_loss, _ = joint_loss(
-                            S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
-                        )
+                            batch["spkid_lens_all"].to(device) - stft.n_fft
+                        ) // stft.hop_length  # [B, K]
+
+                        # reference complex mixture (pick mic 0)
+                        X_ref_c = torch.complex(
+                            noisy_tf[:, 0, ..., 0], noisy_tf[:, 0, ..., 1]
+                        )  # [B, F, T], complex
+                        X_ref_c = X_ref_c.permute(
+                            0, 2, 1
+                        ).contiguous()  # [B, T, F], complex
+                        Y_ref_tf = stft(targ_all)  # [B, K, 2, T, F]
+                        # Build complex from last-dim RI, then permute to [B, K, T, F] to match S_hat_c
+                        Y_ref_c = torch.complex(
+                            Y_ref_tf[..., 0], Y_ref_tf[..., 1]
+                        )  # [B, K, F, T], complex
+                        Y_ref_c = Y_ref_c.permute(
+                            0, 1, 3, 2
+                        ).contiguous()  # [B, K, T, F], complex
+
+                        with autocast("cuda", dtype=torch.bfloat16):
+                            S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
+                            val_loss, _ = joint_loss(
+                                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                            )
                         # time signals for STOI
                         s_hat_wav = stft.inverse(S_hat_c)  # [B,K,T]
                         y_wav = targ_all.to(device)  # [B,K,T]
