@@ -444,8 +444,8 @@ def run(
         model.eval()
 
         # (recommended) reset epoch metrics
-        gromit.val_loss.reset()
-        gromit.val_stoi.reset()
+        gromit.val_loss.reset(epoch)
+        gromit.val_stoi.reset(epoch)
 
         loader = tqdm(devset, desc="Validation loop") if debug else devset
         with torch.no_grad():
