@@ -20,31 +20,6 @@ torch.backends.cudnn.allow_tf32 = True
 torch.manual_seed(666)
 
 
-# Replace the old lambda with a rank-agnostic helper
-def istft_fn_nd(C: torch.Tensor, stft):
-    """
-    C: complex STFT with last two dims being (T,F) or (F,T).
-       Works for shapes [B,K,T,F], [B,T,F], [T,F], etc.
-    """
-    assert torch.is_complex(C), f"Expected complex STFT, got {C.dtype}"
-    n_freqs = stft.n_fft // 2 + 1
-
-    if C.size(-2) == n_freqs and C.size(-1) != n_freqs:
-        # already [*, F, T]
-        C_FT = C
-    elif C.size(-1) == n_freqs:
-        # [*, T, F] -> [*, F, T]
-        perm = list(range(C.ndim))
-        perm[-2], perm[-1] = perm[-1], perm[-2]
-        C_FT = C.permute(*perm).contiguous()
-    else:
-        raise RuntimeError(
-            f"Can't find freq bins among last two dims: {tuple(C.shape)} (n_freqs={n_freqs})"
-        )
-
-    return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
-
-
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     """
     If `split` is listed in data_cfg.joint_for (e.g., ["train"]),
@@ -54,7 +29,12 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     joint_for = set(getattr(data_cfg, "joint_for", []))  # e.g., ["train"]
     use_joint = split in joint_for
 
+    logging.info(f"=== DATASET SETUP ({split}) ===")
+    logging.info(f"joint_for: {joint_for}")
+    logging.info(f"use_joint: {use_joint}")
+
     if use_joint:
+        logging.info(f"Creating ECHIJoint dataset for {split}")
         data = ECHIJoint(
             split,
             data_cfg.device,
@@ -67,6 +47,7 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
         )
         chosen_collate = collate_fn_joint
     else:
+        logging.info(f"Creating ECHI dataset for {split}")
         data = ECHI(
             split,
             data_cfg.device,
@@ -80,13 +61,18 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
         chosen_collate = collate_fn
 
     data_len = len(data)
+    logging.info(f"Dataset length: {data_len}")
     samples = [data.__getitem__(i * data_len // 5)["id"] for i in range(1, 4)]
+    logging.info(f"Sample IDs: {samples}")
 
     loader = DataLoader(
         data,
         **data_cfg.loader[split],
         collate_fn=chosen_collate,  # <- switches automatically
     )
+
+    logging.info(f"Loader config: {data_cfg.loader[split]}")
+    logging.info(f"Collate function: {chosen_collate.__name__}")
 
     return loader, samples
 
@@ -168,6 +154,17 @@ def run(
     wandb_entity=None,
     wandb_project=None,
 ):
+    logging.info("=== TRAINING CONFIGURATION ===")
+    logging.info(f"Device: {get_device()}")
+    logging.info(f"Debug mode: {debug}")
+    logging.info(f"Experiment directory: {exp_dir}")
+    logging.info(f"Model input type: {model_cfg.input.type}")
+    logging.info(f"Model input channels: {model_cfg.input.channels}")
+    logging.info(f"Model input sample rate: {model_cfg.input.sample_rate}")
+    logging.info(f"Training epochs: {train_cfg.epochs}")
+    logging.info(f"Training loss: {train_cfg.loss.name}")
+    logging.info(f"Learning rate: {train_cfg.lr}")
+    logging.info(f"Checkpoint interval: {train_cfg.checkpoint_interval}")
 
     device = get_device()
 
@@ -219,9 +216,11 @@ def run(
 
     # Train this fine chap
     for epoch in range(train_cfg.epochs):
+        logging.info(f"=== EPOCH {epoch}/{train_cfg.epochs-1} START ===")
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
         model.train()
+        logging.info(f"Model set to training mode")
 
         if debug:
             loader = tqdm(trainset, desc="Training loop")
@@ -301,29 +300,6 @@ def run(
                 # logging.info(f"Model input channels: {model_cfg.input.channels}")
                 # logging.info(f"STFT n_fft: {stft.n_fft}, hop_length: {stft.hop_length}")
                 # logging.info(f"Device: {device}")
-
-                def istft_fn_nd(C: torch.Tensor):
-                    """
-                    C: complex STFT with last two dims being (T,F) or (F,T).
-                    Works for shapes [B,K,T,F], [B,T,F], [T,F], etc.
-                    """
-                    assert torch.is_complex(C), f"Expected complex STFT, got {C.dtype}"
-                    n_freqs = stft.n_fft // 2 + 1
-
-                    if C.size(-2) == n_freqs and C.size(-1) != n_freqs:
-                        # already [*, F, T]
-                        C_FT = C
-                    elif C.size(-1) == n_freqs:
-                        # [*, T, F] -> [*, F, T]
-                        perm = list(range(C.ndim))
-                        perm[-2], perm[-1] = perm[-1], perm[-2]
-                        C_FT = C.permute(*perm).contiguous()
-                    else:
-                        raise RuntimeError(
-                            f"Can't find freq bins among last two dims: {tuple(C.shape)} (n_freqs={n_freqs})"
-                        )
-
-                    return stft.inverse(C_FT)  # torch.istft expects [*, F, T]
 
                 optimizer.zero_grad(set_to_none=True)
                 with autocast("cuda", dtype=torch.bfloat16):
@@ -441,22 +417,30 @@ def run(
         )
 
         # --- VALIDATION: run every epoch ---
-        logging.info(f"=== VALIDATION epoch {epoch} ===")
+        logging.info(f"=== VALIDATION epoch {epoch} START ===")
         model.eval()
+        logging.info(f"Model set to evaluation mode")
 
         # (recommended) reset epoch metrics
         gromit.val_loss.reset(epoch)
         gromit.val_stoi.reset(epoch)
+        logging.info(f"Reset validation metrics for epoch {epoch}")
 
         loader = tqdm(devset, desc="Validation loop") if debug else devset
         with torch.no_grad():
+            val_batch_count = 0
             for batch in loader:
+                val_batch_count += 1
+                logging.info(f"Processing validation batch {val_batch_count}")
+                logging.info(f"Batch keys: {list(batch.keys())}")
+                logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
 
                 multi = (
                     ("spkid_all" in batch)
                     and ("target_all" in batch)
                     and ("spkid_lens_all" in batch)
                 )
+                logging.info(f"Multi-speaker validation: {multi}")
 
                 if multi:
                     # ===== MULTI-SPEAKER PATH (mirrors joint_loss) =====
@@ -610,6 +594,14 @@ def run(
         gromit.epoch_report(
             epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
         )
+
+        logging.info(f"=== EPOCH {epoch} COMPLETED ===")
+        logging.info(f"Checkpoint saved: {do_checkpoint}")
+        logging.info(f"Current LR: {optimizer.param_groups[0]['lr']}")
+        if hasattr(gromit.val_loss, "get_average"):
+            logging.info(f"Validation loss: {gromit.val_loss.get_average()}")
+        if hasattr(gromit.val_stoi, "get_average"):
+            logging.info(f"Validation STOI: {gromit.val_stoi.get_average()}")
 
 
 @hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")
