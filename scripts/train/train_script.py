@@ -3,6 +3,7 @@ import hydra
 from omegaconf import DictConfig
 from tqdm import tqdm
 import logging
+import math
 from torch_stoi import NegSTOILoss
 from torch.utils.data.dataloader import DataLoader
 from train.joint_multi import joint_loss
@@ -458,7 +459,7 @@ def run(
                 )
 
                 if multi:
-                    # ---------- MULTI-SPEAKER DEV ----------
+                    # ===== MULTI-SPEAKER PATH (mirrors joint_loss) =====
                     noisy = batch["noisy"].to(device, non_blocking=True)  # [B,C,Tw]
                     spk_all = batch["spkid_all"].to(
                         device, non_blocking=True
@@ -467,76 +468,74 @@ def run(
                         device, non_blocking=True
                     )  # [B,K,Tw]
 
-                    noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
-                    spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
-                    spk_all_for_model = spk_all_tf.permute(0, 1, 3, 2, 4).contiguous()
+                    noisy = prep_audio(
+                        noisy, batch["fs"], input_channels, input_sr, input_rms, True
+                    )
+                    spk_all = prep_audio(
+                        spk_all, batch["fs"], 1, input_sr, input_rms, True
+                    )
 
-                    assert spk_all_for_model.shape[-1] == 2 and spk_all_for_model.shape[
-                        -2
-                    ] == getattr(
-                        stft, "n_freqs", stft.n_fft // 2 + 1
-                    ), f"Expected [B,K,T,F,2], got {spk_all_for_model.shape}"
+                    assert do_stft, "Joint validation expects STFT path."
+                    noisy_tf = stft(noisy)  # [B,M,T,F,2]
+                    spk_all_tf = stft(spk_all)  # [B,K,F,T,2]
+                    spk_all_for_model = spk_all_tf.permute(
+                        0, 1, 3, 2, 4
+                    ).contiguous()  # [B,K,T,F,2]
 
-                    if do_stft:
-                        spk_lens_all = (
-                            batch["spkid_lens_all"].to(device) - stft.n_fft
-                        ) // stft.hop_length  # [B, K]
+                    spk_lens_all = (
+                        batch["spkid_lens_all"].to(device) - stft.n_fft
+                    ) // stft.hop_length  # [B,K]
 
-                        # reference complex mixture (pick mic 0)
-                        X_ref_c = torch.complex(
-                            noisy_tf[:, 0, ..., 0], noisy_tf[:, 0, ..., 1]
-                        )  # [B, F, T], complex
-                        X_ref_c = X_ref_c.permute(
-                            0, 2, 1
-                        ).contiguous()  # [B, T, F], complex
-                        Y_ref_tf = stft(targ_all)  # [B, K, 2, T, F]
-                        # Build complex from last-dim RI, then permute to [B, K, T, F] to match S_hat_c
-                        Y_ref_c = torch.complex(
-                            Y_ref_tf[..., 0], Y_ref_tf[..., 1]
-                        )  # [B, K, F, T], complex
-                        Y_ref_c = Y_ref_c.permute(
-                            0, 1, 3, 2
-                        ).contiguous()  # [B, K, T, F], complex
+                    # Forward
+                    S_hat_c = model(
+                        noisy_tf, spk_all_for_model, spk_lens_all
+                    )  # [B,K,T,F] (complex)
 
-                        with autocast("cuda", dtype=torch.bfloat16):
-                            S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
-                            val_loss, _ = joint_loss(
-                                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
-                            )
-                        # time signals for STOI
-                        s_hat_wav = stft.inverse(S_hat_c)  # [B,K,T]
-                        y_wav = targ_all.to(device)  # [B,K,T]
-                    else:
-                        # if you ever run wave-in/wave-out joint
-                        raise RuntimeError(
-                            "Joint validation without STFT not implemented here."
-                        )
+                    # Build Y_ref_c in the same domain
+                    Y_ref_tf = stft(targ_all)  # [B,K,2,T,F]
+                    Y_ref_c = (
+                        torch.complex(Y_ref_tf[..., 0], Y_ref_tf[..., 1])
+                        .permute(0, 1, 3, 2)
+                        .contiguous()
+                    )  # [B,K,T,F]
 
-                    # aggregate loss over batch
+                    # Loss exactly like training joint_loss
+                    val_loss, _ = joint_loss(
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                    )
                     gromit.val_loss.update(val_loss.detach())
 
-                    # ---- STOI per stream k, masked by real lengths ----
-                    # Use noisy_lens if that’s the per-utterance valid length; else use target lengths.
-                    for b in range(s_hat_wav.size(0)):
-                        for k in range(s_hat_wav.size(1)):
-                            L = int(
-                                batch["noisy_lens"][b]
-                            )  # or batch["target_lens_all"][b,k] if available
-                            proc = s_hat_wav[b, k, :L].unsqueeze(0)
-                            targ = y_wav[b, k, :L].unsqueeze(0)
-                            stoi_score = stoi_fn(proc, targ)  # NegSTOILoss
-                            gromit.val_stoi.update(-stoi_score[0])
+                    # === STOI per (b,k), using per-speaker valid lengths ===
+                    s_hat_wav = stft.inverse(
+                        S_hat_c, lengths=batch["target_lens_all"].to(device)
+                    )  # [B,K,T]
+                    y_wav = targ_all  # [B,K,T]
+                    min_stoi_len = int(
+                        math.ceil(7680 * model_cfg.input.sample_rate / 10000.0)
+                    )  # ~0.768s@10kHz
 
-                    # save samples only when checkpointing
+                    B, K = s_hat_wav.shape[:2]
+                    for b in range(B):
+                        for k in range(K):
+                            L = int(batch["target_lens_all"][b, k])
+                            L = min(L, s_hat_wav.size(-1), y_wav.size(-1))
+                            if L >= min_stoi_len:
+                                proc = s_hat_wav[b, k, :L].unsqueeze(0).contiguous()
+                                targ = y_wav[b, k, :L].unsqueeze(0).contiguous()
+                                try:
+                                    stoi_score = stoi_fn(proc, targ)  # NegSTOILoss
+                                    gromit.val_stoi.update(-stoi_score[0])
+                                except RuntimeError:
+                                    pass  # skip pathological clips
+                    # Only save samples when checkpointing (avoid file explosion)
                     if do_checkpoint:
-                        # pick one speaker to dump, or loop k (careful: lots of files)
                         k0 = 0
                         gromit.save_sample(
                             s_hat_wav[:, k0].detach().cpu(),
                             model_cfg.input.sample_rate,
                             "dev",
                             epoch,
-                            batch["id"],  # adjust if id is per-B only
+                            batch["id"],
                             "proc_k0",
                         )
                 else:
