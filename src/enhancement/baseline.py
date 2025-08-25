@@ -5,7 +5,7 @@ from typing import Dict
 from tqdm import tqdm
 import logging
 from torch.amp import autocast
-
+import soundfile as sf
 
 from enhancement.registry import register_enhancement
 from shared.core_utils import get_model
@@ -82,6 +82,8 @@ class Baseline:
             self.model_cfg.input.rms,
             batched=False,
         )  # [C,T] on same device as input
+
+        sample_rate = self.model_cfg.input.sample_rate
 
         logging.info(f"device_audio shape: {device_audio.shape}")
 
@@ -183,5 +185,10 @@ class Baseline:
                 den_wav[-self.olap_samples :] *= self.crossfade[-self.olap_samples :]
 
             output[start:end] += den_wav
+
+        print(
+            output.shape, output.min().item(), output.max().item(), output.mean().item()
+        )
+        sf.write("check.wav", output.cpu().numpy(), sample_rate)
 
         return output
