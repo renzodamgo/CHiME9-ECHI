@@ -3,6 +3,7 @@ from omegaconf import OmegaConf
 from pathlib import Path
 from typing import Dict
 from tqdm import tqdm
+import logging
 
 from enhancement.registry import register_enhancement
 from shared.core_utils import get_model
@@ -58,9 +59,15 @@ class Baseline:
         device_fs: int,
         spkid_audio: torch.Tensor,
         spkid_fs: int,
-        kwargs: Dict | None = None,
     ) -> torch.Tensor:
+        """
+        Baseline-style enhancement with a single enrollment (Rainbow).
+        - Computes enrollment STFT once outside the sliding loop.
+        - Keeps model inputs 5D with K=1: spkid_input -> [1,1,T,F,2], spkid_lens -> [1,1].
+        Returns mono enhanced waveform [T].
+        """
 
+        # ----- Prep device (noisy mixture) -----
         device_audio = prep_audio(
             device_audio,
             device_fs,
@@ -68,64 +75,90 @@ class Baseline:
             self.model_cfg.input.sample_rate,
             self.model_cfg.input.rms,
             batched=False,
-        )
+        )  # [C,T] on same device as input
+
+        logging.info(f"device_audio shape: {device_audio.shape}")
+
+        # ----- Prep single enrollment (Rainbow) once -----
+        # Accept [T] or [1,T]
+        if spkid_audio.ndim == 2 and spkid_audio.shape[0] == 1:
+            spkid_audio = spkid_audio.squeeze(0)  # -> [T]
+
         spkid_audio = prep_audio(
-            spkid_audio.squeeze(0),
+            spkid_audio,  # [T]
             spkid_fs,
-            1,
+            1,  # mono
             self.model_cfg.input.sample_rate,
             self.model_cfg.input.rms,
             batched=False,
-        )
+        )  # -> [1,T] (mono) on current device
+        logging.info(f"spkid_audio shape: {spkid_audio.shape}")
 
-        spkid_input = self.stft(spkid_audio).unsqueeze(0)
-        spkid_lens = torch.tensor([spkid_input.shape[2]])
+        # STFT of enrollment once → standardize to [1,1,T,F,2], lens [1,1]
+        spkid_tf = self.stft(spkid_audio)  # expected [1, T, F, 2]
+        if spkid_tf.ndim == 4 and spkid_tf.shape[-1] == 2:
+            pass  # [1, T, F, 2]
+        elif spkid_tf.ndim == 4 and spkid_tf.shape[1] == 2:
+            # If your STFT returns [1, 2, T, F]
+            spkid_tf = spkid_tf.permute(0, 2, 3, 1).contiguous()  # -> [1, T, F, 2]
+        else:
+            raise ValueError(f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}")
 
+        logging.info(f"spkid_tf shape: {spkid_tf.shape}")
+        spkid_input = spkid_tf.unsqueeze(0)  # [1, 1, T, F, 2]
+        spkid_lens = torch.tensor(
+            [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
+        )  # [1,1]
+
+        # ----- Sliding-window OLA enhancement -----
         duration = device_audio.shape[-1]
-
         output = torch.zeros(duration, device=device_audio.device)
+        logging.info(f"output shape: {output.shape}")
 
-        with torch.no_grad():
-            for start in tqdm(range(0, duration, self.stride_samples)):
+        for start in tqdm(range(0, duration, self.stride_samples)):
+            end = min(start + self.window_samples, duration)
+            window_size = end - start
 
-                end = start + self.window_samples
-                if end > duration:
-                    end = duration
+            snippet = device_audio[..., start:end]
+            snippet = prep_audio(
+                snippet,
+                self.model_cfg.input.sample_rate,
+                self.model_cfg.input.channels,
+                self.model_cfg.input.sample_rate,
+                self.model_cfg.input.rms,
+                batched=False,
+            )  # [C, Tw]
 
-                window_size = end - start
+            # Pad to avoid STFT truncation at the tail
+            rem = (window_size - self.stft.n_fft) % self.stft.hop_length
+            if rem > 0:
+                pad_samples = self.stft.hop_length - rem
+                snippet = torch.nn.functional.pad(snippet, (0, pad_samples))
 
-                snippet = device_audio[..., start:end]
-                snippet = prep_audio(
-                    snippet,
-                    self.model_cfg.input.sample_rate,
-                    self.model_cfg.input.channels,
-                    self.model_cfg.input.sample_rate,
-                    self.model_cfg.input.rms,
-                    batched=False,
-                )
+            # STFT mixture -> [1, M, T, F, 2]
+            mix_tf = self.stft(snippet)  # often [C, T, F, 2] or [C, 2, T, F]
+            if mix_tf.ndim == 4 and mix_tf.shape[-1] == 2:  # [C, T, F, 2]
+                mix_tf = mix_tf.unsqueeze(0)  # [1, C, T, F, 2]
+            elif mix_tf.ndim == 4 and mix_tf.shape[1] == 2:  # [C, 2, T, F]
+                mix_tf = mix_tf.permute(2, 3, 1, 0)  # [T, F, 2, C]
+                mix_tf = mix_tf.permute(3, 0, 1, 2).unsqueeze(0)  # [1, C, T, F, 2]
+            else:
+                raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
 
-                rem = (window_size - self.stft.n_fft) % self.stft.hop_length
-                if rem > 0:
-                    # Pad signal to stop stft truncating it
-                    pad_samples = self.stft.hop_length - rem
-                    snippet = torch.nn.functional.pad(snippet, (0, pad_samples))
+            # Forward (K=1) -> [1,1,T,F] complex
+            den_c = self.model(mix_tf, spkid_input, spkid_lens)
+            den_c = den_c[:, 0]  # -> [1,T,F] complex
 
-                snippet = self.stft(snippet).unsqueeze(0)
+            # iSTFT and trim to window_size
+            den_wav = self.stft.inverse(den_c).squeeze(0).squeeze(0)  # [Tw’]
+            den_wav = den_wav[:window_size]
 
-                den_snippet = self.model(snippet, spkid_input, spkid_lens).squeeze(0)
-                den_snippet = self.stft.inverse(den_snippet).squeeze(0).squeeze(0)
+            # Crossfade overlaps
+            if start > 0 and den_wav.shape[-1] > self.olap_samples:
+                den_wav[: self.olap_samples] *= self.crossfade[: self.olap_samples]
+            if end < duration and den_wav.shape[-1] > self.olap_samples:
+                den_wav[-self.olap_samples :] *= self.crossfade[-self.olap_samples :]
 
-                den_snippet = den_snippet[:window_size]
+            output[start:end] += den_wav
 
-                if start > 0 and den_snippet.shape[-1] > self.olap_samples:
-                    den_snippet[: self.olap_samples] *= self.crossfade[
-                        : self.olap_samples
-                    ]
-
-                if end < duration and den_snippet.shape[-1] > self.olap_samples:
-                    den_snippet[-self.olap_samples :] *= self.crossfade[
-                        -self.olap_samples :
-                    ]
-
-                output[start:end] += den_snippet
         return output
