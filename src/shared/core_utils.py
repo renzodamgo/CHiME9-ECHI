@@ -20,6 +20,16 @@ def get_model(
 
     if ckpt_path is not None:
         ckpt = torch.load(ckpt_path, map_location=get_device())
+        # logg trying to load model from checkpoint
+        logging.info(f"Trying to load model from checkpoint: {ckpt_path}")
+        logging.info(f"ckpt: {ckpt.keys()}")
+        ## Check if spk_conv.0.weight and spk_conv.0.bias are in ckpt
+        if "spk_conv.0.weight" not in ckpt:
+            logging.info("spk_conv.0.weight not in ckpt")
+        if "spk_conv.0.bias" not in ckpt:
+            logging.info("spk_conv.0.bias not in ckpt")
+        if "spk_conv.0.weight" in ckpt:
+            logging.info("spk_conv.0.weight in ckpt")
         model.load_state_dict(ckpt)
 
     return model

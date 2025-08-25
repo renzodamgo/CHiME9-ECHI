@@ -28,6 +28,10 @@ class Baseline:
 
         self.stft = STFTWrapper(**self.model_cfg.input.stft, device=torch_device)
         self.stft = self.stft.to(torch_device)
+        logging.info("ENCHANCEMENT INITIALIZED")
+        logging.info(f"stft: {self.stft.n_fft}, {self.stft.hop_length}")
+        logging.info(f"stft device: {self.stft.device}")
+        logging.info(f"checkpoint path: {ckpt_path}")
 
         self.model = get_model(self.model_cfg, ckpt_path)
         self.model = self.model.to(torch_device)
