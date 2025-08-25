@@ -1,6 +1,6 @@
 import math
 from typing import Tuple, Any
-
+import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -108,6 +108,21 @@ class MCxTFGridNet(nn.Module):
             )
 
         self.deconv = nn.ConvTranspose2d(emb_dim, n_srcs * 2, ks, padding=padding)
+        # log model dict
+        logging.info("MODEL INITIALIZED")
+        logging.info(f"model dict: {self.state_dict().keys()}")
+        logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
+        logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
+        logging.info(f"conv.1.weight: {self.state_dict()['conv.1.weight'].shape}")
+        logging.info(f"conv.1.bias: {self.state_dict()['conv.1.bias'].shape}")
+        logging.info(
+            f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
+        )
+        logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
+        logging.info(
+            f"spk_conv.1.weight: {self.state_dict()['spk_conv.1.weight'].shape}"
+        )
+        logging.info(f"spk_conv.1.bias: {self.state_dict()['spk_conv.1.bias'].shape}")
 
     def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
         """
@@ -180,9 +195,7 @@ class MCxTFGridNet(nn.Module):
                 B * K, 2, T, F
             )  # [BK, 2, T, F]
             # Use a 2-channel conv for RI enrollments (falls back to self.conv if needed)
-            spk_feat = (self.spk_conv if hasattr(self, "spk_conv") else self.conv)(
-                spk_feat
-            )
+            spk_feat = self.spk_conv(spk_feat)
 
             # Lens: accept [B] or [B,K] and flatten to [BK]
             if spk_lens.ndim == 1:

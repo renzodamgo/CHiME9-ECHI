@@ -121,6 +121,7 @@ class Gromit:
         if do_ckpt:
             ckpt_path = self.get_ckpt_path(epoch, self.exp_name)
             torch.save(model.state_dict(), ckpt_path)
+            logging.info(f"model dict: {model.state_dict().keys()}")
             logging.info(f"SAVED CHECKPOINT {epoch} to {ckpt_path}")
 
         out_string += f"{delim}LR: {lr}"
