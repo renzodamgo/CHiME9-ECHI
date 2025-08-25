@@ -72,8 +72,10 @@ class Baseline:
         - Keeps model inputs 5D with K=1: spkid_input -> [1,1,T,F,2], spkid_lens -> [1,1].
         Returns mono enhanced waveform [T].
         """
+        for d in range(torch.cuda.device_count()):
+            with torch.cuda.device(d):
+                torch.cuda.reset_peak_memory_stats(d)
 
-        # ----- Prep device (noisy mixture) -----
         device_audio = prep_audio(
             device_audio,
             device_fs,
@@ -199,4 +201,26 @@ class Baseline:
         sf.write("debug_recon.wav", x_rec.cpu().numpy(), sample_rate)
         sf.write("check.wav", output.cpu().numpy(), sample_rate)
 
+        for d in range(torch.cuda.device_count()):
+            with torch.cuda.device(d):
+                torch.cuda.reset_peak_memory_stats(d)
+
         return output
+
+
+def _fmt(bytes_):  # helper
+    return f"{bytes_ / (1024**2):.1f} MiB"
+
+
+def log_vram(prefix="", device=None):
+    if device is None:
+        device = torch.cuda.current_device()
+    torch.cuda.synchronize(device)
+    alloc = torch.cuda.memory_allocated(device)
+    rsvd = torch.cuda.memory_reserved(device)
+    peak_alloc = torch.cuda.max_memory_allocated(device)
+    peak_rsvd = torch.cuda.max_memory_reserved(device)
+    logging.info(
+        f"{prefix} GPU{device}: alloc={_fmt(alloc)}, reserved={_fmt(rsvd)}, "
+        f"peak_alloc={_fmt(peak_alloc)}, peak_reserved={_fmt(peak_rsvd)}"
+    )
