@@ -189,6 +189,14 @@ class Baseline:
         print(
             output.shape, output.min().item(), output.max().item(), output.mean().item()
         )
+
+        logging.info(
+            f"device_fs: {device_fs}, spkid_fs: {spkid_fs}, sample_rate: {sample_rate}"
+        )
+
+        x_c = self.stft(device_audio)
+        x_rec = self.stft.inverse(x_c, lengths=[device_audio.shape[-1]])
+        sf.write("debug_recon.wav", x_rec.cpu().numpy(), sample_rate)
         sf.write("check.wav", output.cpu().numpy(), sample_rate)
 
         return output
