@@ -121,7 +121,7 @@ class Baseline:
             f"enroll packed={tuple(spkid_input.shape)} lens={int(spkid_lens.item())}"
         )
         logging.info(f"spkid_tf shape: {spkid_tf.shape}")
-        spkid_input = spkid_tf.unsqueeze(0)  # [1, 1, T, F, 2]
+        # spkid_input = spkid_tf.unsqueeze(0)  # [1, 1, T, F, 2]
         spkid_lens = torch.tensor(
             [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
         )  # [1,1]
@@ -186,8 +186,8 @@ class Baseline:
 
             output[start:end] += den_wav
 
-        print(
-            output.shape, output.min().item(), output.max().item(), output.mean().item()
+        logging.info(
+            f"output shape: {output.shape}, output min: {output.min().item()}, output max: {output.max().item()}, output mean: {output.mean().item()}"
         )
 
         logging.info(
@@ -195,7 +195,7 @@ class Baseline:
         )
 
         x_c = self.stft(device_audio)
-        x_rec = self.stft.inverse(x_c, lengths=[device_audio.shape[-1]])
+        x_rec = self.stft.inverse(x_c)
         sf.write("debug_recon.wav", x_rec.cpu().numpy(), sample_rate)
         sf.write("check.wav", output.cpu().numpy(), sample_rate)
 
