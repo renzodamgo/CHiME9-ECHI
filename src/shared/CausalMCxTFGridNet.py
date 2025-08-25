@@ -113,16 +113,10 @@ class MCxTFGridNet(nn.Module):
         logging.info(f"model dict: {self.state_dict().keys()}")
         logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
         logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
-        logging.info(f"conv.1.weight: {self.state_dict()['conv.1.weight'].shape}")
-        logging.info(f"conv.1.bias: {self.state_dict()['conv.1.bias'].shape}")
         logging.info(
             f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
         )
         logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
-        logging.info(
-            f"spk_conv.1.weight: {self.state_dict()['spk_conv.1.weight'].shape}"
-        )
-        logging.info(f"spk_conv.1.bias: {self.state_dict()['spk_conv.1.bias'].shape}")
 
     def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
         """
