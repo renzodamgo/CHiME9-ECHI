@@ -100,19 +100,31 @@ class Baseline:
 
         # STFT of enrollment once → standardize to [1,1,T,F,2], lens [1,1]
         spkid_tf = self.stft(spkid_audio)  # expected [1, T, F, 2]
-        if spkid_tf.ndim == 4 and spkid_tf.shape[-1] == 2:
-            pass  # [1, T, F, 2]
-        elif spkid_tf.ndim == 4 and spkid_tf.shape[1] == 2:
-            # If your STFT returns [1, 2, T, F]
-            spkid_tf = spkid_tf.permute(0, 2, 3, 1).contiguous()  # -> [1, T, F, 2]
+        # ADAPT instead of erroring:
+        if spkid_tf.ndim == 3 and spkid_tf.shape[-1] == 2:
+            # [F, T, 2] -> [T, F, 2] -> [1,1,T,F,2]
+            spkid_tf = spkid_tf.permute(1, 0, 2).contiguous()  # [T, F, 2]
+            spkid_input = spkid_tf.unsqueeze(0).unsqueeze(0)  # [1,1,T,F,2]
+            spkid_lens = torch.tensor(
+                [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
+            )  # [1,1] in frames
         else:
-            raise ValueError(f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}")
+            raise ValueError(
+                f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}; expected [F,T,2]"
+            )
 
+        logging.info(
+            f"enroll packed={tuple(spkid_input.shape)} lens={int(spkid_lens.item())}"
+        )
         logging.info(f"spkid_tf shape: {spkid_tf.shape}")
         spkid_input = spkid_tf.unsqueeze(0)  # [1, 1, T, F, 2]
         spkid_lens = torch.tensor(
             [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
         )  # [1,1]
+
+        # log shape of spkid_input and spkid_lens
+        logging.info(f"spkid_input shape: {spkid_input.shape}")
+        logging.info(f"spkid_lens shape: {spkid_lens.shape}")
 
         # ----- Sliding-window OLA enhancement -----
         duration = device_audio.shape[-1]
@@ -150,6 +162,7 @@ class Baseline:
                 raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
 
             # Forward (K=1) -> [1,1,T,F] complex
+            logging.info("FORWARD PASS:")
             den_c = self.model(mix_tf, spkid_input, spkid_lens)
             den_c = den_c[:, 0]  # -> [1,T,F] complex
 
