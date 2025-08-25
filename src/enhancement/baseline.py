@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Dict
 from tqdm import tqdm
 import logging
+from torch.amp import autocast
+
 
 from enhancement.registry import register_enhancement
 from shared.core_utils import get_model
@@ -163,7 +165,11 @@ class Baseline:
 
             # Forward (K=1) -> [1,1,T,F] complex
             logging.info("FORWARD PASS:")
-            den_c = self.model(mix_tf, spkid_input, spkid_lens)
+            self.model.eval()
+
+            # autocast to bfloat16
+            with torch.inference_mode(), autocast("cuda", dtype=torch.bfloat16):
+                den_c = self.model(mix_tf, spkid_input, spkid_lens)
             den_c = den_c[:, 0]  # -> [1,T,F] complex
 
             # iSTFT and trim to window_size
