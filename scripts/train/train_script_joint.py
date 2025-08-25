@@ -39,10 +39,10 @@ def log_detailed_stats(stats, model, optimizer):
             stats["vram_alloc_MB"] = torch.cuda.memory_allocated() / 1024**2
             stats["vram_reserved_MB"] = torch.cuda.memory_reserved() / 1024**2
             stats["vram_max_alloc_MB"] = torch.cuda.max_memory_allocated() / 1024**2
-    logging.info(
-        "Stats: %s",
-        {k: (float(v) if isinstance(v, torch.Tensor) else v) for k, v in stats.items()},
-    )
+    # logging.info(
+    #     "Stats: %s",
+    #     {k: (float(v) if isinstance(v, torch.Tensor) else v) for k, v in stats.items()},
+    # )
 
 
 def save_sample(
@@ -225,9 +225,9 @@ def run(
             spk_all = batch["spkid_all"].to(device, non_blocking=True)  # [B, K, Tr]
             targ_all = batch["target_all"].to(device, non_blocking=True)  # [B, K, Tw]
 
-            logging.info(f"noisy shape: {noisy.shape}")
-            logging.info(f"spk_all shape: {spk_all.shape}")
-            logging.info(f"targ_all shape: {targ_all.shape}")
+            # logging.info(f"noisy shape: {noisy.shape}")
+            # logging.info(f"spk_all shape: {spk_all.shape}")
+            # logging.info(f"targ_all shape: {targ_all.shape}")
 
             noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
             spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]

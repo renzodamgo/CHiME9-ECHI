@@ -109,14 +109,14 @@ class MCxTFGridNet(nn.Module):
 
         self.deconv = nn.ConvTranspose2d(emb_dim, n_srcs * 2, ks, padding=padding)
         # log model dict
-        logging.info("MODEL INITIALIZED")
-        logging.info(f"model dict: {self.state_dict().keys()}")
-        logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
-        logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
-        logging.info(
-            f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
-        )
-        logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
+        # logging.info("MODEL INITIALIZED")
+        # logging.info(f"model dict: {self.state_dict().keys()}")
+        # logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
+        # logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
+        # logging.info(
+        #     f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
+        # )
+        # logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
 
     def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
         """

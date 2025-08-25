@@ -220,7 +220,7 @@ def run(
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
         model.train()
-        logging.info(f"Model set to training mode")
+        # logging.info(f"Model set to training mode")
 
         if debug:
             loader = tqdm(trainset, desc="Training loop")
@@ -256,9 +256,9 @@ def run(
                     device, non_blocking=True
                 )  # [B, K, Tw]
 
-                logging.info(f"noisy shape: {noisy.shape}")
-                logging.info(f"spk_all shape: {spk_all.shape}")
-                logging.info(f"targ_all shape: {targ_all.shape}")
+                # logging.info(f"noisy shape: {noisy.shape}")
+                # logging.info(f"spk_all shape: {spk_all.shape}")
+                # logging.info(f"targ_all shape: {targ_all.shape}")
 
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
                 spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
@@ -340,13 +340,13 @@ def run(
 
                 gromit.train_loss.update(loss.detach())
 
-                logging.info(
-                    "Stats: %s",
-                    {
-                        k: (float(v) if isinstance(v, torch.Tensor) else v)
-                        for k, v in stats.items()
-                    },
-                )
+                # logging.info(
+                #     "Stats: %s",
+                #     {
+                #         k: (float(v) if isinstance(v, torch.Tensor) else v)
+                #         for k, v in stats.items()
+                #     },
+                # )
 
             else:
                 noisy = batch["noisy"].to(device, non_blocking=True)
@@ -366,16 +366,16 @@ def run(
                     ) // stft.hop_length
 
                 # Add logging for debugging single-speaker path
-                logging.info(f"=== SINGLE-SPEAKER TRAINING DEBUG ===")
-                logging.info(f"noisy shape: {noisy.shape}")
-                logging.info(f"targets shape: {targets.shape}")
-                logging.info(f"spk_id shape: {spk_id.shape}")
-                logging.info(f"spkid_lens shape: {batch['spkid_lens'].shape}")
-                logging.info(f"Model input channels: {model_cfg.input.channels}")
-                logging.info(
-                    f"STFT n_fft: {stft.n_fft if do_stft else 'N/A'}, hop_length: {stft.hop_length if do_stft else 'N/A'}"
-                )
-                logging.info(f"Device: {device}")
+                # logging.info(f"=== SINGLE-SPEAKER TRAINING DEBUG ===")
+                # logging.info(f"noisy shape: {noisy.shape}")
+                # logging.info(f"targets shape: {targets.shape}")
+                # logging.info(f"spk_id shape: {spk_id.shape}")
+                # logging.info(f"spkid_lens shape: {batch['spkid_lens'].shape}")
+                # logging.info(f"Model input channels: {model_cfg.input.channels}")
+                # logging.info(
+                #     f"STFT n_fft: {stft.n_fft if do_stft else 'N/A'}, hop_length: {stft.hop_length if do_stft else 'N/A'}"
+                # )
+                # logging.info(f"Device: {device}")
 
                 optimizer.zero_grad()
 
@@ -419,28 +419,28 @@ def run(
         # --- VALIDATION: run every epoch ---
         logging.info(f"=== VALIDATION epoch {epoch} START ===")
         model.eval()
-        logging.info(f"Model set to evaluation mode")
+        # logging.info(f"Model set to evaluation mode")
 
         # (recommended) reset epoch metrics
         gromit.val_loss.reset(epoch)
         gromit.val_stoi.reset(epoch)
-        logging.info(f"Reset validation metrics for epoch {epoch}")
+        # logging.info(f"Reset validation metrics for epoch {epoch}")
 
         loader = tqdm(devset, desc="Validation loop") if debug else devset
         with torch.no_grad():
             val_batch_count = 0
             for batch in loader:
                 val_batch_count += 1
-                logging.info(f"Processing validation batch {val_batch_count}")
-                logging.info(f"Batch keys: {list(batch.keys())}")
-                logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
+                # logging.info(f"Processing validation batch {val_batch_count}")
+                # logging.info(f"Batch keys: {list(batch.keys())}")
+                # logging.info(f"Batch ID: {batch.get('id', 'N/A')}")
 
                 multi = (
                     ("spkid_all" in batch)
                     and ("target_all" in batch)
                     and ("spkid_lens_all" in batch)
                 )
-                logging.info(f"Multi-speaker validation: {multi}")
+                # logging.info(f"Multi-speaker validation: {multi}")
 
                 if multi:
                     # ===== MULTI-SPEAKER PATH (mirrors joint_loss) =====
@@ -513,10 +513,10 @@ def run(
                             # --- log every 10% ---
                             if done_pairs % max(1, total_pairs // 10) == 0:
                                 pct = 100.0 * done_pairs / total_pairs
-                                logging.info(
-                                    f"STOI progress: {pct:.1f}% "
-                                    f"({done_pairs}/{total_pairs}, valid={valid_pairs})"
-                                )
+                                # logging.info(
+                                #     f"STOI progress: {pct:.1f}% "
+                                #     f"({done_pairs}/{total_pairs}, valid={valid_pairs})"
+                                # )
 
                     if do_checkpoint:
                         k0 = 0
@@ -595,13 +595,13 @@ def run(
             epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
         )
 
-        logging.info(f"=== EPOCH {epoch} COMPLETED ===")
-        logging.info(f"Checkpoint saved: {do_checkpoint}")
-        logging.info(f"Current LR: {optimizer.param_groups[0]['lr']}")
-        if hasattr(gromit.val_loss, "get_average"):
-            logging.info(f"Validation loss: {gromit.val_loss.get_average()}")
-        if hasattr(gromit.val_stoi, "get_average"):
-            logging.info(f"Validation STOI: {gromit.val_stoi.get_average()}")
+        # logging.info(f"=== EPOCH {epoch} COMPLETED ===")
+        # logging.info(f"Checkpoint saved: {do_checkpoint}")
+        # logging.info(f"Current LR: {optimizer.param_groups[0]['lr']}")
+        # if hasattr(gromit.val_loss, "get_average"):
+        #     logging.info(f"Validation loss: {gromit.val_loss.get_average()}")
+        # if hasattr(gromit.val_stoi, "get_average"):
+        #     logging.info(f"Validation STOI: {gromit.val_stoi.get_average()}")
 
 
 @hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")

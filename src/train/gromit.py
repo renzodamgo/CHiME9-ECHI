@@ -79,7 +79,7 @@ class Gromit:
                 dir=self.output_path,
             )
 
-        logging.info("Training")
+        # logging.info("Training")
 
     def epoch_report(
         self, epoch, do_ckpt, model: torch.nn.Module, lr: float, delim=" "
@@ -121,12 +121,12 @@ class Gromit:
         if do_ckpt:
             ckpt_path = self.get_ckpt_path(epoch, self.exp_name)
             torch.save(model.state_dict(), ckpt_path)
-            logging.info(f"model dict: {model.state_dict().keys()}")
-            logging.info(f"SAVED CHECKPOINT {epoch} to {ckpt_path}")
+            # logging.info(f"model dict: {model.state_dict().keys()}")
+            # logging.info(f"SAVED CHECKPOINT {epoch} to {ckpt_path}")
 
         out_string += f"{delim}LR: {lr}"
 
-        logging.info(out_string)
+        # logging.info(out_string)
         train_log.append(new_log)
         write_json(self.json_name, train_log)
 
