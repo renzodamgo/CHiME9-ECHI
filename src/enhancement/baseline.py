@@ -107,20 +107,36 @@ class Baseline:
         ## STFT of enrollment once → normalize to [1,1,F,T,2], lens [1,1]
         spkid_tf = self.stft(spkid_audio)  # returns [F, T, 2] or [1, F, T, 2]
 
-        # normalize to [F, T, 2]
-        if spkid_tf.ndim == 4 and spkid_tf.shape[0] == 1:  # [1,F,T,2] -> [F,T,2]
-            spkid_tf = spkid_tf[0]
-        elif not (spkid_tf.ndim == 3 and spkid_tf.shape[-1] == 2):
-            raise ValueError(
-                f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}; expected [F,T,2] or [1,F,T,2]"
-            )
+        # --- START OF FIX ---
+        # The model requires the speaker input to have the shape [B, K, T, F, 2].
+        # We must explicitly permute the dimensions to ensure Time comes before Frequency.
 
-        # pack as [B=1, K=1, F, T, 2]
-        spkid_input = spkid_tf.unsqueeze(0).unsqueeze(0)  # [1,1,F,T,2]
+        if spkid_tf.ndim == 3 and spkid_tf.shape[-1] == 2:
+            # Input is [F, T, 2], e.g., [65, 8336, 2]
+            # Permute to [T, F, 2]
+            spkid_tf_swapped = spkid_tf.permute(1, 0, 2)
+            # Add Batch and K dimensions -> [1, 1, T, F, 2]
+            spkid_input = spkid_tf_swapped.unsqueeze(0).unsqueeze(0)
+
+        elif spkid_tf.ndim == 4 and spkid_tf.shape[-1] == 2:
+            # Input is [B, F, T, 2]
+            # Permute to [B, T, F, 2]
+            spkid_tf_swapped = spkid_tf.permute(0, 2, 1, 3)
+            # Add K dimension -> [B, 1, T, F, 2]
+            spkid_input = spkid_tf_swapped.unsqueeze(1)
+
+        else:
+            raise ValueError(
+                f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}; expected [F,T,2] or [B,F,T,2]"
+            )
         T_frames = spkid_tf.shape[1]  # T is axis 1 in [F,T,2]
         spkid_lens = torch.tensor(
-            [[T_frames]], device=spkid_input.device, dtype=torch.long
-        )  # [1,1]
+            [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
+        )
+
+        # Log shape of spkid_input and spkid_lens
+        logging.info(f"Corrected spkid_input shape: {spkid_input.shape}")
+        logging.info(f"Corrected spkid_lens shape: {spkid_lens.shape}")
 
         logging.info(
             f"enroll packed (F-first)={tuple(spkid_input.shape)} lens_frames={int(spkid_lens.item())}"
