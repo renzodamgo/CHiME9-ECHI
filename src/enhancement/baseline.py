@@ -158,14 +158,24 @@ class Baseline:
                 snippet = torch.nn.functional.pad(snippet, (0, pad_samples))
 
             # STFT mixture -> [1, M, T, F, 2]
-            mix_tf = self.stft(snippet)  # often [C, T, F, 2] or [C, 2, T, F]
-            if mix_tf.ndim == 4 and mix_tf.shape[-1] == 2:  # [C, T, F, 2]
-                mix_tf = mix_tf.unsqueeze(0)  # [1, C, T, F, 2]
-            elif mix_tf.ndim == 4 and mix_tf.shape[1] == 2:  # [C, 2, T, F]
-                mix_tf = mix_tf.permute(2, 3, 1, 0)  # [T, F, 2, C]
-                mix_tf = mix_tf.permute(3, 0, 1, 2).unsqueeze(0)  # [1, C, T, F, 2]
+            # mix_tf = self.stft(snippet)  # often [C, T, F, 2] or [C, 2, T, F]
+            # if mix_tf.ndim == 4 and mix_tf.shape[-1] == 2:  # [C, T, F, 2]
+            #     mix_tf = mix_tf.unsqueeze(0)  # [1, C, T, F, 2]
+            # elif mix_tf.ndim == 4 and mix_tf.shape[1] == 2:  # [C, 2, T, F]
+            #     mix_tf = mix_tf.permute(2, 3, 1, 0)  # [T, F, 2, C]
+            #     mix_tf = mix_tf.permute(3, 0, 1, 2).unsqueeze(0)  # [1, C, T, F, 2]
+            # else:
+            #     raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
+
+            mix_tf = self.stft(snippet)  # snippet is [C, Tw] → mix_tf is [C, F, T, 2]
+            if mix_tf.ndim == 4:  # [C, F, T, 2] → [1, C, T, F, 2]
+                mix_tf = mix_tf.permute(0, 2, 1, 3).unsqueeze(0)
+            elif mix_tf.ndim == 5:  # [B, C, F, T, 2] → [B, C, T, F, 2]
+                mix_tf = mix_tf.permute(0, 1, 3, 2, 4)
             else:
                 raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
+
+            logging.info(f"mix_tf shape: {mix_tf.shape}")
 
             # Forward (K=1) -> [1,1,T,F] complex
             logging.info("FORWARD PASS:")
@@ -188,6 +198,13 @@ class Baseline:
 
             output[start:end] += den_wav
 
+            logging.info(
+                f"mix_tf mean|max: {mix_tf.abs().mean().item():.3e} | {mix_tf.abs().max().item():.3e}"
+            )
+            logging.info(
+                f"den_c  mean|max: {den_c.abs().mean().item():.3e} | {den_c.abs().max().item():.3e}"
+            )
+
         logging.info(
             f"output shape: {output.shape}, output min: {output.min().item()}, output max: {output.max().item()}, output mean: {output.mean().item()}"
         )
@@ -196,10 +213,10 @@ class Baseline:
             f"device_fs: {device_fs}, spkid_fs: {spkid_fs}, sample_rate: {sample_rate}"
         )
 
-        x_c = self.stft(device_audio)
-        x_rec = self.stft.inverse(x_c)
-        sf.write("debug_recon.wav", x_rec.cpu().numpy(), sample_rate)
-        sf.write("check.wav", output.cpu().numpy(), sample_rate)
+        # x_c = self.stft(device_audio)
+        # x_rec = self.stft.inverse(x_c)
+        # sf.write("debug_recon.wav", x_rec.cpu().numpy(), sample_rate)
+        # sf.write("check.wav", output.cpu().numpy(), sample_rate)
 
         for d in range(torch.cuda.device_count()):
             with torch.cuda.device(d):
