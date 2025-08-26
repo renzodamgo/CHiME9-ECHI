@@ -81,7 +81,7 @@ class Baseline:
             device_fs,
             self.model_cfg.input.channels,
             self.model_cfg.input.sample_rate,
-            None,
+            0.0,
             batched=False,
         )  # [C,T] on same device as input
 
@@ -99,7 +99,7 @@ class Baseline:
             spkid_fs,
             1,  # mono
             self.model_cfg.input.sample_rate,
-            None,
+            0.0,
             batched=False,
         )  # -> [1,T] (mono) on current device
         logging.info(f"spkid_audio shape: {spkid_audio.shape}")
