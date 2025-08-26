@@ -204,6 +204,7 @@ class Baseline:
             # Forward (K=1) -> [1,1,T,F] complex
             logging.info("FORWARD PASS:")
             self.model.eval()
+            self.model.train()
 
             # autocast to bfloat16
             with torch.inference_mode(), autocast("cuda", dtype=torch.bfloat16):
