@@ -81,7 +81,7 @@ class Baseline:
             device_fs,
             self.model_cfg.input.channels,
             self.model_cfg.input.sample_rate,
-            self.model_cfg.input.rms,
+            None,
             batched=False,
         )  # [C,T] on same device as input
 
@@ -99,26 +99,32 @@ class Baseline:
             spkid_fs,
             1,  # mono
             self.model_cfg.input.sample_rate,
-            self.model_cfg.input.rms,
+            None,
             batched=False,
         )  # -> [1,T] (mono) on current device
         logging.info(f"spkid_audio shape: {spkid_audio.shape}")
 
-        # STFT of enrollment once → standardize to [1,1,T,F,2], lens [1,1]
-        spkid_tf = self.stft(spkid_audio)  # expected [1, T, F, 2]
-        # ADAPT instead of erroring:
-        if spkid_tf.ndim == 3 and spkid_tf.shape[-1] == 2:
-            # [F, T, 2] -> [T, F, 2] -> [1,1,T,F,2]
-            spkid_tf = spkid_tf.permute(1, 0, 2).contiguous()  # [T, F, 2]
-            spkid_input = spkid_tf.unsqueeze(0).unsqueeze(0)  # [1,1,T,F,2]
-            spkid_lens = torch.tensor(
-                [[spkid_input.shape[2]]], dtype=torch.long, device=spkid_input.device
-            )  # [1,1] in frames
-        else:
+        ## STFT of enrollment once → normalize to [1,1,F,T,2], lens [1,1]
+        spkid_tf = self.stft(spkid_audio)  # returns [F, T, 2] or [1, F, T, 2]
+
+        # normalize to [F, T, 2]
+        if spkid_tf.ndim == 4 and spkid_tf.shape[0] == 1:  # [1,F,T,2] -> [F,T,2]
+            spkid_tf = spkid_tf[0]
+        elif not (spkid_tf.ndim == 3 and spkid_tf.shape[-1] == 2):
             raise ValueError(
-                f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}; expected [F,T,2]"
+                f"Unexpected STFT(spkid) shape: {tuple(spkid_tf.shape)}; expected [F,T,2] or [1,F,T,2]"
             )
 
+        # pack as [B=1, K=1, F, T, 2]
+        spkid_input = spkid_tf.unsqueeze(0).unsqueeze(0)  # [1,1,F,T,2]
+        T_frames = spkid_tf.shape[1]  # T is axis 1 in [F,T,2]
+        spkid_lens = torch.tensor(
+            [[T_frames]], device=spkid_input.device, dtype=torch.long
+        )  # [1,1]
+
+        logging.info(
+            f"enroll packed (F-first)={tuple(spkid_input.shape)} lens_frames={int(spkid_lens.item())}"
+        )
         logging.info(
             f"enroll packed={tuple(spkid_input.shape)} lens={int(spkid_lens.item())}"
         )
@@ -168,7 +174,7 @@ class Baseline:
             #     raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
 
             # snippet: [C, Tw]
-            mix_tf = self.stft(snippet)      # [C, F, T, 2]
+            mix_tf = self.stft(snippet)  # [C, F, T, 2]
             if mix_tf.ndim == 4:  # unbatched -> add batch
                 mix_tf = mix_tf.unsqueeze(0)  # [1, C, F, T, 2]
             elif mix_tf.ndim == 5:
