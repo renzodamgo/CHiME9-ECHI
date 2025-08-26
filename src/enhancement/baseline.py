@@ -167,15 +167,17 @@ class Baseline:
             # else:
             #     raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
 
-            mix_tf = self.stft(snippet)  # snippet is [C, Tw] → mix_tf is [C, F, T, 2]
-            if mix_tf.ndim == 4:  # [C, F, T, 2] → [1, C, T, F, 2]
-                mix_tf = mix_tf.permute(0, 2, 1, 3).unsqueeze(0)
-            elif mix_tf.ndim == 5:  # [B, C, F, T, 2] → [B, C, T, F, 2]
-                mix_tf = mix_tf.permute(0, 1, 3, 2, 4)
+            # snippet: [C, Tw]
+            mix_tf = self.stft(snippet)      # [C, F, T, 2]
+            if mix_tf.ndim == 4:  # unbatched -> add batch
+                mix_tf = mix_tf.unsqueeze(0)  # [1, C, F, T, 2]
+            elif mix_tf.ndim == 5:
+                # already [B, C, F, T, 2]; keep as-is
+                pass
             else:
                 raise ValueError(f"Unexpected STFT(mix) shape: {tuple(mix_tf.shape)}")
 
-            logging.info(f"mix_tf shape: {mix_tf.shape}")
+            logging.info(f"mix_tf shape (F-first): {tuple(mix_tf.shape)}")
 
             # Forward (K=1) -> [1,1,T,F] complex
             logging.info("FORWARD PASS:")
