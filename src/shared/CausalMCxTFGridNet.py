@@ -539,6 +539,17 @@ class FiLM(nn.Module):
         """
         gamma = self.gamma_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
         beta = self.beta_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
+        if not hasattr(self, "printed"):
+            print("--- Inspecting FiLM Layer ---")
+            print(
+                f"Gamma (scale for audio): mean abs = {gamma.abs().mean():.2e}, max abs = {gamma.abs().max():.2e}"
+            )
+            print(
+                f"Beta (bias from spk):  mean abs = {beta.abs().mean():.2e}, max abs = {beta.abs().max():.2e}"
+            )
+            print("-----------------------------")
+            self.printed = True
+        # ===========================
         return gamma * x + beta
 
 
