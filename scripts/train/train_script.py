@@ -565,13 +565,7 @@ def run(
 
                     with torch.no_grad():
                         # Convert model output from complex STFT to waveform and move to CPU
-                        s_hat_wav = (
-                            stft.inverse(
-                                S_hat_c, lengths=batch["target_lens_all"].to(device)
-                            )
-                            .detach()
-                            .cpu()
-                        )  # Shape: [B, K, T]
+                        s_hat_wav = s_hat_wav.detach().cpu()
 
                         # Determine which scenes in the batch are marked for saving
                         scenes_in_batch = batch["id"]
