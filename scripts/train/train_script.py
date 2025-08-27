@@ -340,6 +340,8 @@ def run(
 
                 gromit.train_loss.update(loss.detach())
 
+                logging.info(f"SAVING TRAIN SAMPLES FOR EPOCH {epoch}")
+
                 with torch.no_grad():
                     # Convert model output from complex STFT to waveform and move to CPU
                     s_hat_wav = (
@@ -558,6 +560,8 @@ def run(
                                 #     f"STOI progress: {pct:.1f}% "
                                 #     f"({done_pairs}/{total_pairs}, valid={valid_pairs})"
                                 # )
+
+                    logging.info(f"SAVING VAL SAMPLES FOR EPOCH {epoch}")
 
                     with torch.no_grad():
                         # Convert model output from complex STFT to waveform and move to CPU
