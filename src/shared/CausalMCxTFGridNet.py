@@ -109,14 +109,14 @@ class MCxTFGridNet(nn.Module):
 
         self.deconv = nn.ConvTranspose2d(emb_dim, n_srcs * 2, ks, padding=padding)
         # log model dict
-        # logging.info("MODEL INITIALIZED")
-        # logging.info(f"model dict: {self.state_dict().keys()}")
-        # logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
-        # logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
-        # logging.info(
-        #     f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
-        # )
-        # logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
+        logging.info("MODEL INITIALIZED")
+        logging.info(f"model dict: {self.state_dict().keys()}")
+        logging.info(f"conv.0.weight: {self.state_dict()['conv.0.weight'].shape}")
+        logging.info(f"conv.0.bias: {self.state_dict()['conv.0.bias'].shape}")
+        logging.info(
+            f"spk_conv.0.weight: {self.state_dict()['spk_conv.0.weight'].shape}"
+        )
+        logging.info(f"spk_conv.0.bias: {self.state_dict()['spk_conv.0.bias'].shape}")
 
     def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
         """
@@ -540,14 +540,14 @@ class FiLM(nn.Module):
         gamma = self.gamma_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
         beta = self.beta_fc(cond).unsqueeze(-1).unsqueeze(-1)  # [B, C, 1, 1]
         if not hasattr(self, "printed"):
-            print("--- Inspecting FiLM Layer ---")
-            print(
+            logging.info("--- Inspecting FiLM Layer ---")
+            logging.info(
                 f"Gamma (scale for audio): mean abs = {gamma.abs().mean():.2e}, max abs = {gamma.abs().max():.2e}"
             )
-            print(
+            logging.info(
                 f"Beta (bias from spk):  mean abs = {beta.abs().mean():.2e}, max abs = {beta.abs().max():.2e}"
             )
-            print("-----------------------------")
+            logging.info("-----------------------------")
             self.printed = True
         # ===========================
         return gamma * x + beta

@@ -8,7 +8,6 @@ from pathlib import Path
 import csv
 from shared.signal_utils import combine_audio_list
 import torch.nn.functional as F
-
 from typing import Any
 
 
@@ -259,7 +258,6 @@ class ECHIJoint(ECHI):
                 break
 
     def __getitem__(self, index):
-        import torch.nn.functional as F
 
         meta = self.manifest[index]
         out = {"id": meta["id"]}
@@ -326,10 +324,8 @@ def collate_fn_joint(batch: list[dict]):
     """
     ids = [x["id"] for x in batch]
     fs = batch[0]["fs"]
-    MAX_TRAIN_SECS = 8.0
-    MAX_ENROLL_SECS = 10.0
+    MAX_TRAIN_SECS = 4.0
     max_samples = int(MAX_TRAIN_SECS * fs)
-    max_enroll = int(MAX_ENROLL_SECS * fs)
 
     # ---- per-item random crop (SAME crop for noisy + ALL K targets) ----
     for x in batch:
@@ -340,9 +336,7 @@ def collate_fn_joint(batch: list[dict]):
             end = start + max_samples
             x["noisy"] = x["noisy"][..., start:end]  # [C, max_samples]
             x["target_all"] = x["target_all"][..., start:end]  # [K, max_samples]
-        # (optional) trim enrollments to a fixed window; they’re pooled by AuxEncoder
-        if x["spkid_all"].size(1) > max_enroll:
-            x["spkid_all"] = x["spkid_all"][..., :max_enroll]  # [K, max_enroll]
+        
 
     # ---- now do your usual padding/packing ----
     from shared.signal_utils import combine_audio_list
