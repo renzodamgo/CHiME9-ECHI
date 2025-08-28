@@ -115,7 +115,7 @@ class Gromit:
         wlog[f"val_{self.loss_name}"] = val_loss
         wlog["val_stoi"] = val_stoi
         wlog["lr"] = lr
-        wlog["L"] = stats["L_sep"]
+        wlog["L_sep"] = stats["L_sep"]
         wlog["SI-SDR"] = stats["SI_SDR"]
         new_log["val_loss"] = val_loss
         new_log["val_stoi"] = val_stoi

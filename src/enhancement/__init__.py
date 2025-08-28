@@ -5,6 +5,7 @@ import os
 # Import default packages
 from enhancement import baseline as baseline
 from enhancement import passthrough as passthrough
+from enhancement import custom as custom
 
 # Auto import enhancment options from ECHIPLUGINS
 if "ECHIPLUGINS" in os.environ:
