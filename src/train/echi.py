@@ -336,7 +336,6 @@ def collate_fn_joint(batch: list[dict]):
             end = start + max_samples
             x["noisy"] = x["noisy"][..., start:end]  # [C, max_samples]
             x["target_all"] = x["target_all"][..., start:end]  # [K, max_samples]
-        
 
     # ---- now do your usual padding/packing ----
     from shared.signal_utils import combine_audio_list

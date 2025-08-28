@@ -136,27 +136,33 @@ def validate(
             )  # [B,K,T,F]
 
             # Loss computation
-            val_loss, val_stats = joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1))
+            val_loss, val_stats = joint_loss(
+                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1)
+            )
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
             gromit.val_si_sdr.update(torch.tensor(val_stats["SI_SDR"]))
-            
+
             # DEBUG: Check STFT magnitude before inverse transform
             S_hat_mag = torch.abs(S_hat_c)
-            logging.info(f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}")
+            logging.info(
+                f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}"
+            )
 
             # STOI computation
             target_lens = batch["target_lens_all"].to(device)
-            
+
             # DEBUG: Check lengths parameter
-            logging.info(f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}")
-            
-            s_hat_wav = stft.inverse(
-                S_hat_c, lengths=target_lens
-            )  # [B,K,T]
-            
+            logging.info(
+                f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}"
+            )
+
+            s_hat_wav = stft.inverse(S_hat_c, lengths=target_lens)  # [B,K,T]
+
             # DEBUG: Check s_hat_wav stats
-            logging.info(f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}")
+            logging.info(
+                f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}"
+            )
             y_wav = targ_all  # [B,K,T]
             min_stoi_len = int(math.ceil(7680 * model_cfg.input.sample_rate / 10000.0))
 
@@ -175,7 +181,7 @@ def validate(
                             pass
 
             # Save samples only when checkpointing
-            if do_checkpoint:
+            if do_checkpoint or epoch == 0:
                 logging.info(f"SAVING VAL SAMPLES FOR EPOCH {epoch}")
                 s_hat_wav_cpu = s_hat_wav.detach().cpu()
                 scenes_in_batch = batch["id"]
@@ -185,13 +191,15 @@ def validate(
                     for b_idx, scene in enumerate(scenes_in_batch):
                         if scene in scenes_to_save:
                             num_speakers = s_hat_wav_cpu.shape[1]  # Get K
-                            
+
                             # Save all speakers instead of just first one
                             for k_idx in range(num_speakers):
                                 # DEBUG: Check per-speaker stats
                                 spk_audio = s_hat_wav_cpu[b_idx, k_idx]
-                                logging.info(f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}")
-                                
+                                logging.info(
+                                    f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
+                                )
+
                                 gromit.save_sample(
                                     spk_audio,
                                     model_cfg.input.sample_rate,
