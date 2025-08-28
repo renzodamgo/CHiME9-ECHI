@@ -40,7 +40,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
     # L1 over complex plane (equivalently L1 over RI if you prefer)
     L_sep = torch.abs(S_hat_c - Y_ref_c).mean()
 
-    # --- 2) Time-domain SI-SDR (index-aligned, no PIT) ---
+    # --- 2) Time-domain SI-SDR  ---
     # Use exact per-(B,K) sample lengths so iSTFT returns the right shapes
     tgt_lens = batch["target_lens_all"].to(S_hat_c.device)  # [B,K] samples
     y_wav = batch["target_all"].to(S_hat_c.device)  # [B,K,Tw]
