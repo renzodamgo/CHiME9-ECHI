@@ -171,8 +171,7 @@ class Gromit:
 
         audio_fname = f"{scene}_{audio_type}.wav"
         # if audio type contains proc add epoch
-        if "proc" in audio_type:
-            audio_fname = f"epoch{str(epoch).zfill(3)}_" + audio_fname
+        audio_fname = f"epoch{str(epoch).zfill(3)}_" + audio_fname
         audio_path = str(audio_dir / audio_fname)
         
         # DEBUG: Log sample stats before saving
