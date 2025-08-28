@@ -257,6 +257,8 @@ def run(
                 )  # [B, K, Tw]
 
                 # Apply prep_audio only where needed
+                logging.info(f"BEFORE prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}, targ_all: {targ_all.shape}")
+                
                 noisy = prep_audio(
                     noisy, batch["fs"], input_channels, input_sr, input_rms, True
                 )
@@ -267,14 +269,17 @@ def run(
                 spk_all = prep_audio(spk_all, batch["fs"], 1, input_sr, input_rms, True)
                 spk_all = spk_all.squeeze(1).view(B, K, -1)  # [B, K, T_spk']
 
-                logging.info(f"noisy shape: {noisy.shape}")
-                logging.info(f"spk_all shape: {spk_all.shape}")
-                logging.info(f"targ_all shape: {targ_all.shape}")
+                logging.info(f"AFTER prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}, targ_all: {targ_all.shape}")
+                logging.info(f"Sample rates - batch fs: {batch['fs']}, target sr: {input_sr}")
 
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
                 spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
+                logging.info(f"STFT shapes - noisy_tf: {noisy_tf.shape}, spk_all_tf: {spk_all_tf.shape}")
+                
                 # spk_all_tf: [B,K,F,T,2] -> [B,K,T,F,2]
                 spk_all_for_model = spk_all_tf.permute(0, 1, 3, 2, 4).contiguous()
+                logging.info(f"spk_all_for_model after permute: {spk_all_for_model.shape}")
+                
                 assert spk_all_for_model.shape[-1] == 2 and spk_all_for_model.shape[
                     -2
                 ] == getattr(
@@ -284,6 +289,8 @@ def run(
                 spk_lens_all = (
                     batch["spkid_lens_all"].to(device) - stft.n_fft
                 ) // stft.hop_length  # [B, K]
+                logging.info(f"spkid_lens_all original: {batch['spkid_lens_all']}")
+                logging.info(f"spk_lens_all after STFT adjustment: {spk_lens_all}")
 
                 # reference complex mixture (pick mic 0)
                 X_ref_c = torch.complex(
