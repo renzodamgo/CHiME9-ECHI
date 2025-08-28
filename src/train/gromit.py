@@ -54,6 +54,10 @@ class Gromit:
         self.train_loss = LossTracker()
         self.val_loss = LossTracker()
         self.val_stoi = LossTracker()
+        self.train_l_sep = LossTracker()
+        self.train_si_sdr = LossTracker()
+        self.val_l_sep = LossTracker()
+        self.val_si_sdr = LossTracker()
 
         self.output_path = Path(output_path)
         self.json_name = self.output_path / "train_log.json"
@@ -98,25 +102,39 @@ class Gromit:
         wlog = {}
 
         train_loss = self.train_loss.get_average()
+        train_l_sep = self.train_l_sep.get_average()
+        train_si_sdr = self.train_si_sdr.get_average()
         out_string = f"{delim}Epoch {epoch+1} report"
         out_string += f"{delim}Train loss: {train_loss:.6f}"
+        out_string += f"{delim}Train L_sep: {train_l_sep:.6f}"
+        out_string += f"{delim}Train SI-SDR: {train_si_sdr:.6f}"
         self.train_loss.reset(epoch)
+        self.train_l_sep.reset(epoch)
+        self.train_si_sdr.reset(epoch)
 
         wlog[f"train_{self.loss_name}"] = train_loss
+        wlog["train_L_sep"] = train_l_sep
+        wlog["train_SI_SDR"] = train_si_sdr
         new_log["train_loss"] = train_loss
 
         val_loss = self.val_loss.get_average()
         val_stoi = self.val_stoi.get_average()
+        val_l_sep = self.val_l_sep.get_average()
+        val_si_sdr = self.val_si_sdr.get_average()
         out_string += f"{delim}Val loss: {val_loss:.6f}"
         out_string += f"{delim}Val stoi: {val_stoi:.6f}"
+        out_string += f"{delim}Val L_sep: {val_l_sep:.6f}"
+        out_string += f"{delim}Val SI-SDR: {val_si_sdr:.6f}"
         self.val_loss.reset(epoch)
         self.val_stoi.reset(epoch)
+        self.val_l_sep.reset(epoch)
+        self.val_si_sdr.reset(epoch)
 
         wlog[f"val_{self.loss_name}"] = val_loss
         wlog["val_stoi"] = val_stoi
+        wlog["val_L_sep"] = val_l_sep
+        wlog["val_SI_SDR"] = val_si_sdr
         wlog["lr"] = lr
-        wlog["L_sep"] = stats["L_sep"]
-        wlog["SI-SDR"] = stats["SI_SDR"]
         new_log["val_loss"] = val_loss
         new_log["val_stoi"] = val_stoi
 
