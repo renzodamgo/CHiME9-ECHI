@@ -305,7 +305,7 @@ def run(
                 with autocast("cuda", dtype=torch.bfloat16):
                     S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                     loss, stats = joint_loss(
-                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.0)
                     )
                     # def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
 
@@ -521,7 +521,7 @@ def run(
 
                     # Loss exactly like training joint_loss
                     val_loss, _ = joint_loss(
-                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.0)
                     )
                     gromit.val_loss.update(val_loss.detach())
 
