@@ -550,6 +550,10 @@ def run(
                         S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
                     gromit.val_loss.update(val_loss.detach())
+                    
+                    # DEBUG: Check STFT magnitude before inverse transform
+                    S_hat_mag = torch.abs(S_hat_c)
+                    logging.info(f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}")
 
                     # === STOI per (b,k), using per-speaker valid lengths ===
                     s_hat_wav = stft.inverse(
@@ -592,6 +596,9 @@ def run(
                     with torch.no_grad():
                         # Convert model output from complex STFT to waveform and move to CPU
                         s_hat_wav = s_hat_wav.detach().cpu()
+                        
+                        # DEBUG: Check s_hat_wav stats
+                        logging.info(f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}")
 
                         # Determine which scenes in the batch are marked for saving
                         scenes_in_batch = batch["id"]
@@ -609,9 +616,13 @@ def run(
 
                                     # Save a processed/target pair for each speaker
                                     for k_idx in range(num_speakers):
+                                        # DEBUG: Check per-speaker stats
+                                        spk_audio = s_hat_wav[b_idx, k_idx]
+                                        logging.info(f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}")
+                                        
                                         # Save the model's processed audio for this speaker
                                         gromit.save_sample(
-                                            s_hat_wav[b_idx, k_idx],
+                                            spk_audio,
                                             model_cfg.input.sample_rate,
                                             "dev",
                                             epoch,
