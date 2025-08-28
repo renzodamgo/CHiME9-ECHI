@@ -13,7 +13,7 @@ input:
     window: hann
 
 params:
-  n_srcs: 3
+  n_srcs: 1
   n_imics: ${model.input.channels}
   n_layers: 3
   lstm_hidden_units: 128
