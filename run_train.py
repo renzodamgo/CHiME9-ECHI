@@ -12,7 +12,7 @@ from scripts.train.train_script_multi import run
 
 @hydra.main(version_base=None, config_path="config/train", config_name="main_ha")
 def main(cfg):
-    r(f"Hydra config:\n{OmegaConf.to_yaml(cfg, resolve=True)}")
+    logging.info(f"Hydra config:\n{OmegaConf.to_yaml(cfg, resolve=True)}")
 
     if cfg.unpack.run:
         print(cfg.unpack)
