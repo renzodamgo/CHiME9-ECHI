@@ -72,6 +72,7 @@ def validate(
     input_sr,
     input_rms,
     devsaves,
+    stats,
 ):
     """Multi-speaker validation only."""
     logging.info(f"=== VALIDATION epoch {epoch} ===")
@@ -174,7 +175,7 @@ def validate(
     if do_lrschedule:
         lr_scheduler.step(gromit.val_loss.get_average())
 
-    gromit.epoch_report(epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"])
+    gromit.epoch_report(epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"], stats)
 
 
 def run(
@@ -351,7 +352,7 @@ def run(
         validate(
             epoch, model, devset, stft, stoi_fn, gromit, model_cfg, device, debug,
             do_checkpoint, lr_scheduler, do_lrschedule, optimizer,
-            input_channels, input_sr, input_rms, devsaves
+            input_channels, input_sr, input_rms, devsaves, stats
         )
 
 
