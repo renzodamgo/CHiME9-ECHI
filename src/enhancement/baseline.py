@@ -209,7 +209,10 @@ class Baseline:
             # autocast to bfloat16
             with torch.inference_mode(), autocast("cuda", dtype=torch.bfloat16):
                 den_c = self.model(mix_tf, spkid_input, spkid_lens)
+            
+            logging.info(f"Model output shape: {den_c.shape}")  # Should be [1, 1, T, F]
             den_c = den_c[:, 0]  # -> [1,T,F] complex
+            logging.info(f"After speaker selection shape: {den_c.shape}")  # Should be [1, T, F]
 
             # iSTFT and trim to window_size
             den_wav = self.stft.inverse(den_c).squeeze(0).squeeze(0)  # [Tw’]
