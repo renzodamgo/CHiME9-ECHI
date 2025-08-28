@@ -173,13 +173,25 @@ class Gromit:
         if audio_type == "proc":
             audio_fname = f"epoch{str(epoch).zfill(3)}_" + audio_fname
         audio_path = str(audio_dir / audio_fname)
+        
+        # DEBUG: Log sample stats before saving
+        import logging
+        logging.info(f"DEBUG: save_sample - {audio_fname} - shape={sample.shape}, min={sample.min():.6f}, max={sample.max():.6f}, mean={sample.mean():.6f}")
 
         if sample.ndim == 1:
             sample = sample.unsqueeze(0)
         elif sample.ndim == 3:
             sample = sample.squeeze(0)
+            
+        # DEBUG: Log sample stats after reshaping
+        logging.info(f"DEBUG: save_sample after reshape - {audio_fname} - shape={sample.shape}, min={sample.min():.6f}, max={sample.max():.6f}")
 
         torchaudio.save(audio_path, sample, fs)
+        
+        # DEBUG: Log file path and size
+        import os
+        file_size = os.path.getsize(audio_path) if os.path.exists(audio_path) else 0
+        logging.info(f"DEBUG: saved {audio_path} - file_size={file_size} bytes")
 
     def get_ckpt_path(self, epoch, exp_name):
         return self.ckpt_dir / f"{exp_name}_{str(epoch).zfill(3)}.pt"
