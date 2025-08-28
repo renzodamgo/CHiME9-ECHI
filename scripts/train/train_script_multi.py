@@ -16,7 +16,6 @@ from torch.amp import autocast
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
-torch.manual_seed(666)
 
 
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
@@ -137,7 +136,7 @@ def validate(
             )  # [B,K,T,F]
 
             # Loss computation
-            val_loss, val_stats = joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5))
+            val_loss, val_stats = joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1))
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
             gromit.val_si_sdr.update(torch.tensor(val_stats["SI_SDR"]))
@@ -338,7 +337,7 @@ def run(
             with autocast("cuda", dtype=torch.bfloat16):
                 S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                 loss, stats = joint_loss(
-                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
+                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1)
                 )
 
             # Backward pass
