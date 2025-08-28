@@ -398,7 +398,7 @@ def run(
             gromit.train_si_sdr.update(torch.tensor(stats["SI_SDR"]))
 
             # Sample saving (simplified)
-            if epoch == 0:  # Only save on first epoch
+            if epoch % 5 == 0 or epoch == 0:
                 with torch.no_grad():
                     s_hat_wav = (
                         stft.inverse(
@@ -413,15 +413,23 @@ def run(
                     if scenes_to_save:
                         for b_idx, scene in enumerate(scenes_in_batch):
                             if scene in scenes_to_save:
-                                # Save first speaker only
-                                gromit.save_sample(
-                                    s_hat_wav[b_idx, 0],
-                                    model_cfg.input.sample_rate,
-                                    "train",
-                                    epoch,
-                                    scene,
-                                    "proc_spk0",
-                                )
+                                num_speakers = s_hat_wav.shape[1]  # Get K
+                                
+                                for k_idx in range(num_speakers):
+                                    # DEBUG: Check per-speaker stats
+                                    spk_audio = s_hat_wav[b_idx, k_idx]
+                                    logging.info(
+                                        f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
+                                    )
+
+                                    gromit.save_sample(
+                                        spk_audio,
+                                        model_cfg.input.sample_rate,
+                                        "train",
+                                        epoch,
+                                        scene,
+                                        f"proc_spk{k_idx}",
+                                    )
 
         # Checkpointing
         do_checkpoint = (epoch % ckpt_interval == 0 and epoch > 0) or (
