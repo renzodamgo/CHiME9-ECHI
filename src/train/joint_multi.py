@@ -20,7 +20,6 @@ def _sisdr(x, s, eps=1e-8):
 
 def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
     """
-    Speaker-aware (no PIT) joint loss.
 
     Args:
         S_hat_c: [B, K, T, F] complex — model estimate per enrolled speaker

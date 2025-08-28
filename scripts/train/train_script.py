@@ -682,7 +682,7 @@ def run(
             lr_scheduler.step(gromit.val_loss.get_average())
 
         gromit.epoch_report(
-            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"]
+            epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"], stats
         )
 
         # logging.info(f"=== EPOCH {epoch} COMPLETED ===")
