@@ -305,10 +305,8 @@ def run(
                 with autocast("cuda", dtype=torch.bfloat16):
                     S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                     loss, stats = joint_loss(
-                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.0)
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
-                    # def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
-
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(
                     model.parameters(), train_cfg.clip_grad_norm
@@ -486,7 +484,7 @@ def run(
                 # logging.info(f"Multi-speaker validation: {multi}")
 
                 if multi:
-                    # ===== MULTI-SPEAKER PATH (mirrors joint_loss) =====
+                    # ===== MULTI-SPEAKER PATH =====
                     noisy = batch["noisy"].to(device, non_blocking=True)  # [B,C,Tw]
                     spk_all = batch["spkid_all"].to(
                         device, non_blocking=True
@@ -519,9 +517,8 @@ def run(
                         .contiguous()
                     )  # [B,K,T,F]
 
-                    # Loss exactly like training joint_loss
                     val_loss, _ = joint_loss(
-                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.0)
+                        S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
                     gromit.val_loss.update(val_loss.detach())
 
