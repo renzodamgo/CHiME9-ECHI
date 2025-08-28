@@ -556,8 +556,13 @@ def run(
                     logging.info(f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}")
 
                     # === STOI per (b,k), using per-speaker valid lengths ===
+                    target_lens = batch["target_lens_all"].to(device)
+                    
+                    # DEBUG: Check lengths parameter
+                    logging.info(f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}")
+                    
                     s_hat_wav = stft.inverse(
-                        S_hat_c, lengths=batch["target_lens_all"].to(device)
+                        S_hat_c, lengths=target_lens
                     )  # [B,K,T]
                     y_wav = targ_all  # [B,K,T]
                     min_stoi_len = int(
