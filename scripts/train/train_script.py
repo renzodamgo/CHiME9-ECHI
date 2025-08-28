@@ -256,6 +256,21 @@ def run(
                     device, non_blocking=True
                 )  # [B, K, Tw]
 
+                # Normalize audio to be consistent with single-speaker training and enhancement
+                noisy = prep_audio(noisy, batch["fs"], input_channels, input_sr, input_rms, True)
+
+                B, K, T_spk = spk_all.shape
+                spk_all_reshaped = spk_all.reshape(B * K, 1, T_spk)
+                # Assuming spk_all has 1 channel per speaker
+                spk_all_prepped = prep_audio(spk_all_reshaped, batch["fs"], 1, input_sr, input_rms, True)
+                spk_all = spk_all_prepped.reshape(B, K, -1)
+
+                B, K, T_targ = targ_all.shape
+                targ_all_reshaped = targ_all.reshape(B * K, 1, T_targ)
+                # Assuming targ_all has 1 channel per speaker
+                targ_all_prepped = prep_audio(targ_all_reshaped, batch["fs"], 1, input_sr, input_rms, True)
+                targ_all = targ_all_prepped.reshape(B, K, -1)
+
                 # logging.info(f"noisy shape: {noisy.shape}")
                 # logging.info(f"spk_all shape: {spk_all.shape}")
                 # logging.info(f"targ_all shape: {targ_all.shape}")
