@@ -170,7 +170,8 @@ class Gromit:
             raise ValueError(f"Unknown split: {split}")
 
         audio_fname = f"{scene}_{audio_type}.wav"
-        if audio_type == "proc":
+        # if audio type contains proc add epoch
+        if "proc" in audio_type:
             audio_fname = f"epoch{str(epoch).zfill(3)}_" + audio_fname
         audio_path = str(audio_dir / audio_fname)
         
