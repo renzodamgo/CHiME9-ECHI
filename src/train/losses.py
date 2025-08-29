@@ -35,6 +35,7 @@ def get_lrmethod(name: str, optim, params):
     if name == "plateau_reduce":
         params = dict(params or {})  # copy config into a plain dict
         params.setdefault("min_lr", 1e-5)  # only add if missing
+        params.pop("verbose", None)  # remove verbose parameter if present
         return torch.optim.lr_scheduler.ReduceLROnPlateau(optim, **params)
     else:
         raise ValueError(f"LR Scheduler {name} not implemented. Add code here")
