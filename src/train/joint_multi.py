@@ -51,6 +51,18 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
 
     # --- 3) Combine ---
     loss = w_sep * L_sep + w_time * (-sisdr)
+    
+    # --- 4) Anti-silence regularization (only when target is not silent) ---
+    # Penalize outputs that are too quiet ONLY when targets are loud enough
+    s_hat_rms = torch.sqrt(torch.mean(s_hat_wav**2) + 1e-8)
+    y_ref_rms = torch.sqrt(torch.mean(y_wav**2) + 1e-8)
+    silence_penalty = 0.0
+    
+    # Only apply penalty if target audio is loud enough (RMS > 0.01)
+    # This prevents penalizing quiet/silent speakers that should be quiet
+    if y_ref_rms > 0.01 and s_hat_rms < 0.001:
+        silence_penalty = 0.1 * (0.001 - s_hat_rms)
+        loss = loss + silence_penalty
 
     # --- 4) Diagnostics (distinctness and correlation) ---
     stats = {
@@ -61,6 +73,12 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
         "Y_ref_c": tuple(Y_ref_c.shape),
         "s_hat_wav": tuple(s_hat_wav.shape),
         "y_wav": tuple(y_wav.shape),
+        
+        # Add amplitude monitoring to detect silence convergence
+        "s_hat_rms": float(s_hat_rms.detach()),
+        "s_hat_max_abs": float(torch.max(torch.abs(s_hat_wav)).detach()),
+        "y_ref_rms": float(y_ref_rms.detach()),
+        "silence_penalty": float(silence_penalty) if isinstance(silence_penalty, torch.Tensor) else silence_penalty,
     }
 
     # Optional: check output streams are not collapsing

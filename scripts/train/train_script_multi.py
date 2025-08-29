@@ -212,7 +212,7 @@ def validate(
 
             # Loss computation
             val_loss, val_stats = joint_loss(
-                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1)
+                S_hat_c, Y_ref_c, batch, stft, weights=(0.1, 1.0)
             )
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
@@ -461,7 +461,7 @@ def run(
             with autocast("cuda", dtype=torch.bfloat16):
                 S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                 loss, stats = joint_loss(
-                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1)
+                    S_hat_c, Y_ref_c, batch, stft, weights=(0.1, 1.0)
                 )
 
             # Backward pass with mixed precision
