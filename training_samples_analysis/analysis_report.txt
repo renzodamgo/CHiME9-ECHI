@@ -1,0 +1,38 @@
+============================================================
+CHiME9-ECHI Training Samples Analysis Report
+============================================================
+
+Total samples analyzed: 48
+Epochs covered: 0 to 25
+Speakers: [np.int64(0), np.int64(1), np.int64(2)]
+Unique scenes: 3
+
+AMPLITUDE ANALYSIS:
+--------------------
+Overall RMS range: 0.000135 to 0.029609
+Mean RMS: 0.004363
+Median RMS: 0.001188
+
+SILENT AUDIO DETECTION:
+-------------------------
+Silent samples (RMS < 0.001): 19 / 48 (39.6%)
+
+EPOCH-BY-EPOCH TRENDS:
+-----------------------
+Epoch  0: 9 samples, Mean RMS: 0.016397, Silent: 0/9 (0.0%)
+Epoch  5: 9 samples, Mean RMS: 0.003434, Silent: 0/9 (0.0%)
+Epoch 10: 9 samples, Mean RMS: 0.001571, Silent: 4/9 (44.4%)
+Epoch 15: 9 samples, Mean RMS: 0.000855, Silent: 6/9 (66.7%)
+Epoch 20: 9 samples, Mean RMS: 0.000842, Silent: 7/9 (77.8%)
+Epoch 25: 3 samples, Mean RMS: 0.000515, Silent: 2/3 (66.7%)
+
+SPEAKER-SPECIFIC ANALYSIS:
+--------------------------
+Speaker 0: 16 samples, Mean RMS: 0.005740, Silent: 1/16 (6.2%)
+Speaker 1: 16 samples, Mean RMS: 0.003631, Silent: 9/16 (56.2%)
+Speaker 2: 16 samples, Mean RMS: 0.003718, Silent: 9/16 (56.2%)
+
+POTENTIAL ISSUES DETECTED:
+--------------------------
+⚠️  HIGH SILENT AUDIO RATE: 39.6% of samples are mostly silent
+⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs

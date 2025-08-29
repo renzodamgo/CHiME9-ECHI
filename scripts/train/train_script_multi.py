@@ -212,7 +212,8 @@ def validate(
 
             # Loss computation
             val_loss, val_stats = joint_loss(
-                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weighting=True
+                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), 
+                adaptive_weighting=True, amplitude_aware=True, amplitude_loss_weight=0.3
             )
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
@@ -321,6 +322,8 @@ def run(
     logging.info(f"🚀 Validation batch size: {data_cfg.loader.dev.batch_size}")
     logging.info("🚀 Mixed precision training: ENABLED")
     logging.info("🚀 Model compilation: ENABLED (if supported)")
+    logging.info("🚀 Amplitude-aware loss: ENABLED")
+    logging.info("🚀 Target-proportional weighting: ENABLED")
 
     device = get_device()
 
@@ -461,7 +464,8 @@ def run(
             with autocast("cuda", dtype=torch.bfloat16):
                 S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                 loss, stats = joint_loss(
-                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weighting=True
+                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), 
+                    adaptive_weighting=True, amplitude_aware=True, amplitude_loss_weight=0.3
                 )
 
             # Backward pass with mixed precision
