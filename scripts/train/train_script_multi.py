@@ -156,17 +156,23 @@ def validate(
             logging.info(
                 f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}"
             )
-            
+
             # DEBUG: Check S_hat_c before inverse transform
-            logging.info(f"DEBUG: S_hat_c before inverse - shape={S_hat_c.shape}, is_complex={S_hat_c.is_complex()}")
+            logging.info(
+                f"DEBUG: S_hat_c before inverse - shape={S_hat_c.shape}, is_complex={S_hat_c.is_complex()}"
+            )
             if S_hat_c.is_complex():
-                logging.info(f"DEBUG: S_hat_c complex parts - real_min={S_hat_c.real.min():.6f}, real_max={S_hat_c.real.max():.6f}, imag_min={S_hat_c.imag.min():.6f}, imag_max={S_hat_c.imag.max():.6f}")
-            
+                logging.info(
+                    f"DEBUG: S_hat_c complex parts - real_min={S_hat_c.real.min():.6f}, real_max={S_hat_c.real.max():.6f}, imag_min={S_hat_c.imag.min():.6f}, imag_max={S_hat_c.imag.max():.6f}"
+                )
+
             # DEBUG: Check individual speaker spectrograms
             for k_idx in range(S_hat_c.shape[1]):
                 spk_spec = S_hat_c[0, k_idx]  # [T, F]
                 spec_mag = torch.abs(spk_spec)
-                logging.info(f"DEBUG: S_hat_c speaker {k_idx} spectrogram - shape={spk_spec.shape}, mag_min={spec_mag.min():.6f}, mag_max={spec_mag.max():.6f}, mag_mean={spec_mag.mean():.6f}")
+                logging.info(
+                    f"DEBUG: S_hat_c speaker {k_idx} spectrogram - shape={spk_spec.shape}, mag_min={spec_mag.min():.6f}, mag_max={spec_mag.max():.6f}, mag_mean={spec_mag.mean():.6f}"
+                )
 
             s_hat_wav = stft.inverse(S_hat_c, lengths=target_lens)  # [B,K,T]
 
@@ -221,7 +227,7 @@ def validate(
                                     "dev",
                                     epoch,
                                     scene,
-                                    f"proc_spk{k_idx}",  
+                                    f"proc_spk{k_idx}",
                                 )
 
                                 # Save the corresponding target audio
@@ -232,7 +238,7 @@ def validate(
                                         "dev",
                                         epoch,
                                         scene,
-                                        f"target_spk{k_idx}",  
+                                        f"target_spk{k_idx}",
                                     )
 
                             # On the first epoch, save the original noisy mix once per scene
