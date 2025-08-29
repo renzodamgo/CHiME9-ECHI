@@ -20,12 +20,12 @@ signal:
 # For less VRAM usage, try: train.batch_size=4, dev.batch_size=2
 loader:
   train:
-    batch_size: 4 # Increased from 1 for ~8x speedup
+    batch_size: 1 # Increased from 1 for ~8x speedup
     num_workers: 4
     shuffle: true
     pin_memory: true
   dev:
-    batch_size: 4 # Increased from 1 for ~4x speedup
+    batch_size: 1 # Increased from 1 for ~4x speedup
     num_workers: 4
     shuffle: false
     pin_memory: true
