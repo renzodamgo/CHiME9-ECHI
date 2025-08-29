@@ -12,7 +12,7 @@ from shared.core_utils import get_model, get_device
 from train.losses import get_loss, get_lrmethod
 from train.gromit import Gromit
 from shared.signal_utils import STFTWrapper, match_length, prep_audio
-from torch.amp import autocast
+from torch.amp import autocast, GradScaler
 
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
@@ -309,7 +309,7 @@ def run(
     wandb_entity=None,
     wandb_project=None,
 ):
-    logging.info("=== MULTI-SPEAKER ONLY TRAINING ===")
+    logging.info("=== MULTI-SPEAKER ONLY TRAINING (OPTIMIZED) ===")
     logging.info(f"Device: {get_device()}")
     logging.info(f"Debug mode: {debug}")
     logging.info(f"Experiment directory: {exp_dir}")
@@ -317,6 +317,10 @@ def run(
     logging.info(f"Model input channels: {model_cfg.input.channels}")
     logging.info(f"Model input sample rate: {model_cfg.input.sample_rate}")
     logging.info(f"Training epochs: {train_cfg.epochs}")
+    logging.info(f"🚀 Training batch size: {data_cfg.loader.train.batch_size}")
+    logging.info(f"🚀 Validation batch size: {data_cfg.loader.dev.batch_size}")
+    logging.info("🚀 Mixed precision training: ENABLED")
+    logging.info("🚀 Model compilation: ENABLED (if supported)")
 
     device = get_device()
 
@@ -341,9 +345,20 @@ def run(
 
     # Model setup
     model = get_model(model_cfg, None)
+    
+    # Model compilation for faster training (PyTorch 2.0+)
+    try:
+        model = torch.compile(model, mode='default')
+        logging.info("✅ Model compilation enabled")
+    except Exception as e:
+        logging.warning(f"⚠️ Model compilation failed: {e}")
+    
     optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg.lr)
     stoi_fn = NegSTOILoss(model_cfg.input.sample_rate).to(device)
     ckpt_interval = train_cfg.checkpoint_interval
+    
+    # Mixed precision training setup
+    scaler = GradScaler()
 
     # LR scheduling
     do_lrschedule = train_cfg.schedule_lr is not None
@@ -449,8 +464,9 @@ def run(
                     S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.1)
                 )
 
-            # Backward pass
-            loss.backward()
+            # Backward pass with mixed precision
+            scaler.scale(loss).backward()
+            scaler.unscale_(optimizer)
             torch.nn.utils.clip_grad_norm_(model.parameters(), train_cfg.clip_grad_norm)
 
             # Statistics logging
@@ -474,7 +490,8 @@ def run(
                         torch.cuda.max_memory_allocated() / 1024**2
                     )
 
-            optimizer.step()
+            scaler.step(optimizer)
+            scaler.update()
             gromit.train_loss.update(loss.detach())
             gromit.train_l_sep.update(torch.tensor(stats["L_sep"]))
             gromit.train_si_sdr.update(torch.tensor(stats["SI_SDR"]))
