@@ -66,7 +66,7 @@ def save_samples_for_scenes(
 ):
     """
     Save processed audio samples for specified scenes.
-    
+
     Args:
         s_hat_wav_cpu: Processed waveforms [B, K, T] on CPU
         scenes_in_batch: Scene IDs in current batch
@@ -80,22 +80,22 @@ def save_samples_for_scenes(
     """
     if not scenes_to_save:
         return
-        
+
     if save_targets_and_noisy and batch is not None:
         noisy_wav = batch["noisy"].detach().cpu()
         target_wav = batch["target_all"].detach().cpu()
-    
+
     for b_idx, scene in enumerate(scenes_in_batch):
         if scene in scenes_to_save:
             num_speakers = s_hat_wav_cpu.shape[1]  # Get K
-            
+
             # Save processed audio for each speaker
             for k_idx in range(num_speakers):
                 spk_audio = s_hat_wav_cpu[b_idx, k_idx]
                 logging.info(
                     f"DEBUG: {split} Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
                 )
-                
+
                 gromit.save_sample(
                     spk_audio,
                     model_cfg.input.sample_rate,
@@ -104,7 +104,7 @@ def save_samples_for_scenes(
                     scene,
                     f"proc_spk{k_idx}",
                 )
-                
+
                 # Save target audio if requested
                 if save_targets_and_noisy and epoch == 0:
                     gromit.save_sample(
@@ -115,7 +115,7 @@ def save_samples_for_scenes(
                         scene,
                         f"target_spk{k_idx}",
                     )
-            
+
             # Save noisy audio if requested (once per scene)
             if save_targets_and_noisy and epoch == 0:
                 gromit.save_sample(
@@ -212,8 +212,14 @@ def validate(
 
             # Loss computation
             val_loss, val_stats = joint_loss(
-                S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), 
-                adaptive_weighting=True, amplitude_aware=True, amplitude_loss_weight=0.3
+                S_hat_c,
+                Y_ref_c,
+                batch,
+                stft,
+                weights=(1.0, 1.0),
+                adaptive_weighting=True,
+                amplitude_aware=True,
+                amplitude_loss_weight=0.3,
             )
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
@@ -279,7 +285,7 @@ def validate(
                 s_hat_wav_cpu = s_hat_wav.detach().cpu()
                 scenes_in_batch = batch["id"]
                 scenes_to_save = list(set(scenes_in_batch) & set(devsaves))
-                
+
                 save_samples_for_scenes(
                     s_hat_wav_cpu=s_hat_wav_cpu,
                     scenes_in_batch=scenes_in_batch,
@@ -348,18 +354,19 @@ def run(
 
     # Model setup
     model = get_model(model_cfg, None)
-    
+
     # Model compilation for faster training (PyTorch 2.0+)
     try:
-        model = torch.compile(model, mode='default')
-        logging.info("✅ Model compilation enabled")
+        # Temporarily disable torch.compile due to compilation issues
+        # model = torch.compile(model, mode="default")
+        logging.info("⚠️ Model compilation disabled due to system compatibility")
     except Exception as e:
         logging.warning(f"⚠️ Model compilation failed: {e}")
-    
+
     optimizer = torch.optim.Adam(model.parameters(), lr=train_cfg.lr)
     stoi_fn = NegSTOILoss(model_cfg.input.sample_rate).to(device)
     ckpt_interval = train_cfg.checkpoint_interval
-    
+
     # Mixed precision training setup
     scaler = GradScaler()
 
@@ -464,8 +471,14 @@ def run(
             with autocast("cuda", dtype=torch.bfloat16):
                 S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
                 loss, stats = joint_loss(
-                    S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), 
-                    adaptive_weighting=True, amplitude_aware=True, amplitude_loss_weight=0.3
+                    S_hat_c,
+                    Y_ref_c,
+                    batch,
+                    stft,
+                    weights=(1.0, 1.0),
+                    adaptive_weighting=True,
+                    amplitude_aware=True,
+                    amplitude_loss_weight=0.3,
                 )
 
             # Backward pass with mixed precision

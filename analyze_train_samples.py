@@ -40,6 +40,82 @@ def parse_filename(filepath: str) -> Dict[str, str]:
         return None
 
 
+def analyze_spectrogram(audio: np.ndarray, sr: int) -> Dict[str, float]:
+    """Analyze spectrogram for information loss detection."""
+    try:
+        # Compute STFT
+        stft = librosa.stft(audio, n_fft=2048, hop_length=512, win_length=2048)
+        magnitude = np.abs(stft)
+        
+        # Spectral statistics
+        spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=sr))
+        spectral_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=audio, sr=sr))
+        spectral_rolloff = np.mean(librosa.feature.spectral_rolloff(y=audio, sr=sr))
+        spectral_flatness = np.mean(librosa.feature.spectral_flatness(y=audio))
+        
+        # High-frequency content analysis (detect information loss)
+        freq_bins = librosa.fft_frequencies(sr=sr, n_fft=2048)
+        
+        # Energy distribution across frequency bands
+        total_energy = np.sum(magnitude**2)
+        if total_energy > 0:
+            low_freq_energy = np.sum(magnitude[freq_bins < 1000]**2) / total_energy  # 0-1kHz
+            mid_freq_energy = np.sum(magnitude[(freq_bins >= 1000) & (freq_bins < 4000)]**2) / total_energy  # 1-4kHz
+            high_freq_energy = np.sum(magnitude[freq_bins >= 4000]**2) / total_energy  # 4kHz+
+        else:
+            low_freq_energy = mid_freq_energy = high_freq_energy = 0.0
+        
+        # Spectral entropy (measure of spectral complexity)
+        power_spectrum = np.mean(magnitude**2, axis=1)
+        power_spectrum = power_spectrum / (np.sum(power_spectrum) + 1e-12)  # Normalize
+        spectral_entropy = -np.sum(power_spectrum * np.log2(power_spectrum + 1e-12))
+        
+        # Peak-to-average ratio in frequency domain
+        spectral_par = np.max(power_spectrum) / (np.mean(power_spectrum) + 1e-12)
+        
+        # High-frequency rolloff detection (detect low-pass filtering effects)
+        nyquist = sr / 2
+        high_freq_threshold = 0.8 * nyquist  # 80% of Nyquist frequency
+        high_freq_mask = freq_bins >= high_freq_threshold
+        if np.any(high_freq_mask):
+            high_freq_power = np.mean(magnitude[high_freq_mask]**2)
+            total_power = np.mean(magnitude**2)
+            high_freq_ratio = high_freq_power / (total_power + 1e-12)
+        else:
+            high_freq_ratio = 0.0
+        
+        # Detect potential information loss indicators
+        is_low_complexity = spectral_entropy < 8.0  # Low spectral entropy
+        is_missing_highs = high_freq_ratio < 0.01   # Very little high-frequency content
+        is_overly_smooth = spectral_flatness < 0.1  # Very non-flat spectrum (overly tonal)
+        
+        return {
+            'spectral_centroid': spectral_centroid,
+            'spectral_bandwidth': spectral_bandwidth,
+            'spectral_rolloff': spectral_rolloff,
+            'spectral_flatness': spectral_flatness,
+            'low_freq_energy': low_freq_energy,
+            'mid_freq_energy': mid_freq_energy,
+            'high_freq_energy': high_freq_energy,
+            'spectral_entropy': spectral_entropy,
+            'spectral_par': spectral_par,
+            'high_freq_ratio': high_freq_ratio,
+            'is_low_complexity': is_low_complexity,
+            'is_missing_highs': is_missing_highs,
+            'is_overly_smooth': is_overly_smooth,
+        }
+        
+    except Exception as e:
+        print(f"Warning: Spectral analysis failed: {e}")
+        return {
+            'spectral_centroid': 0.0, 'spectral_bandwidth': 0.0, 'spectral_rolloff': 0.0,
+            'spectral_flatness': 0.0, 'low_freq_energy': 0.0, 'mid_freq_energy': 0.0,
+            'high_freq_energy': 0.0, 'spectral_entropy': 0.0, 'spectral_par': 0.0,
+            'high_freq_ratio': 0.0, 'is_low_complexity': False, 'is_missing_highs': False,
+            'is_overly_smooth': False
+        }
+
+
 def analyze_audio_file(filepath: str) -> Dict[str, float]:
     """Analyze a single audio file and return statistics."""
     try:
@@ -63,7 +139,10 @@ def analyze_audio_file(filepath: str) -> Dict[str, float]:
         # Dynamic range
         dynamic_range = 20 * np.log10(max_abs / (rms + 1e-8))
         
-        return {
+        # Spectral analysis for information loss detection
+        spectral_stats = analyze_spectrogram(audio, sr)
+        
+        result = {
             'duration': duration,
             'rms': rms,
             'max_abs': max_abs,
@@ -74,6 +153,11 @@ def analyze_audio_file(filepath: str) -> Dict[str, float]:
             'dynamic_range': dynamic_range,
             'file_size': os.path.getsize(filepath)
         }
+        
+        # Add spectral statistics
+        result.update(spectral_stats)
+        
+        return result
     
     except Exception as e:
         print(f"Error analyzing {filepath}: {e}")
@@ -217,7 +301,125 @@ def create_visualizations(df: pd.DataFrame, output_dir: str):
     plt.savefig(os.path.join(output_dir, 'filesize_trends.png'), dpi=300, bbox_inches='tight')
     plt.close()
     
+    # 6. Spectral analysis - Information loss detection
+    create_spectral_visualizations(df, output_dir)
+    
     print(f"Visualizations saved to: {output_dir}")
+
+
+def create_spectral_visualizations(df: pd.DataFrame, output_dir: str):
+    """Create spectral analysis visualizations to detect information loss."""
+    
+    # 6a. Spectral centroid trends (frequency content shift)
+    plt.figure(figsize=(12, 8))
+    
+    for speaker in sorted(df['speaker'].unique()):
+        speaker_data = df[df['speaker'] == speaker]
+        epoch_centroid = speaker_data.groupby('epoch')['spectral_centroid'].agg(['mean', 'std']).reset_index()
+        
+        plt.errorbar(epoch_centroid['epoch'], epoch_centroid['mean'], 
+                    yerr=epoch_centroid['std'], label=f'Speaker {speaker}',
+                    marker='o', capsize=5, alpha=0.8)
+    
+    plt.xlabel('Epoch')
+    plt.ylabel('Spectral Centroid (Hz)')
+    plt.title('Spectral Centroid Trends Across Training Epochs')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'spectral_centroid_trends.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 6b. High-frequency content loss detection
+    plt.figure(figsize=(12, 6))
+    hf_loss_by_epoch = df.groupby('epoch')['is_missing_highs'].agg(['sum', 'count']).reset_index()
+    hf_loss_by_epoch['hf_loss_percentage'] = (hf_loss_by_epoch['sum'] / hf_loss_by_epoch['count']) * 100
+    
+    bars = plt.bar(hf_loss_by_epoch['epoch'], hf_loss_by_epoch['hf_loss_percentage'], 
+                   alpha=0.7, color='orange')
+    plt.xlabel('Epoch')
+    plt.ylabel('Percentage of High-Freq Loss (%)')
+    plt.title('High-Frequency Information Loss Across Epochs')
+    plt.grid(True, alpha=0.3)
+    
+    # Add value labels on bars
+    for bar in bars:
+        height = bar.get_height()
+        plt.text(bar.get_x() + bar.get_width()/2., height + 1,
+                f'{height:.1f}%', ha='center', va='bottom')
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'high_freq_loss_trends.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 6c. Spectral entropy trends (complexity loss)
+    plt.figure(figsize=(12, 8))
+    
+    for speaker in sorted(df['speaker'].unique()):
+        speaker_data = df[df['speaker'] == speaker]
+        epoch_entropy = speaker_data.groupby('epoch')['spectral_entropy'].agg(['mean', 'std']).reset_index()
+        
+        plt.errorbar(epoch_entropy['epoch'], epoch_entropy['mean'], 
+                    yerr=epoch_entropy['std'], label=f'Speaker {speaker}',
+                    marker='o', capsize=5, alpha=0.8)
+    
+    plt.xlabel('Epoch')
+    plt.ylabel('Spectral Entropy (bits)')
+    plt.title('Spectral Complexity (Entropy) Trends Across Training Epochs')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'spectral_entropy_trends.png'), dpi=300, bbox_inches='tight')
+    plt.close()
+    
+    # 6d. Frequency band energy distribution
+    plt.figure(figsize=(15, 10))
+    
+    # Create subplots for each frequency band
+    bands = ['low_freq_energy', 'mid_freq_energy', 'high_freq_energy']
+    band_names = ['Low Freq (0-1kHz)', 'Mid Freq (1-4kHz)', 'High Freq (4kHz+)']
+    colors = ['blue', 'green', 'red']
+    
+    for i, (band, name, color) in enumerate(zip(bands, band_names, colors)):
+        plt.subplot(2, 2, i+1)
+        
+        for speaker in sorted(df['speaker'].unique()):
+            speaker_data = df[df['speaker'] == speaker]
+            epoch_band = speaker_data.groupby('epoch')[band].mean().reset_index()
+            
+            plt.plot(epoch_band['epoch'], epoch_band[band], 
+                    label=f'Speaker {speaker}', marker='o', alpha=0.8)
+        
+        plt.xlabel('Epoch')
+        plt.ylabel('Energy Fraction')
+        plt.title(f'{name} Energy Distribution')
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+    
+    # 6e. Combined information loss indicators
+    plt.subplot(2, 2, 4)
+    info_loss_by_epoch = df.groupby('epoch').agg({
+        'is_missing_highs': 'mean',
+        'is_low_complexity': 'mean',
+        'is_overly_smooth': 'mean'
+    }).reset_index()
+    
+    plt.plot(info_loss_by_epoch['epoch'], info_loss_by_epoch['is_missing_highs'] * 100, 
+             label='Missing Highs', marker='o', color='red')
+    plt.plot(info_loss_by_epoch['epoch'], info_loss_by_epoch['is_low_complexity'] * 100, 
+             label='Low Complexity', marker='s', color='orange')
+    plt.plot(info_loss_by_epoch['epoch'], info_loss_by_epoch['is_overly_smooth'] * 100, 
+             label='Overly Smooth', marker='^', color='purple')
+    
+    plt.xlabel('Epoch')
+    plt.ylabel('Percentage of Samples (%)')
+    plt.title('Information Loss Indicators')
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, 'frequency_band_analysis.png'), dpi=300, bbox_inches='tight')
+    plt.close()
 
 
 def generate_summary_report(df: pd.DataFrame, output_dir: str):
@@ -292,6 +494,51 @@ def generate_summary_report(df: pd.DataFrame, output_dir: str):
             f"Silent: {silent_count}/{total_count} ({silent_count/total_count*100:.1f}%)"
         )
     
+    # Spectral analysis
+    report_lines.extend([
+        "",
+        "SPECTRAL ANALYSIS:",
+        "-" * 18,
+    ])
+    
+    # Overall spectral statistics
+    report_lines.extend([
+        f"Mean Spectral Centroid: {df['spectral_centroid'].mean():.0f} Hz",
+        f"Mean Spectral Bandwidth: {df['spectral_bandwidth'].mean():.0f} Hz", 
+        f"Mean Spectral Entropy: {df['spectral_entropy'].mean():.2f} bits",
+        f"Mean High-Freq Ratio: {df['high_freq_ratio'].mean():.4f}",
+        ""
+    ])
+    
+    # Information loss indicators
+    hf_loss_count = df['is_missing_highs'].sum()
+    hf_loss_percentage = (hf_loss_count / len(df)) * 100
+    
+    low_complexity_count = df['is_low_complexity'].sum()
+    low_complexity_percentage = (low_complexity_count / len(df)) * 100
+    
+    overly_smooth_count = df['is_overly_smooth'].sum()
+    overly_smooth_percentage = (overly_smooth_count / len(df)) * 100
+    
+    report_lines.extend([
+        "INFORMATION LOSS DETECTION:",
+        "-" * 27,
+        f"High-frequency loss: {hf_loss_count} / {len(df)} ({hf_loss_percentage:.1f}%)",
+        f"Low spectral complexity: {low_complexity_count} / {len(df)} ({low_complexity_percentage:.1f}%)",
+        f"Overly smooth spectrum: {overly_smooth_count} / {len(df)} ({overly_smooth_percentage:.1f}%)",
+        ""
+    ])
+    
+    # Frequency band energy distribution
+    report_lines.extend([
+        "FREQUENCY BAND ENERGY DISTRIBUTION:",
+        "-" * 35,
+        f"Low Freq (0-1kHz):  {df['low_freq_energy'].mean():.3f} ± {df['low_freq_energy'].std():.3f}",
+        f"Mid Freq (1-4kHz):  {df['mid_freq_energy'].mean():.3f} ± {df['mid_freq_energy'].std():.3f}",
+        f"High Freq (4kHz+):  {df['high_freq_energy'].mean():.3f} ± {df['high_freq_energy'].std():.3f}",
+        ""
+    ])
+    
     # Problem detection
     report_lines.extend([
         "",
@@ -313,6 +560,31 @@ def generate_summary_report(df: pd.DataFrame, output_dir: str):
     small_files = df[df['file_size'] < 1000]  # Less than 1KB
     if len(small_files) > 0:
         report_lines.append(f"⚠️  SMALL FILES DETECTED: {len(small_files)} files are suspiciously small (<1KB)")
+    
+    # Check for spectral information loss
+    if hf_loss_percentage > 30:
+        report_lines.append(f"⚠️  HIGH-FREQUENCY INFORMATION LOSS: {hf_loss_percentage:.1f}% of samples missing high-frequency content")
+    
+    if low_complexity_percentage > 40:
+        report_lines.append(f"⚠️  LOW SPECTRAL COMPLEXITY: {low_complexity_percentage:.1f}% of samples have low spectral entropy")
+    
+    # Check for decreasing spectral complexity trends
+    if len(df['epoch'].unique()) > 2:
+        epoch_entropy_means = df.groupby('epoch')['spectral_entropy'].mean()
+        entropy_trend_slope = np.polyfit(epoch_entropy_means.index, epoch_entropy_means.values, 1)[0]
+        if entropy_trend_slope < -0.1:
+            report_lines.append("⚠️  DECREASING SPECTRAL COMPLEXITY: Spectral entropy is decreasing across epochs")
+        
+        # Check for decreasing high-frequency content
+        epoch_hf_means = df.groupby('epoch')['high_freq_ratio'].mean()
+        hf_trend_slope = np.polyfit(epoch_hf_means.index, epoch_hf_means.values, 1)[0]
+        if hf_trend_slope < -0.001:
+            report_lines.append("⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs")
+    
+    # Check for unbalanced frequency distribution
+    mean_high_freq = df['high_freq_energy'].mean()
+    if mean_high_freq < 0.1:
+        report_lines.append(f"⚠️  LOW HIGH-FREQUENCY ENERGY: Only {mean_high_freq:.1%} of energy in high frequencies (should be >10%)")
     
     # Save report
     report_text = "\n".join(report_lines)

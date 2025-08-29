@@ -32,7 +32,30 @@ Speaker 0: 16 samples, Mean RMS: 0.005740, Silent: 1/16 (6.2%)
 Speaker 1: 16 samples, Mean RMS: 0.003631, Silent: 9/16 (56.2%)
 Speaker 2: 16 samples, Mean RMS: 0.003718, Silent: 9/16 (56.2%)
 
+SPECTRAL ANALYSIS:
+------------------
+Mean Spectral Centroid: 2420 Hz
+Mean Spectral Bandwidth: 2354 Hz
+Mean Spectral Entropy: 6.37 bits
+Mean High-Freq Ratio: 0.2573
+
+INFORMATION LOSS DETECTION:
+---------------------------
+High-frequency loss: 4 / 48 (8.3%)
+Low spectral complexity: 44 / 48 (91.7%)
+Overly smooth spectrum: 37 / 48 (77.1%)
+
+FREQUENCY BAND ENERGY DISTRIBUTION:
+-----------------------------------
+Low Freq (0-1kHz):  0.847 ± 0.136
+Mid Freq (1-4kHz):  0.077 ± 0.082
+High Freq (4kHz+):  0.076 ± 0.079
+
+
 POTENTIAL ISSUES DETECTED:
 --------------------------
 ⚠️  HIGH SILENT AUDIO RATE: 39.6% of samples are mostly silent
 ⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs
+⚠️  LOW SPECTRAL COMPLEXITY: 91.7% of samples have low spectral entropy
+⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
+⚠️  LOW HIGH-FREQUENCY ENERGY: Only 7.6% of energy in high frequencies (should be >10%)

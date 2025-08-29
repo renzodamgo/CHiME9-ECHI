@@ -38,8 +38,18 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
     w_sep, w_time = weights
 
     # --- 1) STFT-domain separation loss (index-aligned, no permutation) ---
-    # L1 over complex plane (equivalently L1 over RI if you prefer)
-    L_sep = torch.abs(S_hat_c - Y_ref_c).mean()
+    # Enhanced with frequency-aware weighting to preserve high-frequency content
+    error_mag = torch.abs(S_hat_c - Y_ref_c)  # [B, K, T, F]
+    
+    if amplitude_aware:
+        # Frequency-aware weighting: emphasize high frequencies to prevent filtering
+        F = error_mag.shape[-1]
+        freq_weights = torch.linspace(1.0, 2.5, F, device=S_hat_c.device)  # Higher weight for high freq
+        freq_weights = freq_weights.view(1, 1, 1, -1)  # [1, 1, 1, F]
+        weighted_error = error_mag * freq_weights
+        L_sep = weighted_error.mean()
+    else:
+        L_sep = error_mag.mean()
 
     # --- 2) Time-domain SI-SDR (per-speaker) ---
     # Use exact per-(B,K) sample lengths so iSTFT returns the right shapes
@@ -159,6 +169,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
         "L_sep_contribution": float((w_sep * (normalized_L_sep if adaptive_weighting else L_sep)).detach()),
         "SI_SDR_contribution": float((proportional_w_time * (normalized_sisdr if adaptive_weighting else (-sisdr))).detach()),
         "proportional_weight_applied": float(proportional_w_time / w_time) if w_time > 0 else 1.0,
+        "frequency_weighted_L_sep": amplitude_aware,
         
         # Amplitude-aware loss components
         "amplitude_loss": float(amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else amplitude_loss,
