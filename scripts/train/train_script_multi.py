@@ -53,6 +53,81 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     return loader, samples
 
 
+def save_samples_for_scenes(
+    s_hat_wav_cpu: torch.Tensor,
+    scenes_in_batch: list,
+    scenes_to_save: list,
+    gromit,
+    model_cfg,
+    split: str,
+    epoch: int,
+    batch=None,
+    save_targets_and_noisy: bool = False,
+):
+    """
+    Save processed audio samples for specified scenes.
+    
+    Args:
+        s_hat_wav_cpu: Processed waveforms [B, K, T] on CPU
+        scenes_in_batch: Scene IDs in current batch
+        scenes_to_save: Scene IDs that should be saved
+        gromit: Gromit logger instance
+        model_cfg: Model configuration
+        split: "train" or "dev"
+        epoch: Current epoch
+        batch: Batch data (needed if save_targets_and_noisy=True)
+        save_targets_and_noisy: Whether to also save target and noisy audio
+    """
+    if not scenes_to_save:
+        return
+        
+    if save_targets_and_noisy and batch is not None:
+        noisy_wav = batch["noisy"].detach().cpu()
+        target_wav = batch["target_all"].detach().cpu()
+    
+    for b_idx, scene in enumerate(scenes_in_batch):
+        if scene in scenes_to_save:
+            num_speakers = s_hat_wav_cpu.shape[1]  # Get K
+            
+            # Save processed audio for each speaker
+            for k_idx in range(num_speakers):
+                spk_audio = s_hat_wav_cpu[b_idx, k_idx]
+                logging.info(
+                    f"DEBUG: {split} Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
+                )
+                
+                gromit.save_sample(
+                    spk_audio,
+                    model_cfg.input.sample_rate,
+                    split,
+                    epoch,
+                    scene,
+                    f"proc_spk{k_idx}",
+                )
+                
+                # Save target audio if requested
+                if save_targets_and_noisy and epoch == 0:
+                    gromit.save_sample(
+                        target_wav[b_idx, k_idx],
+                        model_cfg.input.sample_rate,
+                        split,
+                        epoch,
+                        scene,
+                        f"target_spk{k_idx}",
+                    )
+            
+            # Save noisy audio if requested (once per scene)
+            if save_targets_and_noisy and epoch == 0:
+                gromit.save_sample(
+                    noisy_wav[b_idx, 0],  # Use first microphone channel
+                    model_cfg.input.sample_rate,
+                    split,
+                    epoch,
+                    scene,
+                    "noisy",
+                )
+
+
 def validate(
     epoch,
     model,
@@ -203,54 +278,18 @@ def validate(
                 s_hat_wav_cpu = s_hat_wav.detach().cpu()
                 scenes_in_batch = batch["id"]
                 scenes_to_save = list(set(scenes_in_batch) & set(devsaves))
-
-                if scenes_to_save:
-                    # Move other relevant tensors to CPU
-                    noisy_wav = batch["noisy"].detach().cpu()
-                    target_wav = batch["target_all"].detach().cpu()
-
-                    # Iterate through each item in the batch
-                    for b_idx, scene in enumerate(scenes_in_batch):
-                        if scene in scenes_to_save:
-                            num_speakers = s_hat_wav.shape[1]  # Get K
-
-                            # Save a processed/target pair for each speaker
-                            for k_idx in range(num_speakers):
-                                spk_audio = s_hat_wav_cpu[b_idx, k_idx]
-                                logging.info(
-                                    f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
-                                )
-                                # Save the model's processed audio for this speaker
-                                gromit.save_sample(
-                                    spk_audio,
-                                    model_cfg.input.sample_rate,
-                                    "dev",
-                                    epoch,
-                                    scene,
-                                    f"proc_spk{k_idx}",
-                                )
-
-                                # Save the corresponding target audio
-                                if epoch == 0:  # Only save targets on the first epoch
-                                    gromit.save_sample(
-                                        target_wav[b_idx, k_idx],
-                                        model_cfg.input.sample_rate,
-                                        "dev",
-                                        epoch,
-                                        scene,
-                                        f"target_spk{k_idx}",
-                                    )
-
-                            # On the first epoch, save the original noisy mix once per scene
-                            if epoch == 0:
-                                gromit.save_sample(
-                                    noisy_wav[b_idx, 0],  # Use first microphone channel
-                                    model_cfg.input.sample_rate,
-                                    "dev",
-                                    epoch,
-                                    scene,
-                                    "noisy",
-                                )
+                
+                save_samples_for_scenes(
+                    s_hat_wav_cpu=s_hat_wav_cpu,
+                    scenes_in_batch=scenes_in_batch,
+                    scenes_to_save=scenes_to_save,
+                    gromit=gromit,
+                    model_cfg=model_cfg,
+                    split="dev",
+                    epoch=epoch,
+                    batch=batch,
+                    save_targets_and_noisy=True,
+                )
 
     # LR scheduling
     if do_lrschedule:
@@ -453,57 +492,17 @@ def run(
                     scenes_in_batch = batch["id"]
                     scenes_to_save = list(set(scenes_in_batch) & set(trainsaves))
 
-                    if scenes_to_save:
-                        # Move other relevant tensors to CPU
-                        noisy_wav = batch["noisy"].detach().cpu()
-                        target_wav = batch["target_all"].detach().cpu()
-
-                        # Iterate through each item in the batch
-                        for b_idx, scene in enumerate(scenes_in_batch):
-                            if scene in scenes_to_save:
-                                num_speakers = s_hat_wav.shape[1]  # Get K
-
-                                # Save a processed/target pair for each speaker
-                                for k_idx in range(num_speakers):
-                                    spk_audio = S_hat_c[b_idx, k_idx]
-                                    logging.info(
-                                        f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
-                                    )
-                                    # Save the model's processed audio for this speaker
-                                    gromit.save_sample(
-                                        spk_audio,
-                                        model_cfg.input.sample_rate,
-                                        "train",
-                                        epoch,
-                                        scene,
-                                        f"proc_spk{k_idx}",
-                                    )
-
-                                    # Save the corresponding target audio
-                                    if (
-                                        epoch == 0
-                                    ):  # Only save targets on the first epoch
-                                        gromit.save_sample(
-                                            target_wav[b_idx, k_idx],
-                                            model_cfg.input.sample_rate,
-                                            "train",
-                                            epoch,
-                                            scene,
-                                            f"target_spk{k_idx}",
-                                        )
-
-                                # On the first epoch, save the original noisy mix once per scene
-                                if epoch == 0:
-                                    gromit.save_sample(
-                                        noisy_wav[
-                                            b_idx, 0
-                                        ],  # Use first microphone channel
-                                        model_cfg.input.sample_rate,
-                                        "train",
-                                        epoch,
-                                        scene,
-                                        "noisy",
-                                    )
+                    save_samples_for_scenes(
+                        s_hat_wav_cpu=s_hat_wav,
+                        scenes_in_batch=scenes_in_batch,
+                        scenes_to_save=scenes_to_save,
+                        gromit=gromit,
+                        model_cfg=model_cfg,
+                        split="train",
+                        epoch=epoch,
+                        batch=batch,
+                        save_targets_and_noisy=True,
+                    )
 
         # Checkpointing
         do_checkpoint = (epoch % ckpt_interval == 0 and epoch > 0) or (
