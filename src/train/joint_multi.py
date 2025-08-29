@@ -18,7 +18,7 @@ def _sisdr(x, s, eps=1e-8):
     )
 
 
-def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
+def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weighting=True):
     """
 
     Args:
@@ -49,8 +49,19 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
     s_hat_wav = stft.inverse(S_hat_c, lengths=tgt_lens)  # [B,K,Tw’] (matched)
     sisdr = _sisdr(s_hat_wav, y_wav).mean()
 
-    # --- 3) Combine ---
-    loss = w_sep * L_sep + w_time * (-sisdr)
+    # --- 3) Combine with adaptive weighting ---
+    if adaptive_weighting:
+        # Normalize weights based on typical scales to ensure balanced contribution
+        # L_sep: typically 0.02-0.5, scale factor ~2
+        # SI-SDR: typically -40 to 0 dB, scale factor ~20
+        # This ensures both losses contribute roughly equally when weights are (1.0, 1.0)
+        normalized_L_sep = L_sep * 2.0  # Scale L_sep up
+        normalized_sisdr = (-sisdr) / 20.0  # Scale SI-SDR down
+        loss = w_sep * normalized_L_sep + w_time * normalized_sisdr
+    else:
+        normalized_L_sep = L_sep
+        normalized_sisdr = (-sisdr)
+        loss = w_sep * L_sep + w_time * (-sisdr)
     
     # --- 4) Anti-silence regularization (only when target is not silent) ---
     # Penalize outputs that are too quiet ONLY when targets are loud enough
@@ -79,6 +90,10 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0)):
         "s_hat_max_abs": float(torch.max(torch.abs(s_hat_wav)).detach()),
         "y_ref_rms": float(y_ref_rms.detach()),
         "silence_penalty": float(silence_penalty) if isinstance(silence_penalty, torch.Tensor) else silence_penalty,
+        
+        # Add loss component analysis
+        "L_sep_contribution": float((w_sep * (normalized_L_sep if adaptive_weighting else L_sep)).detach()),
+        "SI_SDR_contribution": float((w_time * (normalized_sisdr if adaptive_weighting else (-sisdr))).detach()),
     }
 
     # Optional: check output streams are not collapsing
