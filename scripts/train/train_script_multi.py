@@ -261,7 +261,7 @@ def validate(
                 Y_ref_c,
                 batch,
                 stft,
-                weights=(1.0, 1.0),
+                weights=(1.0, 2.0),
                 adaptive_weighting=True,
                 amplitude_aware=True,
                 amplitude_loss_weight=0.3,
@@ -529,10 +529,10 @@ def run(
                     Y_ref_c,
                     batch,
                     stft,
-                    weights=(1.0, 1.0),
+                    weights=(1.0, 2.0),
                     adaptive_weighting=True,
                     amplitude_aware=True,
-                    amplitude_loss_weight=0.3,
+                    amplitude_loss_weight=0.5,
                 )
 
             # Backward pass with mixed precision

@@ -5,34 +5,34 @@ lr: 3e-4
 clip_grad_norm: 1.0
 
 schedule_lr:
-  name: plateau_reduce
-  params:
-    mode: min
-    factor: 0.5
-    patience: 3
-    threshold: 0.01
-    threshold_mode: rel
-    cooldown: 1
-    min_lr: 1e-5
-    verbose: true
+    name: plateau_reduce
+    params:
+        mode: min
+        factor: 0.5
+        patience: 3
+        threshold: 0.01
+        threshold_mode: rel
+        cooldown: 1
+        min_lr: 1e-5
+        verbose: true
 
 loss:
-  name: spec
-  kwargs:
-    fft_size: 1024
-    hop_size: 256
-    win_length: 1024
-    window: hann_window
-    w_sc: 1.0
-    w_log_mag: 1.0
-    w_lin_mag: 0.0
-    w_phs: 0.0
-    sample_rate: null
-    scale: null
-    n_bins: null
-    perceptual_weighting: false
-    scale_invariance: true
-    eps: 1.0e-08
-    output: loss
-    reduction: mean
-    mag_distance: L1
+    name: joint_loss
+    kwargs:
+        fft_size: 1024
+        hop_size: 256
+        win_length: 1024
+        window: hann_window
+        w_sc: 1.0
+        w_log_mag: 1.0
+        w_lin_mag: 0.0
+        w_phs: 0.0
+        sample_rate: null
+        scale: null
+        n_bins: null
+        perceptual_weighting: false
+        scale_invariance: true
+        eps: 1.0e-08
+        output: loss
+        reduction: mean
+        mag_distance: L1
