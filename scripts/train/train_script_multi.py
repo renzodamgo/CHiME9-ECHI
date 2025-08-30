@@ -194,8 +194,15 @@ def validate(
     gromit.val_stoi.reset(epoch)
 
     loader = tqdm(devset, desc="Validation loop") if debug else devset
+    try:
+        num_batches = len(loader)
+    except TypeError:
+        num_batches = None
+
     with torch.no_grad():
-        for batch in loader:
+        for batch_idx, batch in enumerate(loader, start=1):
+            bn = f"{batch_idx}" + (f"/{num_batches}" if num_batches else "")
+            logging.info(f"--- Validation epoch {epoch}, batch {bn} ---")
             # Multi-speaker validation path
             noisy = batch["noisy"].to(device, non_blocking=True)  # [B,C,Tw]
             spk_all = batch["spkid_all"].to(device, non_blocking=True)  # [B,K,Tr]
