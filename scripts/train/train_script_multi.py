@@ -208,9 +208,9 @@ def validate(
             spk_all = batch["spkid_all"].to(device, non_blocking=True)  # [B,K,Tr]
             targ_all = batch["target_all"].to(device, non_blocking=True)  # [B,K,Tw]
 
-            logging.info(
-                f"VAL BEFORE prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}, targ_all: {targ_all.shape}"
-            )
+            # logging.info(
+            #     f"VAL BEFORE prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}, targ_all: {targ_all.shape}"
+            # )
 
             # Apply prep_audio (same as training)
             noisy = prep_audio(
@@ -223,9 +223,9 @@ def validate(
             spk_all = prep_audio(spk_all, batch["fs"], 1, input_sr, input_rms, True)
             spk_all = spk_all.squeeze(1).view(B, K, -1)  # [B, K, T_spk']
 
-            logging.info(
-                f"VAL AFTER prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}"
-            )
+            # logging.info(
+            #     f"VAL AFTER prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}"
+            # )
 
             # STFT transformation
             noisy_tf = stft(noisy)  # [B,M,T,F,2]
@@ -234,9 +234,9 @@ def validate(
                 0, 1, 3, 2, 4
             ).contiguous()  # [B,K,T,F,2]
 
-            logging.info(
-                f"VAL STFT shapes - noisy_tf: {noisy_tf.shape}, spk_all_tf: {spk_all_tf.shape}"
-            )
+            # logging.info(
+            #     f"VAL STFT shapes - noisy_tf: {noisy_tf.shape}, spk_all_tf: {spk_all_tf.shape}"
+            # )
 
             spk_lens_all = (
                 batch["spkid_lens_all"].to(device) - stft.n_fft

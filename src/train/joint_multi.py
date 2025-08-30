@@ -21,17 +21,17 @@ def _sisdr(x, s, eps=1e-8):
 def analyze_speaker_separation(s_hat_wav, y_wav):
     """
     Analyze speaker separation quality in the output.
-    
+
     Args:
         s_hat_wav: [B, K, T] predicted separated waveforms
         y_wav: [B, K, T] target separated waveforms
-        
+
     Returns:
         dict: Speaker separation metrics
     """
     B, K, T = s_hat_wav.shape
     stats = {}
-    
+
     with torch.no_grad():
         # 1. Cross-speaker correlation analysis (lower is better for separation)
         cross_correlations = []
@@ -40,19 +40,19 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                 for j in range(i + 1, K):
                     s_i = s_hat_wav[b, i]  # [T]
                     s_j = s_hat_wav[b, j]  # [T]
-                    
+
                     # Pearson correlation
                     s_i_mean = s_i.mean()
                     s_j_mean = s_j.mean()
                     numerator = ((s_i - s_i_mean) * (s_j - s_j_mean)).sum()
-                    denominator = (((s_i - s_i_mean) ** 2).sum().sqrt() * 
+                    denominator = (((s_i - s_i_mean) ** 2).sum().sqrt() *
                                    ((s_j - s_j_mean) ** 2).sum().sqrt() + 1e-8)
                     corr = (numerator / denominator).item()
                     cross_correlations.append(abs(corr))
-        
+
         stats["cross_speaker_corr_mean"] = sum(cross_correlations) / len(cross_correlations) if cross_correlations else 0.0
         stats["cross_speaker_corr_max"] = max(cross_correlations) if cross_correlations else 0.0
-        
+
         # 2. Speaker distinctness: pairwise L2 distance between outputs
         pairwise_distances = []
         for b in range(min(B, 1)):
@@ -60,10 +60,10 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                 for j in range(i + 1, K):
                     dist = torch.norm(s_hat_wav[b, i] - s_hat_wav[b, j]).item()
                     pairwise_distances.append(dist)
-        
+
         stats["speaker_l2_distance_mean"] = sum(pairwise_distances) / len(pairwise_distances) if pairwise_distances else 0.0
         stats["speaker_l2_distance_min"] = min(pairwise_distances) if pairwise_distances else 0.0
-        
+
         # 3. Energy distribution across speakers
         speaker_energies = []
         for b in range(min(B, 1)):
@@ -72,9 +72,9 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                 spk_wav = s_hat_wav[b, k]  # [T]
                 energy = (spk_wav ** 2).mean().item()
                 energies.append(energy)
-                
+
             speaker_energies.append(energies)
-        
+
         # Store debug info for logging every 50 batches
         if speaker_energies:
             stats["debug_speaker_waveforms"] = []
@@ -93,7 +93,7 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                     "rms": float((spk_wav ** 2).mean() ** 0.5)
                 }
                 stats["debug_speaker_waveforms"].append(output_debug)
-                
+
                 # Target audio analysis (from y_wav)
                 target_wav = y_wav[0, k]  # First batch only
                 target_debug = {
@@ -108,13 +108,13 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                     "is_silent": float((target_wav ** 2).mean()) < 1e-6
                 }
                 stats["debug_target_waveforms"].append(target_debug)
-        
+
         if speaker_energies:
             energies = speaker_energies[0]
             stats["speaker_energy_std"] = torch.tensor(energies).std().item()
             stats["speaker_energy_ratio"] = max(energies) / (min(energies) + 1e-8)
             stats["speaker_energies"] = energies
-        
+
         # 4. Spectral diversity (frequency content differences)
         if K >= 2:
             try:
@@ -122,20 +122,20 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                 for b in range(min(B, 1)):
                     s1_fft = torch.fft.rfft(s_hat_wav[b, 0])
                     s2_fft = torch.fft.rfft(s_hat_wav[b, 1])
-                    
+
                     # Spectral centroids
                     freqs = torch.linspace(0, 1, s1_fft.size(0), device=s_hat_wav.device)
-                    
+
                     s1_mag = torch.abs(s1_fft)
                     s2_mag = torch.abs(s2_fft)
-                    
+
                     s1_centroid = (freqs * s1_mag).sum() / (s1_mag.sum() + 1e-8)
                     s2_centroid = (freqs * s2_mag).sum() / (s2_mag.sum() + 1e-8)
-                    
+
                     stats["spectral_centroid_diff"] = abs(s1_centroid - s2_centroid).item()
             except:
                 stats["spectral_centroid_diff"] = 0.0
-        
+
         # 5. Separation quality indicator
         # Good separation: low cross-correlation, high L2 distance, balanced energy
         separation_score = 0.0
@@ -146,11 +146,11 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
             dist_score = min(stats["speaker_l2_distance_mean"] / 10.0, 1.0)
             # More balanced energy = better (lower std is better)
             energy_balance_score = 1.0 / (1.0 + stats.get("speaker_energy_std", 1.0))
-            
+
             separation_score = (corr_score + dist_score + energy_balance_score) / 3.0
-        
+
         stats["separation_quality_score"] = separation_score
-        
+
         # 6. Log warning if poor separation detected
         if separation_score < 0.3:
             logging.warning(f"🚨 POOR SPEAKER SEPARATION DETECTED!")
@@ -160,34 +160,34 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
             logging.warning(f"   Separation score: {separation_score:.4f} (should be > 0.7)")
         elif separation_score > 0.7:
             logging.info(f"✅ Good speaker separation detected (score: {separation_score:.4f})")
-    
+
     return stats
 
 
 def _compute_balanced_sisdr_loss(sisdr_per_spk):
     """
     Compute speaker-balanced SI-SDR loss to prevent hierarchy collapse.
-    
+
     Applies inverse performance weighting: worse performers get higher gradient weights
     to prevent abandonment of poorly performing speakers.
-    
+
     Args:
         sisdr_per_spk: [B, K] per-speaker SI-SDR values (higher is better)
-        
+
     Returns:
         balanced_sisdr: scalar balanced SI-SDR loss
     """
     if sisdr_per_spk.numel() == 1:
         # Single speaker case - no balancing needed
         return sisdr_per_spk.squeeze()
-    
+
     # Compute inverse performance weights (worse SI-SDR gets higher weight)
     # Use softmax of negative SI-SDR for stable, differentiable weighting
     inverse_performance_weights = torch.softmax(-sisdr_per_spk.detach(), dim=-1)  # [B, K]
-    
+
     # Apply balanced weighting - worse performers get more gradient attention
     balanced_sisdr_per_sample = (sisdr_per_spk * inverse_performance_weights).sum(dim=-1)  # [B]
-    
+
     return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
 
 
@@ -314,7 +314,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
 
     # --- 4) Enhanced Speaker Separation Diagnostics ---
     separation_stats = analyze_speaker_separation(s_hat_wav, y_wav)
-    
+
     stats = {
         "loss": float(loss.detach()),
         "L_sep": float(L_sep.detach()),
@@ -350,7 +350,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
         "amplitude_loss": float(amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else amplitude_loss,
         "amplitude_loss_contribution": float(amplitude_loss_weight * amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else 0.0,
     }
-    
+
     # Add speaker separation analysis
     stats.update(separation_stats)
 
