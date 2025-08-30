@@ -69,9 +69,28 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
         for b in range(min(B, 1)):
             energies = []
             for k in range(K):
-                energy = (s_hat_wav[b, k] ** 2).mean().item()
+                spk_wav = s_hat_wav[b, k]  # [T]
+                energy = (spk_wav ** 2).mean().item()
                 energies.append(energy)
+                
             speaker_energies.append(energies)
+        
+        # Store debug info for logging every 50 batches
+        if speaker_energies:
+            stats["debug_speaker_waveforms"] = []
+            for k in range(K):
+                spk_wav = s_hat_wav[0, k]  # First batch only
+                debug_info = {
+                    "speaker": k,
+                    "shape": tuple(spk_wav.shape),
+                    "min": float(spk_wav.min()),
+                    "max": float(spk_wav.max()),
+                    "mean": float(spk_wav.mean()),
+                    "std": float(spk_wav.std()),
+                    "energy": float((spk_wav ** 2).mean()),
+                    "rms": float((spk_wav ** 2).mean() ** 0.5)
+                }
+                stats["debug_speaker_waveforms"].append(debug_info)
         
         if speaker_energies:
             energies = speaker_energies[0]

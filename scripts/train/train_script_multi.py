@@ -29,12 +29,23 @@ def log_speaker_separation_metrics(stats, epoch, batch_idx, split="train"):
     logging.info(f"📏 Speaker L2 Distance: {stats.get('speaker_l2_distance_mean', 0):.4f} (min: {stats.get('speaker_l2_distance_min', 0):.4f})")
 
     if "speaker_energies" in stats and stats["speaker_energies"]:
-        energies_str = ", ".join([f"Spk{i}: {e:.4f}" for i, e in enumerate(stats["speaker_energies"])])
+        energies_str = ", ".join([f"Spk{i}: {e:.6f}" for i, e in enumerate(stats["speaker_energies"])])
         logging.info(f"⚡ Speaker Energies: [{energies_str}]")
-        logging.info(f"⚖️  Energy Balance - Std: {stats.get('speaker_energy_std', 0):.4f}, Ratio: {stats.get('speaker_energy_ratio', 0):.2f}")
+        logging.info(f"⚖️  Energy Balance - Std: {stats.get('speaker_energy_std', 0):.6f}, Ratio: {stats.get('speaker_energy_ratio', 0):.2f}")
 
     if "spectral_centroid_diff" in stats:
         logging.info(f"🎵 Spectral Centroid Diff: {stats['spectral_centroid_diff']:.4f}")
+
+    # Log detailed waveform debug info every 50 batches
+    if "debug_speaker_waveforms" in stats:
+        logging.info("🔍 DETAILED SPEAKER WAVEFORM DEBUG:")
+        for debug_info in stats["debug_speaker_waveforms"]:
+            k = debug_info["speaker"]
+            logging.info(f"   Speaker {k}:")
+            logging.info(f"     Shape: {debug_info['shape']}")
+            logging.info(f"     Range: {debug_info['min']:.6f} to {debug_info['max']:.6f}")
+            logging.info(f"     Mean: {debug_info['mean']:.6f}, Std: {debug_info['std']:.6f}")
+            logging.info(f"     Energy: {debug_info['energy']:.6f}, RMS: {debug_info['rms']:.6f}")
 
     logging.info("=" * 50)
 

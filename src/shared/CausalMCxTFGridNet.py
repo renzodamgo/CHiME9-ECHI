@@ -217,9 +217,30 @@ class MCxTFGridNet(nn.Module):
             Tm, Fm = out_ri.shape[-2], out_ri.shape[-1]
             out_ri = out_ri.view(B, K, self.n_srcs * 2, Tm, Fm)  # [B, K, n_srcs*2, Tm, Fm]
 
-            # For 5D path: extract only first complex pair (2 channels) per speaker
-            # This maintains compatibility with target speaker extraction approach
-            out_ri = out_ri[:, :, :2]  # [B, K, 2, Tm, Fm] - use first complex pair
+            # FIXED: Each speaker gets their own dedicated output channels
+            # Instead of all speakers getting the same first 2 channels,
+            # assign each speaker k their own channels [k*2:(k+1)*2]
+            out_speakers = []
+            for k in range(K):
+                if k * 2 + 1 < self.n_srcs * 2:  # Ensure we have enough channels
+                    start_ch = k * 2
+                    end_ch = start_ch + 2
+                    spk_out = out_ri[:, k, start_ch:end_ch]  # [B, 2, Tm, Fm]
+                    if not hasattr(self, '_logged_channel_assignment'):
+                        logging.info(f"✅ FIXED: Speaker {k} using channels {start_ch}:{end_ch}")
+                else:
+                    # Fallback: if not enough channels, use first pair (backward compatibility)
+                    spk_out = out_ri[:, k, :2]  # [B, 2, Tm, Fm]
+                    if not hasattr(self, '_logged_channel_assignment'):
+                        logging.warning(f"⚠️  Speaker {k}: fallback to channels 0:2 (not enough output channels)")
+                out_speakers.append(spk_out)
+
+            out_ri = torch.stack(out_speakers, dim=1)  # [B, K, 2, Tm, Fm]
+
+            # Mark that we've logged the channel assignment
+            if not hasattr(self, '_logged_channel_assignment'):
+                self._logged_channel_assignment = True
+                logging.info(f"🔧 Multi-speaker channel assignment complete for {K} speakers")
 
             # torch.complex doesn't accept bf16; cast channels to fp32 first
             re = out_ri[:, :, 0].to(torch.float32)
