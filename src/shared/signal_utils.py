@@ -222,10 +222,10 @@ class STFTWrapper(torch.nn.Module):
         front_shape = C_FT.shape[:-2]
         F, T = C_FT.shape[-2], C_FT.shape[-1]
         C_flat = C_FT.reshape(-1, F, T)  # [N, F, T], N = prod(front_shape)
-        
+
         # DEBUG: Log dimension handling
         import logging
-        logging.info(f"DEBUG: STFT inverse - original_shape={X.shape}, after_transpose={C_FT.shape}, front_shape={front_shape}, flattened={C_flat.shape}")
+        # logging.info(f"DEBUG: STFT inverse - original_shape={X.shape}, after_transpose={C_FT.shape}, front_shape={front_shape}, flattened={C_flat.shape}")
 
         # ---- window on correct device/dtype ----
         win = self.window
@@ -251,10 +251,10 @@ class STFTWrapper(torch.nn.Module):
             else:
                 # tensor of lengths matching front dims
                 L = lengths.reshape(-1).to(device=C_flat.device, dtype=torch.long)  # [N]
-                
+
                 # DEBUG: Log lengths handling
-                logging.info(f"DEBUG: STFT inverse lengths - original_lengths={lengths.shape}, flattened_lengths={L.shape}, values={L}")
-                
+                # logging.info(f"DEBUG: STFT inverse lengths - original_lengths={lengths.shape}, flattened_lengths={L.shape}, values={L}")
+
                 assert L.numel() == C_flat.size(0), f"lengths {tuple(L.shape)} must match front dims {front_shape}"
                 # Per-item iSTFT with given length
                 xs = []
@@ -264,17 +264,17 @@ class STFTWrapper(torch.nn.Module):
                     sample_spec = C_flat[i]  # [F, T]
                     sample_len = int(L[i])
                     spec_mag = torch.abs(sample_spec)
-                    logging.info(f"DEBUG: iSTFT sample {i} - spec_shape={sample_spec.shape}, target_len={sample_len}, spec_mag_min={spec_mag.min():.6f}, spec_mag_max={spec_mag.max():.6f}, spec_mag_mean={spec_mag.mean():.6f}")
-                    
+                    # logging.info(f"DEBUG: iSTFT sample {i} - spec_shape={sample_spec.shape}, target_len={sample_len}, spec_mag_min={spec_mag.min():.6f}, spec_mag_max={spec_mag.max():.6f}, spec_mag_mean={spec_mag.mean():.6f}")
+
                     sample_wav = torch.istft(
                         sample_spec, n_fft=self.n_fft, hop_length=self.hop_length, win_length=self.win_length,
                         window=win, center=True, normalized=False, onesided=True, length=sample_len,
                         return_complex=False
                     )
-                    
+
                     # DEBUG: Log resulting waveform
-                    logging.info(f"DEBUG: iSTFT sample {i} result - wav_shape={sample_wav.shape}, wav_min={sample_wav.min():.6f}, wav_max={sample_wav.max():.6f}, wav_mean={sample_wav.mean():.6f}, wav_std={sample_wav.std():.6f}")
-                    
+                    # logging.info(f"DEBUG: iSTFT sample {i} result - wav_shape={sample_wav.shape}, wav_min={sample_wav.min():.6f}, wav_max={sample_wav.max():.6f}, wav_mean={sample_wav.mean():.6f}, wav_std={sample_wav.std():.6f}")
+
                     xs.append(sample_wav)
                 x = torch.stack(xs, dim=0)  # [N, Tw]
 

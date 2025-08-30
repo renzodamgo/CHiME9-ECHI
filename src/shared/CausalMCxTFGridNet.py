@@ -213,11 +213,15 @@ class MCxTFGridNet(nn.Module):
                 z = self.gridnets[i](z)
 
             # --- Head & complex projection ---
-            out_ri = self.deconv(z)  # [BK, 2, Tm, Fm]
+            out_ri = self.deconv(z)  # [BK, n_srcs*2, Tm, Fm]
             Tm, Fm = out_ri.shape[-2], out_ri.shape[-1]
-            out_ri = out_ri.view(B, K, 2, Tm, Fm)  # [B, K, 2, Tm, Fm]
+            out_ri = out_ri.view(B, K, self.n_srcs * 2, Tm, Fm)  # [B, K, n_srcs*2, Tm, Fm]
 
-            # torch.complex doesn’t accept bf16; cast channels to fp32 first
+            # For 5D path: extract only first complex pair (2 channels) per speaker
+            # This maintains compatibility with target speaker extraction approach
+            out_ri = out_ri[:, :, :2]  # [B, K, 2, Tm, Fm] - use first complex pair
+
+            # torch.complex doesn't accept bf16; cast channels to fp32 first
             re = out_ri[:, :, 0].to(torch.float32)
             im = out_ri[:, :, 1].to(torch.float32)
             out = torch.complex(re, im)  # [B, K, Tm, Fm] (complex64)

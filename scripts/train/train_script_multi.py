@@ -92,9 +92,9 @@ def save_samples_for_scenes(
             # Save processed audio for each speaker
             for k_idx in range(num_speakers):
                 spk_audio = s_hat_wav_cpu[b_idx, k_idx]
-                logging.info(
-                    f"DEBUG: {split} Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
-                )
+                # logging.info(
+                #     f"DEBUG: {split} Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}"
+                # )
 
                 gromit.save_sample(
                     spk_audio,
@@ -227,41 +227,41 @@ def validate(
 
             # DEBUG: Check STFT magnitude before inverse transform
             S_hat_mag = torch.abs(S_hat_c)
-            logging.info(
-                f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}"
-            )
+            # logging.info(
+            #     f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}"
+            # )
 
             # STOI computation
             target_lens = batch["target_lens_all"].to(device)
 
             # DEBUG: Check lengths parameter
-            logging.info(
-                f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}"
-            )
+            # logging.info(
+            #     f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}"
+            # )
 
             # DEBUG: Check S_hat_c before inverse transform
-            logging.info(
-                f"DEBUG: S_hat_c before inverse - shape={S_hat_c.shape}, is_complex={S_hat_c.is_complex()}"
-            )
-            if S_hat_c.is_complex():
-                logging.info(
-                    f"DEBUG: S_hat_c complex parts - real_min={S_hat_c.real.min():.6f}, real_max={S_hat_c.real.max():.6f}, imag_min={S_hat_c.imag.min():.6f}, imag_max={S_hat_c.imag.max():.6f}"
-                )
+            # logging.info(
+            #     f"DEBUG: S_hat_c before inverse - shape={S_hat_c.shape}, is_complex={S_hat_c.is_complex()}"
+            # )
+            # if S_hat_c.is_complex():
+            #     logging.info(
+            #         f"DEBUG: S_hat_c complex parts - real_min={S_hat_c.real.min():.6f}, real_max={S_hat_c.real.max():.6f}, imag_min={S_hat_c.imag.min():.6f}, imag_max={S_hat_c.imag.max():.6f}"
+            #     )
 
             # DEBUG: Check individual speaker spectrograms
             for k_idx in range(S_hat_c.shape[1]):
                 spk_spec = S_hat_c[0, k_idx]  # [T, F]
                 spec_mag = torch.abs(spk_spec)
-                logging.info(
-                    f"DEBUG: S_hat_c speaker {k_idx} spectrogram - shape={spk_spec.shape}, mag_min={spec_mag.min():.6f}, mag_max={spec_mag.max():.6f}, mag_mean={spec_mag.mean():.6f}"
-                )
+                # logging.info(
+                #     f"DEBUG: S_hat_c speaker {k_idx} spectrogram - shape={spk_spec.shape}, mag_min={spec_mag.min():.6f}, mag_max={spec_mag.max():.6f}, mag_mean={spec_mag.mean():.6f}"
+                # )
 
             s_hat_wav = stft.inverse(S_hat_c, lengths=target_lens)  # [B,K,T]
 
             # DEBUG: Check s_hat_wav stats
-            logging.info(
-                f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}"
-            )
+            # logging.info(
+            #     f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}"
+            # )
             y_wav = targ_all  # [B,K,T]
             min_stoi_len = int(math.ceil(7680 * model_cfg.input.sample_rate / 10000.0))
 
@@ -403,9 +403,9 @@ def run(
             global_step = (epoch * (num_batches or 0)) + (batch_idx - 1)
             bn = f"{batch_idx}" + (f"/{num_batches}" if num_batches else "")
 
-            logging.info(
-                f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
-            )
+            # logging.info(
+            #     f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
+            # )
 
             # Multi-speaker training path only
             noisy = batch["noisy"].to(device, non_blocking=True)  # [B, C, Tw]

@@ -258,7 +258,7 @@ def run(
 
                 # Apply prep_audio only where needed
                 logging.info(f"BEFORE prep_audio - noisy: {noisy.shape}, spk_all: {spk_all.shape}, targ_all: {targ_all.shape}")
-                
+
                 noisy = prep_audio(
                     noisy, batch["fs"], input_channels, input_sr, input_rms, True
                 )
@@ -275,11 +275,11 @@ def run(
                 noisy_tf = stft(noisy)  # → [B, M, T, F, 2]
                 spk_all_tf = stft(spk_all)  #  [B,K,F,T,2]
                 logging.info(f"STFT shapes - noisy_tf: {noisy_tf.shape}, spk_all_tf: {spk_all_tf.shape}")
-                
+
                 # spk_all_tf: [B,K,F,T,2] -> [B,K,T,F,2]
                 spk_all_for_model = spk_all_tf.permute(0, 1, 3, 2, 4).contiguous()
                 logging.info(f"spk_all_for_model after permute: {spk_all_for_model.shape}")
-                
+
                 assert spk_all_for_model.shape[-1] == 2 and spk_all_for_model.shape[
                     -2
                 ] == getattr(
@@ -550,17 +550,17 @@ def run(
                         S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5)
                     )
                     gromit.val_loss.update(val_loss.detach())
-                    
+
                     # DEBUG: Check STFT magnitude before inverse transform
                     S_hat_mag = torch.abs(S_hat_c)
-                    logging.info(f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}")
+                    # logging.info(f"DEBUG: S_hat_c STFT magnitude - min={S_hat_mag.min():.6f}, max={S_hat_mag.max():.6f}, mean={S_hat_mag.mean():.6f}, shape={S_hat_c.shape}")
 
                     # === STOI per (b,k), using per-speaker valid lengths ===
                     target_lens = batch["target_lens_all"].to(device)
-                    
+
                     # DEBUG: Check lengths parameter
-                    logging.info(f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}")
-                    
+                    # logging.info(f"DEBUG: target_lens_all shape={target_lens.shape}, values={target_lens}")
+
                     s_hat_wav = stft.inverse(
                         S_hat_c, lengths=target_lens
                     )  # [B,K,T]
@@ -601,9 +601,9 @@ def run(
                     with torch.no_grad():
                         # Convert model output from complex STFT to waveform and move to CPU
                         s_hat_wav = s_hat_wav.detach().cpu()
-                        
+
                         # DEBUG: Check s_hat_wav stats
-                        logging.info(f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}")
+                        # logging.info(f"DEBUG: s_hat_wav stats - min={s_hat_wav.min():.6f}, max={s_hat_wav.max():.6f}, mean={s_hat_wav.mean():.6f}, shape={s_hat_wav.shape}")
 
                         # Determine which scenes in the batch are marked for saving
                         scenes_in_batch = batch["id"]
@@ -623,8 +623,8 @@ def run(
                                     for k_idx in range(num_speakers):
                                         # DEBUG: Check per-speaker stats
                                         spk_audio = s_hat_wav[b_idx, k_idx]
-                                        logging.info(f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}")
-                                        
+                                        # logging.info(f"DEBUG: Speaker {k_idx} stats - min={spk_audio.min():.6f}, max={spk_audio.max():.6f}, mean={spk_audio.mean():.6f}, std={spk_audio.std():.6f}")
+
                                         # Save the model's processed audio for this speaker
                                         gromit.save_sample(
                                             spk_audio,
