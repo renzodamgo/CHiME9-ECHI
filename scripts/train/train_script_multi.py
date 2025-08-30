@@ -18,6 +18,27 @@ torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
 
+def log_speaker_separation_metrics(stats, epoch, batch_idx, split="train"):
+    """Log speaker separation metrics in a readable format."""
+    if "separation_quality_score" not in stats:
+        return
+
+    logging.info(f"=== SPEAKER SEPARATION ANALYSIS [{split.upper()}] E{epoch}B{batch_idx} ===")
+    logging.info(f"🎯 Separation Quality Score: {stats.get('separation_quality_score', 0):.4f}")
+    logging.info(f"📊 Cross-Speaker Correlation: {stats.get('cross_speaker_corr_mean', 0):.4f} (max: {stats.get('cross_speaker_corr_max', 0):.4f})")
+    logging.info(f"📏 Speaker L2 Distance: {stats.get('speaker_l2_distance_mean', 0):.4f} (min: {stats.get('speaker_l2_distance_min', 0):.4f})")
+
+    if "speaker_energies" in stats and stats["speaker_energies"]:
+        energies_str = ", ".join([f"Spk{i}: {e:.4f}" for i, e in enumerate(stats["speaker_energies"])])
+        logging.info(f"⚡ Speaker Energies: [{energies_str}]")
+        logging.info(f"⚖️  Energy Balance - Std: {stats.get('speaker_energy_std', 0):.4f}, Ratio: {stats.get('speaker_energy_ratio', 0):.2f}")
+
+    if "spectral_centroid_diff" in stats:
+        logging.info(f"🎵 Spectral Centroid Diff: {stats['spectral_centroid_diff']:.4f}")
+
+    logging.info("=" * 50)
+
+
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     """
     Always use ECHIJoint dataset for multi-speaker training.
@@ -225,6 +246,10 @@ def validate(
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
             gromit.val_si_sdr.update(torch.tensor(val_stats["SI_SDR"]))
 
+            # Store validation stats for end-of-epoch logging
+            if not hasattr(validate, '_val_separation_stats'):
+                validate._val_separation_stats = val_stats
+
             # DEBUG: Check STFT magnitude before inverse transform
             S_hat_mag = torch.abs(S_hat_c)
             # logging.info(
@@ -301,6 +326,11 @@ def validate(
     # LR scheduling
     if do_lrschedule:
         lr_scheduler.step(gromit.val_loss.get_average())
+
+    # Log speaker separation metrics at end of validation
+    if hasattr(validate, '_val_separation_stats'):
+        log_speaker_separation_metrics(validate._val_separation_stats, epoch, 0, split="val")
+        delattr(validate, '_val_separation_stats')
 
     gromit.epoch_report(
         epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"], stats
@@ -403,9 +433,9 @@ def run(
             global_step = (epoch * (num_batches or 0)) + (batch_idx - 1)
             bn = f"{batch_idx}" + (f"/{num_batches}" if num_batches else "")
 
-            # logging.info(
-            #     f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
-            # )
+            logging.info(
+                f"=== BATCH DEBUG (epoch {epoch} | batch {bn} | global {global_step}) ==="
+            )
 
             # Multi-speaker training path only
             noisy = batch["noisy"].to(device, non_blocking=True)  # [B, C, Tw]
@@ -488,16 +518,22 @@ def run(
 
             # Statistics logging
             with torch.no_grad():
-                grad_sq = sum(
-                    p.grad.detach().pow(2).sum().item()
-                    for p in model.parameters()
-                    if p.grad is not None
-                )
-                param_sq = sum(
-                    p.detach().pow(2).sum().item() for p in model.parameters()
-                )
-                stats["grad_norm"] = grad_sq**0.5
-                stats["param_norm"] = param_sq**0.5
+                try:
+                    grad_sq = sum(
+                        p.grad.detach().pow(2).sum().item()
+                        for p in model.parameters()
+                        if p.grad is not None
+                    )
+                    param_sq = sum(
+                        p.detach().pow(2).sum().item() for p in model.parameters()
+                        if p is not None
+                    )
+                    stats["grad_norm"] = max(grad_sq**0.5, 1e-8)
+                    stats["param_norm"] = max(param_sq**0.5, 1e-8)
+                except Exception as e:
+                    logging.warning(f"Error computing norms: {e}")
+                    stats["grad_norm"] = 0.0
+                    stats["param_norm"] = 0.0
                 stats["lr"] = optimizer.param_groups[0]["lr"]
 
                 if torch.cuda.is_available():
@@ -512,6 +548,10 @@ def run(
             gromit.train_loss.update(loss.detach())
             gromit.train_l_sep.update(torch.tensor(stats["L_sep"]))
             gromit.train_si_sdr.update(torch.tensor(stats["SI_SDR"]))
+
+            # Log speaker separation metrics periodically
+            if batch_idx % 50 == 0:  # Every 50 batches
+                log_speaker_separation_metrics(stats, epoch, batch_idx, split="train")
 
             # Sample saving (simplified)
             if epoch % 2 == 0 or epoch == 0:
