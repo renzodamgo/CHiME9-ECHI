@@ -221,21 +221,22 @@ class MCxTFGridNet(nn.Module):
             # Instead of all speakers getting the same first 2 channels,
             # assign each speaker k their own channels [k*2:(k+1)*2]
             out_speakers = []
-            for k in range(K):
-                if k * 2 + 1 < self.n_srcs * 2:  # Ensure we have enough channels
-                    start_ch = k * 2
-                    end_ch = start_ch + 2
-                    spk_out = out_ri[:, k, start_ch:end_ch]  # [B, 2, Tm, Fm]
-                    if not hasattr(self, '_logged_channel_assignment'):
-                        logging.info(f"✅ FIXED: Speaker {k} using channels {start_ch}:{end_ch}")
-                else:
-                    # Fallback: if not enough channels, use first pair (backward compatibility)
-                    spk_out = out_ri[:, k, :2]  # [B, 2, Tm, Fm]
-                    if not hasattr(self, '_logged_channel_assignment'):
-                        logging.warning(f"⚠️  Speaker {k}: fallback to channels 0:2 (not enough output channels)")
-                out_speakers.append(spk_out)
+            # for k in range(K):
+            #     if k * 2 + 1 < self.n_srcs * 2:  # Ensure we have enough channels
+            #         start_ch = k * 2
+            #         end_ch = start_ch + 2
+            #         spk_out = out_ri[:, k, start_ch:end_ch]  # [B, 2, Tm, Fm]
+            #         if not hasattr(self, '_logged_channel_assignment'):
+            #             logging.info(f"✅ FIXED: Speaker {k} using channels {start_ch}:{end_ch}")
+            #     else:
+            #         # Fallback: if not enough channels, use first pair (backward compatibility)
+            #         spk_out = out_ri[:, k, :2]  # [B, 2, Tm, Fm]
+            #         if not hasattr(self, '_logged_channel_assignment'):
+            #             logging.warning(f"⚠️  Speaker {k}: fallback to channels 0:2 (not enough output channels)")
+            #     out_speakers.append(spk_out)
+            out_ri = out_ri[:, :, :2, :, :]
 
-            out_ri = torch.stack(out_speakers, dim=1)  # [B, K, 2, Tm, Fm]
+            # out_ri = torch.stack(out_speakers, dim=1)  # [B, K, 2, Tm, Fm]
 
             # Mark that we've logged the channel assignment
             if not hasattr(self, '_logged_channel_assignment'):
