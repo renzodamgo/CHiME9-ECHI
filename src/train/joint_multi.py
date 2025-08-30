@@ -78,9 +78,11 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
         # Store debug info for logging every 50 batches
         if speaker_energies:
             stats["debug_speaker_waveforms"] = []
+            stats["debug_target_waveforms"] = []
             for k in range(K):
+                # Model output analysis
                 spk_wav = s_hat_wav[0, k]  # First batch only
-                debug_info = {
+                output_debug = {
                     "speaker": k,
                     "shape": tuple(spk_wav.shape),
                     "min": float(spk_wav.min()),
@@ -90,7 +92,22 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
                     "energy": float((spk_wav ** 2).mean()),
                     "rms": float((spk_wav ** 2).mean() ** 0.5)
                 }
-                stats["debug_speaker_waveforms"].append(debug_info)
+                stats["debug_speaker_waveforms"].append(output_debug)
+                
+                # Target audio analysis (from y_wav)
+                target_wav = y_wav[0, k]  # First batch only
+                target_debug = {
+                    "speaker": k,
+                    "shape": tuple(target_wav.shape),
+                    "min": float(target_wav.min()),
+                    "max": float(target_wav.max()),
+                    "mean": float(target_wav.mean()),
+                    "std": float(target_wav.std()),
+                    "energy": float((target_wav ** 2).mean()),
+                    "rms": float((target_wav ** 2).mean() ** 0.5),
+                    "is_silent": float((target_wav ** 2).mean()) < 1e-6
+                }
+                stats["debug_target_waveforms"].append(target_debug)
         
         if speaker_energies:
             energies = speaker_energies[0]
@@ -147,6 +164,33 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
     return stats
 
 
+def _compute_balanced_sisdr_loss(sisdr_per_spk):
+    """
+    Compute speaker-balanced SI-SDR loss to prevent hierarchy collapse.
+    
+    Applies inverse performance weighting: worse performers get higher gradient weights
+    to prevent abandonment of poorly performing speakers.
+    
+    Args:
+        sisdr_per_spk: [B, K] per-speaker SI-SDR values (higher is better)
+        
+    Returns:
+        balanced_sisdr: scalar balanced SI-SDR loss
+    """
+    if sisdr_per_spk.numel() == 1:
+        # Single speaker case - no balancing needed
+        return sisdr_per_spk.squeeze()
+    
+    # Compute inverse performance weights (worse SI-SDR gets higher weight)
+    # Use softmax of negative SI-SDR for stable, differentiable weighting
+    inverse_performance_weights = torch.softmax(-sisdr_per_spk.detach(), dim=-1)  # [B, K]
+    
+    # Apply balanced weighting - worse performers get more gradient attention
+    balanced_sisdr_per_sample = (sisdr_per_spk * inverse_performance_weights).sum(dim=-1)  # [B]
+    
+    return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
+
+
 def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weighting=True,
                amplitude_aware=True, amplitude_loss_weight=0.5):
     """
@@ -199,9 +243,9 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
         # Per-speaker amplitude weights: louder targets get more emphasis
         amplitude_weights = torch.clamp(temp_y_ref_rms_per_spk * 50.0, min=0.5, max=3.0)  # [B, K]
 
-        # Apply per-speaker weighting to SI-SDR and compute weighted average
+        # Apply per-speaker weighting to SI-SDR and compute balanced average
         weighted_sisdr_per_spk = sisdr_per_spk * amplitude_weights  # [B, K]
-        sisdr = weighted_sisdr_per_spk.mean()  # Global weighted SI-SDR
+        sisdr = _compute_balanced_sisdr_loss(weighted_sisdr_per_spk)  # Balanced SI-SDR
 
         # For backward compatibility, store the effective weight multiplier
         proportional_w_time = w_time * amplitude_weights.mean()
@@ -209,7 +253,7 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weigh
         # Standard averaging without amplitude weighting
         amplitude_weights = torch.ones_like(temp_y_ref_rms_per_spk)  # [B, K] all 1.0
         weighted_sisdr_per_spk = sisdr_per_spk  # No weighting applied
-        sisdr = sisdr_per_spk.mean()
+        sisdr = _compute_balanced_sisdr_loss(sisdr_per_spk)  # Balanced SI-SDR
         proportional_w_time = w_time
 
     if adaptive_weighting:

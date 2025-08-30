@@ -37,15 +37,21 @@ def log_speaker_separation_metrics(stats, epoch, batch_idx, split="train"):
         logging.info(f"🎵 Spectral Centroid Diff: {stats['spectral_centroid_diff']:.4f}")
 
     # Log detailed waveform debug info every 50 batches
-    if "debug_speaker_waveforms" in stats:
-        logging.info("🔍 DETAILED SPEAKER WAVEFORM DEBUG:")
-        for debug_info in stats["debug_speaker_waveforms"]:
-            k = debug_info["speaker"]
+    if "debug_speaker_waveforms" in stats and "debug_target_waveforms" in stats:
+        logging.info("🔍 DETAILED WAVEFORM COMPARISON (MODEL vs TARGET):")
+        for i, (output_info, target_info) in enumerate(zip(stats["debug_speaker_waveforms"], stats["debug_target_waveforms"])):
+            k = output_info["speaker"]
             logging.info(f"   Speaker {k}:")
-            logging.info(f"     Shape: {debug_info['shape']}")
-            logging.info(f"     Range: {debug_info['min']:.6f} to {debug_info['max']:.6f}")
-            logging.info(f"     Mean: {debug_info['mean']:.6f}, Std: {debug_info['std']:.6f}")
-            logging.info(f"     Energy: {debug_info['energy']:.6f}, RMS: {debug_info['rms']:.6f}")
+            logging.info(f"     📤 MODEL OUTPUT:")
+            logging.info(f"       Range: {output_info['min']:.6f} to {output_info['max']:.6f}")
+            logging.info(f"       Mean: {output_info['mean']:.6f}, Std: {output_info['std']:.6f}")
+            logging.info(f"       Energy: {output_info['energy']:.6f}, RMS: {output_info['rms']:.6f}")
+            logging.info(f"     🎯 TARGET AUDIO:")
+            logging.info(f"       Range: {target_info['min']:.6f} to {target_info['max']:.6f}")
+            logging.info(f"       Mean: {target_info['mean']:.6f}, Std: {target_info['std']:.6f}")
+            logging.info(f"       Energy: {target_info['energy']:.6f}, RMS: {target_info['rms']:.6f}")
+            silent_status = "🔇 SILENT" if target_info['is_silent'] else "🔊 ACTIVE"
+            logging.info(f"       Status: {silent_status}")
 
     logging.info("=" * 50)
 
