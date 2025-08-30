@@ -106,7 +106,7 @@ def save_samples_for_scenes(
                 )
 
                 # Save target audio if requested
-                if save_targets_and_noisy:
+                if save_targets_and_noisy and epoch == 0:
                     gromit.save_sample(
                         target_wav[b_idx, k_idx],
                         model_cfg.input.sample_rate,
@@ -117,7 +117,7 @@ def save_samples_for_scenes(
                     )
 
             # Save noisy audio if requested (once per scene)
-            if save_targets_and_noisy:
+            if save_targets_and_noisy and epoch == 0:
                 gromit.save_sample(
                     noisy_wav[b_idx, 0],  # Use first microphone channel
                     model_cfg.input.sample_rate,
