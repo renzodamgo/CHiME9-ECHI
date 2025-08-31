@@ -1,0 +1,66 @@
+============================================================
+CHiME9-ECHI Training Samples Analysis Report
+============================================================
+
+Total samples analyzed: 90
+Epochs covered: 0 to 18
+Speakers: [np.int64(0), np.int64(1), np.int64(2)]
+Unique scenes: 3
+
+AMPLITUDE ANALYSIS:
+--------------------
+Overall RMS range: 0.000000 to 0.010689
+Mean RMS: 0.004290
+Median RMS: 0.004119
+
+SILENT AUDIO DETECTION:
+-------------------------
+Silent samples (RMS < 0.001): 12 / 90 (13.3%)
+
+EPOCH-BY-EPOCH TRENDS:
+-----------------------
+Epoch  0: 9 samples, Mean RMS: 0.006791, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.004757, Silent: 0/9 (0.0%)
+Epoch  4: 9 samples, Mean RMS: 0.005294, Silent: 0/9 (0.0%)
+Epoch  6: 9 samples, Mean RMS: 0.004617, Silent: 0/9 (0.0%)
+Epoch  8: 9 samples, Mean RMS: 0.005305, Silent: 0/9 (0.0%)
+Epoch 10: 9 samples, Mean RMS: 0.004644, Silent: 0/9 (0.0%)
+Epoch 12: 9 samples, Mean RMS: 0.004412, Silent: 0/9 (0.0%)
+Epoch 14: 9 samples, Mean RMS: 0.003660, Silent: 0/9 (0.0%)
+Epoch 16: 9 samples, Mean RMS: 0.001476, Silent: 6/9 (66.7%)
+Epoch 18: 9 samples, Mean RMS: 0.001943, Silent: 6/9 (66.7%)
+
+SPEAKER-SPECIFIC ANALYSIS:
+--------------------------
+Speaker 0: 30 samples, Mean RMS: 0.006759, Silent: 0/30 (0.0%)
+Speaker 1: 30 samples, Mean RMS: 0.002958, Silent: 6/30 (20.0%)
+Speaker 2: 30 samples, Mean RMS: 0.003153, Silent: 6/30 (20.0%)
+
+SPECTRAL ANALYSIS:
+------------------
+Mean Spectral Centroid: 1286 Hz
+Mean Spectral Bandwidth: 1789 Hz
+Mean Spectral Entropy: 2.38 bits
+Mean High-Freq Ratio: 0.0705
+
+INFORMATION LOSS DETECTION:
+---------------------------
+High-frequency loss: 60 / 90 (66.7%)
+Low spectral complexity: 89 / 90 (98.9%)
+Overly smooth spectrum: 82 / 90 (91.1%)
+
+FREQUENCY BAND ENERGY DISTRIBUTION:
+-----------------------------------
+Low Freq (0-1kHz):  0.859 ± 0.283
+Mid Freq (1-4kHz):  0.041 ± 0.081
+High Freq (4kHz+):  0.022 ± 0.069
+
+
+POTENTIAL ISSUES DETECTED:
+--------------------------
+⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs
+⚠️  HIGH-FREQUENCY INFORMATION LOSS: 66.7% of samples missing high-frequency content
+⚠️  LOW SPECTRAL COMPLEXITY: 98.9% of samples have low spectral entropy
+⚠️  DECREASING SPECTRAL COMPLEXITY: Spectral entropy is decreasing across epochs
+⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
+⚠️  LOW HIGH-FREQUENCY ENERGY: Only 2.2% of energy in high frequencies (should be >10%)

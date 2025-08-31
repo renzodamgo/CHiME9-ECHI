@@ -2,60 +2,73 @@
 CHiME9-ECHI Training Samples Analysis Report
 ============================================================
 
-Total samples analyzed: 48
-Epochs covered: 0 to 25
+Total samples analyzed: 177
+Epochs covered: 0 to 38
 Speakers: [np.int64(0), np.int64(1), np.int64(2)]
 Unique scenes: 3
 
 AMPLITUDE ANALYSIS:
 --------------------
-Overall RMS range: 0.000135 to 0.029609
-Mean RMS: 0.004363
-Median RMS: 0.001188
+Overall RMS range: 0.002734 to 0.014303
+Mean RMS: 0.005464
+Median RMS: 0.004043
 
 SILENT AUDIO DETECTION:
 -------------------------
-Silent samples (RMS < 0.001): 19 / 48 (39.6%)
+Silent samples (RMS < 0.001): 0 / 177 (0.0%)
 
 EPOCH-BY-EPOCH TRENDS:
 -----------------------
-Epoch  0: 9 samples, Mean RMS: 0.016397, Silent: 0/9 (0.0%)
-Epoch  5: 9 samples, Mean RMS: 0.003434, Silent: 0/9 (0.0%)
-Epoch 10: 9 samples, Mean RMS: 0.001571, Silent: 4/9 (44.4%)
-Epoch 15: 9 samples, Mean RMS: 0.000855, Silent: 6/9 (66.7%)
-Epoch 20: 9 samples, Mean RMS: 0.000842, Silent: 7/9 (77.8%)
-Epoch 25: 3 samples, Mean RMS: 0.000515, Silent: 2/3 (66.7%)
+Epoch  0: 9 samples, Mean RMS: 0.007038, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.005158, Silent: 0/9 (0.0%)
+Epoch  4: 9 samples, Mean RMS: 0.005640, Silent: 0/9 (0.0%)
+Epoch  6: 9 samples, Mean RMS: 0.005041, Silent: 0/9 (0.0%)
+Epoch  8: 9 samples, Mean RMS: 0.004813, Silent: 0/9 (0.0%)
+Epoch 10: 9 samples, Mean RMS: 0.004771, Silent: 0/9 (0.0%)
+Epoch 12: 9 samples, Mean RMS: 0.005644, Silent: 0/9 (0.0%)
+Epoch 14: 9 samples, Mean RMS: 0.005547, Silent: 0/9 (0.0%)
+Epoch 16: 9 samples, Mean RMS: 0.005809, Silent: 0/9 (0.0%)
+Epoch 18: 9 samples, Mean RMS: 0.005116, Silent: 0/9 (0.0%)
+Epoch 20: 9 samples, Mean RMS: 0.005548, Silent: 0/9 (0.0%)
+Epoch 22: 9 samples, Mean RMS: 0.005407, Silent: 0/9 (0.0%)
+Epoch 24: 9 samples, Mean RMS: 0.005532, Silent: 0/9 (0.0%)
+Epoch 26: 9 samples, Mean RMS: 0.005609, Silent: 0/9 (0.0%)
+Epoch 28: 9 samples, Mean RMS: 0.005708, Silent: 0/9 (0.0%)
+Epoch 30: 9 samples, Mean RMS: 0.005696, Silent: 0/9 (0.0%)
+Epoch 32: 9 samples, Mean RMS: 0.005270, Silent: 0/9 (0.0%)
+Epoch 34: 9 samples, Mean RMS: 0.005205, Silent: 0/9 (0.0%)
+Epoch 36: 9 samples, Mean RMS: 0.005252, Silent: 0/9 (0.0%)
+Epoch 38: 6 samples, Mean RMS: 0.005473, Silent: 0/6 (0.0%)
 
 SPEAKER-SPECIFIC ANALYSIS:
 --------------------------
-Speaker 0: 16 samples, Mean RMS: 0.005740, Silent: 1/16 (6.2%)
-Speaker 1: 16 samples, Mean RMS: 0.003631, Silent: 9/16 (56.2%)
-Speaker 2: 16 samples, Mean RMS: 0.003718, Silent: 9/16 (56.2%)
+Speaker 0: 59 samples, Mean RMS: 0.008566, Silent: 0/59 (0.0%)
+Speaker 1: 59 samples, Mean RMS: 0.003840, Silent: 0/59 (0.0%)
+Speaker 2: 59 samples, Mean RMS: 0.003985, Silent: 0/59 (0.0%)
 
 SPECTRAL ANALYSIS:
 ------------------
-Mean Spectral Centroid: 2420 Hz
-Mean Spectral Bandwidth: 2354 Hz
-Mean Spectral Entropy: 6.37 bits
-Mean High-Freq Ratio: 0.2573
+Mean Spectral Centroid: 721 Hz
+Mean Spectral Bandwidth: 1354 Hz
+Mean Spectral Entropy: 1.53 bits
+Mean High-Freq Ratio: 0.0204
 
 INFORMATION LOSS DETECTION:
 ---------------------------
-High-frequency loss: 4 / 48 (8.3%)
-Low spectral complexity: 44 / 48 (91.7%)
-Overly smooth spectrum: 37 / 48 (77.1%)
+High-frequency loss: 149 / 177 (84.2%)
+Low spectral complexity: 175 / 177 (98.9%)
+Overly smooth spectrum: 174 / 177 (98.3%)
 
 FREQUENCY BAND ENERGY DISTRIBUTION:
 -----------------------------------
-Low Freq (0-1kHz):  0.847 ± 0.136
-Mid Freq (1-4kHz):  0.077 ± 0.082
-High Freq (4kHz+):  0.076 ± 0.079
+Low Freq (0-1kHz):  0.968 ± 0.104
+Mid Freq (1-4kHz):  0.024 ± 0.077
+High Freq (4kHz+):  0.008 ± 0.029
 
 
 POTENTIAL ISSUES DETECTED:
 --------------------------
-⚠️  HIGH SILENT AUDIO RATE: 39.6% of samples are mostly silent
-⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs
-⚠️  LOW SPECTRAL COMPLEXITY: 91.7% of samples have low spectral entropy
+⚠️  HIGH-FREQUENCY INFORMATION LOSS: 84.2% of samples missing high-frequency content
+⚠️  LOW SPECTRAL COMPLEXITY: 98.9% of samples have low spectral entropy
 ⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
-⚠️  LOW HIGH-FREQUENCY ENERGY: Only 7.6% of energy in high frequencies (should be >10%)
+⚠️  LOW HIGH-FREQUENCY ENERGY: Only 0.8% of energy in high frequencies (should be >10%)

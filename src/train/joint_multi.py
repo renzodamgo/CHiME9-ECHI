@@ -168,8 +168,8 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
     """
     Compute speaker-balanced SI-SDR loss to prevent hierarchy collapse.
 
-    Applies inverse performance weighting: worse performers get higher gradient weights
-    to prevent abandonment of poorly performing speakers.
+    Uses equal weighting to encourage balanced improvement across all speakers
+    instead of focusing on worst performers, which can lead to training instability.
 
     Args:
         sisdr_per_spk: [B, K] per-speaker SI-SDR values (higher is better)
@@ -181,12 +181,12 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
         # Single speaker case - no balancing needed
         return sisdr_per_spk.squeeze()
 
-    # Compute inverse performance weights (worse SI-SDR gets higher weight)
-    # Use softmax of negative SI-SDR for stable, differentiable weighting
-    inverse_performance_weights = torch.softmax(-sisdr_per_spk.detach(), dim=-1)  # [B, K]
+    # Use equal weighting for all speakers to encourage balanced improvement
+    # This prevents the model from abandoning good speakers to chase impossible cases
+    equal_weights = torch.ones_like(sisdr_per_spk) / sisdr_per_spk.size(-1)  # [B, K]
 
-    # Apply balanced weighting - worse performers get more gradient attention
-    balanced_sisdr_per_sample = (sisdr_per_spk * inverse_performance_weights).sum(dim=-1)  # [B]
+    # Apply equal weighting - all speakers get equal optimization attention
+    balanced_sisdr_per_sample = (sisdr_per_spk * equal_weights).sum(dim=-1)  # [B]
 
     return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
 
