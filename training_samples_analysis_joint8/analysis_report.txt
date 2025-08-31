@@ -1,0 +1,58 @@
+============================================================
+CHiME9-ECHI Training Samples Analysis Report
+============================================================
+
+Total samples analyzed: 27
+Epochs covered: 0 to 4
+Speakers: [np.int64(0), np.int64(1), np.int64(2)]
+Unique scenes: 3
+
+AMPLITUDE ANALYSIS:
+--------------------
+Overall RMS range: 0.002668 to 0.017687
+Mean RMS: 0.006832
+Median RMS: 0.005178
+
+SILENT AUDIO DETECTION:
+-------------------------
+Silent samples (RMS < 0.001): 0 / 27 (0.0%)
+
+EPOCH-BY-EPOCH TRENDS:
+-----------------------
+Epoch  0: 9 samples, Mean RMS: 0.008531, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.005931, Silent: 0/9 (0.0%)
+Epoch  4: 9 samples, Mean RMS: 0.006034, Silent: 0/9 (0.0%)
+
+SPEAKER-SPECIFIC ANALYSIS:
+--------------------------
+Speaker 0: 9 samples, Mean RMS: 0.008825, Silent: 0/9 (0.0%)
+Speaker 1: 9 samples, Mean RMS: 0.006455, Silent: 0/9 (0.0%)
+Speaker 2: 9 samples, Mean RMS: 0.005216, Silent: 0/9 (0.0%)
+
+SPECTRAL ANALYSIS:
+------------------
+Mean Spectral Centroid: 2252 Hz
+Mean Spectral Bandwidth: 2306 Hz
+Mean Spectral Entropy: 5.39 bits
+Mean High-Freq Ratio: 0.2340
+
+INFORMATION LOSS DETECTION:
+---------------------------
+High-frequency loss: 1 / 27 (3.7%)
+Low spectral complexity: 26 / 27 (96.3%)
+Overly smooth spectrum: 24 / 27 (88.9%)
+
+FREQUENCY BAND ENERGY DISTRIBUTION:
+-----------------------------------
+Low Freq (0-1kHz):  0.794 ± 0.161
+Mid Freq (1-4kHz):  0.139 ± 0.132
+High Freq (4kHz+):  0.068 ± 0.067
+
+
+POTENTIAL ISSUES DETECTED:
+--------------------------
+⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs
+⚠️  LOW SPECTRAL COMPLEXITY: 96.3% of samples have low spectral entropy
+⚠️  DECREASING SPECTRAL COMPLEXITY: Spectral entropy is decreasing across epochs
+⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
+⚠️  LOW HIGH-FREQUENCY ENERGY: Only 6.8% of energy in high frequencies (should be >10%)

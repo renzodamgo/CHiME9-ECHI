@@ -11,7 +11,7 @@ from train.echi import ECHI, collate_fn
 from train.echi import ECHIJoint, collate_fn_joint
 from shared.core_utils import get_model, get_device
 from train.losses import get_loss, get_lrmethod
-from train.gromit import Gromit
+from train.(gromit) import Gromit
 from shared.signal_utils import STFTWrapper, match_length, prep_audio
 from torch.amp import autocast
 

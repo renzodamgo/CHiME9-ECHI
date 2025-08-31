@@ -191,164 +191,73 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
     return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
 
 
-def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 1.0), adaptive_weighting=True,
-               amplitude_aware=True, amplitude_loss_weight=0.5):
+def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(1.0, 0.5), adaptive_weighting=False,
+               amplitude_aware=True, amplitude_loss_weight=1.0):
     """
-
+    Simplified joint loss focusing on separation quality and amplitude preservation.
+    
     Args:
         S_hat_c: [B, K, T, F] complex — model estimate per enrolled speaker
         Y_ref_c: [B, K, T, F] complex — clean reference STFT per speaker
-        batch:
-            target_all: [B, K, Tw]  — clean waveforms
-            target_lens_all: [B, K] — clean lengths (samples)
-        stft: STFT wrapper with .inverse(C, lengths=...) returning wave
-        weights: (w_sep, w_time) for STFT L1 and SI-SDR terms
+        batch: dict containing target_all: [B, K, Tw] and target_lens_all: [B, K]
+        stft: STFT wrapper for inverse transform
+        weights: (sep_weight, amplitude_weight) for the two loss components
     Returns:
         loss (scalar), stats (dict)
     """
     assert torch.is_complex(S_hat_c) and torch.is_complex(Y_ref_c)
     B, K = S_hat_c.shape[:2]
-    w_sep, w_time = weights
-
-    # --- 1) STFT-domain separation loss (index-aligned, no permutation) ---
-    # Enhanced with frequency-aware weighting to preserve high-frequency content
+    sep_weight, amplitude_weight = weights
+    
+    # 1. Separation quality with exponential high-frequency emphasis
     error_mag = torch.abs(S_hat_c - Y_ref_c)  # [B, K, T, F]
+    n_freqs = error_mag.shape[-1]
+    freq_weights = torch.exp(torch.linspace(0, 1.5, n_freqs, device=S_hat_c.device))  # 1.0→4.5
+    L_sep = (error_mag * freq_weights.view(1, 1, 1, -1)).mean()
 
-    if amplitude_aware:
-        # Frequency-aware weighting: emphasize high frequencies to prevent filtering
-        F = error_mag.shape[-1]
-        freq_weights = torch.linspace(1.0, 2.5, F, device=S_hat_c.device)  # Higher weight for high freq
-        freq_weights = freq_weights.view(1, 1, 1, -1)  # [1, 1, 1, F]
-        weighted_error = error_mag * freq_weights
-        L_sep = weighted_error.mean()
-    else:
-        L_sep = error_mag.mean()
+    # 2. Direct amplitude matching
+    tgt_lens = batch["target_lens_all"].to(S_hat_c.device)  # [B, K] samples
+    y_wav = batch["target_all"].to(S_hat_c.device)  # [B, K, Tw]
+    s_hat_wav = stft.inverse(S_hat_c, lengths=tgt_lens)  # [B, K, Tw']
+    
+    amplitude_loss = F.mse_loss(
+        torch.sqrt(torch.mean(s_hat_wav**2, dim=-1) + 1e-8),
+        torch.sqrt(torch.mean(y_wav**2, dim=-1) + 1e-8)
+    )
+    
+    # 3. Simple combination
+    loss = sep_weight * L_sep + amplitude_weight * amplitude_loss
 
-    # --- 2) Time-domain SI-SDR (per-speaker) ---
-    # Use exact per-(B,K) sample lengths so iSTFT returns the right shapes
-    tgt_lens = batch["target_lens_all"].to(S_hat_c.device)  # [B,K] samples
-    y_wav = batch["target_all"].to(S_hat_c.device)  # [B,K,Tw]
+    # Enhanced speaker separation diagnostics
+    separation_stats = analyze_speaker_separation(s_hat_wav, y_wav)
 
-    # iSTFT expects [*, F, T] internally; your wrapper handles [B,K,T,F] 𝒞
-    s_hat_wav = stft.inverse(S_hat_c, lengths=tgt_lens)  # [B,K,Tw'] (matched)
-    sisdr_per_spk = _sisdr(s_hat_wav, y_wav)  # [B, K] - keep per-speaker SI-SDR
-
-    # --- 3) Combine with adaptive weighting and per-speaker amplitude scaling ---
-    # Compute per-speaker RMS for amplitude-based weighting
-    temp_s_hat_rms_per_spk = torch.sqrt(torch.mean(s_hat_wav**2, dim=-1) + 1e-8)  # [B, K]
-    temp_y_ref_rms_per_spk = torch.sqrt(torch.mean(y_wav**2, dim=-1) + 1e-8)      # [B, K]
-
-    # Per-speaker amplitude weighting for SI-SDR
-    if amplitude_aware:
-        # Per-speaker amplitude weights: louder targets get more emphasis
-        amplitude_weights = torch.clamp(temp_y_ref_rms_per_spk * 50.0, min=0.5, max=3.0)  # [B, K]
-
-        # Apply per-speaker weighting to SI-SDR and compute balanced average
-        weighted_sisdr_per_spk = sisdr_per_spk * amplitude_weights  # [B, K]
-        sisdr = _compute_balanced_sisdr_loss(weighted_sisdr_per_spk)  # Balanced SI-SDR
-
-        # For backward compatibility, store the effective weight multiplier
-        proportional_w_time = w_time * amplitude_weights.mean()
-    else:
-        # Standard averaging without amplitude weighting
-        amplitude_weights = torch.ones_like(temp_y_ref_rms_per_spk)  # [B, K] all 1.0
-        weighted_sisdr_per_spk = sisdr_per_spk  # No weighting applied
-        sisdr = _compute_balanced_sisdr_loss(sisdr_per_spk)  # Balanced SI-SDR
-        proportional_w_time = w_time
-
-    if adaptive_weighting:
-        # Normalize weights based on typical scales to ensure balanced contribution
-        # L_sep: typically 0.02-0.5, scale factor ~2
-        # SI-SDR: typically -40 to 0 dB, scale factor ~20
-        # This ensures both losses contribute roughly equally when weights are (1.0, 1.0)
-        normalized_L_sep = L_sep * 2.0  # Scale L_sep up
-        normalized_sisdr = (-sisdr) / 20.0  # Scale SI-SDR down
-        loss = w_sep * normalized_L_sep + proportional_w_time * normalized_sisdr
-    else:
-        normalized_L_sep = L_sep
-        normalized_sisdr = (-sisdr)
-        loss = w_sep * L_sep + proportional_w_time * (-sisdr)
-
-    # --- 4) Amplitude-aware loss components ---
-    # Compute per-speaker and global amplitude statistics
-    s_hat_rms_per_spk = torch.sqrt(torch.mean(s_hat_wav**2, dim=-1, keepdim=True) + 1e-8)  # [B, K, 1]
-    y_ref_rms_per_spk = torch.sqrt(torch.mean(y_wav**2, dim=-1, keepdim=True) + 1e-8)      # [B, K, 1]
+    # Compute amplitude statistics for monitoring
+    s_hat_rms_per_spk = torch.sqrt(torch.mean(s_hat_wav**2, dim=-1) + 1e-8)  # [B, K]
+    y_ref_rms_per_spk = torch.sqrt(torch.mean(y_wav**2, dim=-1) + 1e-8)     # [B, K]
     s_hat_rms = torch.sqrt(torch.mean(s_hat_wav**2) + 1e-8)  # Global RMS
     y_ref_rms = torch.sqrt(torch.mean(y_wav**2) + 1e-8)      # Global RMS
-
-    amplitude_loss = 0.0
-    silence_penalty = 0.0
-
-    if amplitude_aware:
-        # 4a) Amplitude Ratio Loss - penalize deviations from target amplitude
-        # Only apply to speakers with sufficient target amplitude
-        active_speakers_mask = (y_ref_rms_per_spk.squeeze(-1) > 0.001)  # [B, K]
-        if active_speakers_mask.any():
-            # Relative amplitude error for active speakers only
-            amplitude_ratio_error = torch.abs(s_hat_rms_per_spk - y_ref_rms_per_spk) / (y_ref_rms_per_spk + 1e-8)
-            amplitude_loss = (amplitude_ratio_error * active_speakers_mask.unsqueeze(-1)).mean()
-
-        # 4b) Dynamic Anti-Silence Penalty (scaled by target amplitude)
-        # Stronger penalty for loud targets that produce quiet outputs
-        for b in range(B):
-            for k in range(K):
-                target_rms = y_ref_rms_per_spk[b, k, 0]
-                output_rms = s_hat_rms_per_spk[b, k, 0]
-
-                # Only penalize if target is loud enough but output is too quiet
-                if target_rms > 0.005 and output_rms < 0.5 * target_rms:
-                    # Scale penalty by how loud the target should be
-                    penalty_scale = torch.clamp(target_rms * 20.0, min=0.1, max=2.0)
-                    amplitude_deficit = target_rms - output_rms
-                    silence_penalty += penalty_scale * amplitude_deficit
-
-        silence_penalty = silence_penalty / (B * K)  # Normalize by number of speakers
-
-        # Add amplitude losses to total loss
-        loss = loss + amplitude_loss_weight * amplitude_loss + silence_penalty
-    else:
-        # Original static anti-silence penalty (backward compatibility)
-        if y_ref_rms > 0.01 and s_hat_rms < 0.001:
-            silence_penalty = 0.1 * (0.001 - s_hat_rms)
-            loss = loss + silence_penalty
-
-    # --- 4) Enhanced Speaker Separation Diagnostics ---
-    separation_stats = analyze_speaker_separation(s_hat_wav, y_wav)
 
     stats = {
         "loss": float(loss.detach()),
         "L_sep": float(L_sep.detach()),
-        "SI_SDR": float(sisdr.detach()),
+        "amplitude_loss": float(amplitude_loss.detach()),
         "S_hat_c": tuple(S_hat_c.shape),
         "Y_ref_c": tuple(Y_ref_c.shape),
         "s_hat_wav": tuple(s_hat_wav.shape),
         "y_wav": tuple(y_wav.shape),
 
-        # Add amplitude monitoring to detect silence convergence
+        # Amplitude monitoring
         "s_hat_rms": float(s_hat_rms.detach()),
         "s_hat_max_abs": float(torch.max(torch.abs(s_hat_wav)).detach()),
         "y_ref_rms": float(y_ref_rms.detach()),
-        "silence_penalty": float(silence_penalty) if isinstance(silence_penalty, torch.Tensor) else silence_penalty,
-
-        # Add comprehensive amplitude analysis
-        "s_hat_rms_per_spk": [float(s_hat_rms_per_spk[0, k, 0].detach()) for k in range(K)] if B > 0 else [],
-        "y_ref_rms_per_spk": [float(y_ref_rms_per_spk[0, k, 0].detach()) for k in range(K)] if B > 0 else [],
-        "amplitude_ratio_error": float(amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else amplitude_loss,
-
-        # Add per-speaker SI-SDR monitoring
-        "sisdr_per_spk": [float(sisdr_per_spk[0, k].detach()) for k in range(K)] if B > 0 else [],
-        "amplitude_weights": [float(amplitude_weights[0, k].detach()) for k in range(K)] if B > 0 else [],
-        "weighted_sisdr_per_spk": [float(weighted_sisdr_per_spk[0, k].detach()) for k in range(K)] if B > 0 else [],
-
-        # Add loss component analysis with proportional weighting
-        "L_sep_contribution": float((w_sep * (normalized_L_sep if adaptive_weighting else L_sep)).detach()),
-        "SI_SDR_contribution": float((proportional_w_time * (normalized_sisdr if adaptive_weighting else (-sisdr))).detach()),
-        "proportional_weight_applied": float(proportional_w_time / w_time) if w_time > 0 else 1.0,
-        "frequency_weighted_L_sep": amplitude_aware,
-
-        # Amplitude-aware loss components
-        "amplitude_loss": float(amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else amplitude_loss,
-        "amplitude_loss_contribution": float(amplitude_loss_weight * amplitude_loss) if isinstance(amplitude_loss, torch.Tensor) else 0.0,
+        
+        # Per-speaker amplitude analysis
+        "s_hat_rms_per_spk": [float(s_hat_rms_per_spk[0, k].detach()) for k in range(K)] if B > 0 else [],
+        "y_ref_rms_per_spk": [float(y_ref_rms_per_spk[0, k].detach()) for k in range(K)] if B > 0 else [],
+        
+        # Loss component contributions  
+        "L_sep_contribution": float((sep_weight * L_sep).detach()),
+        "amplitude_loss_contribution": float((amplitude_weight * amplitude_loss).detach()),
     }
 
     # Add speaker separation analysis
@@ -392,3 +301,5 @@ def check_collapse(s_hat_wav, y_wav):
             _corr(s_hat_wav[0, k0], y_wav[0, k0]) if B > 0 and K > 0 else 0.0
         )
     return stats
+
+
