@@ -24,7 +24,7 @@ class SpeakerConditionalConv2d(nn.Module):
         self.base_conv = nn.Conv2d(in_channels, out_channels, kernel_size, padding=padding)
         self.conditioning_proj = nn.Linear(conditioning_dim, out_channels)
         self.norm = LayerNormalization(out_channels, eps=eps)
-        
+
     def forward(self, mixture_features, speaker_embedding):
         """
         Args:
@@ -35,17 +35,17 @@ class SpeakerConditionalConv2d(nn.Module):
         """
         # Base mixture processing
         base_features = self.base_conv(mixture_features)  # [B, C_out, T, F]
-        
+
         # Speaker conditioning
         speaker_condition = self.conditioning_proj(speaker_embedding)  # [B, C_out]
         speaker_condition = speaker_condition.unsqueeze(-1).unsqueeze(-1)  # [B, C_out, 1, 1]
-        
+
         # Apply conditioning via element-wise multiplication (gating)
         conditioned_features = base_features * (1.0 + speaker_condition)
-        
+
         # Normalize
         conditioned_features = self.norm(conditioned_features)
-        
+
         return conditioned_features
 
 
@@ -109,12 +109,12 @@ class MCxTFGridNet(nn.Module):
 
         t_ksize = 3
         ks, padding = (t_ksize, 3), (t_ksize // 2, 1)
-        
+
         # Speaker-conditional mixture encoder instead of shared encoder
         self.speaker_conditional_conv = SpeakerConditionalConv2d(
-            in_channels=2 * n_imics, 
-            out_channels=emb_dim, 
-            kernel_size=ks, 
+            in_channels=2 * n_imics,
+            out_channels=emb_dim,
+            kernel_size=ks,
             padding=padding,
             conditioning_dim=emb_dim,
             eps=eps
@@ -133,12 +133,12 @@ class MCxTFGridNet(nn.Module):
         self.speaker_fusions = nn.ModuleList([])
         self.speaker_gridnets = nn.ModuleList([])
         self.speaker_output_heads = nn.ModuleList([])
-        
+
         for _ in range(n_srcs):
             # Each speaker gets their own processing chain
             layer_fusions = nn.ModuleList([])
             layer_gridnets = nn.ModuleList([])
-            
+
             for _ in range(n_layers):
                 layer_fusions.append(FiLM(emb_dim, emb_dim))
                 layer_gridnets.append(
@@ -153,10 +153,10 @@ class MCxTFGridNet(nn.Module):
                         eps=eps,
                     )
                 )
-            
+
             self.speaker_fusions.append(layer_fusions)
             self.speaker_gridnets.append(layer_gridnets)
-            
+
             # Individual output head per speaker (2 channels: real/imag)
             self.speaker_output_heads.append(
                 nn.ConvTranspose2d(emb_dim, 2, ks, padding=padding)
@@ -222,7 +222,7 @@ class MCxTFGridNet(nn.Module):
             # Use first speaker's processing chain for single speaker
             # Speaker-conditional mixture processing
             z = self.speaker_conditional_conv(mixture_features, e)  # [B, C, T, F]
-            
+
             # Process through first speaker's layers
             for i in range(self.n_layers):
                 z = self.speaker_fusions[0][i](e, z)
@@ -230,10 +230,10 @@ class MCxTFGridNet(nn.Module):
 
             # Use first speaker's output head
             out_ri = self.speaker_output_heads[0](z)  # [B, 2, T, F]
-            
+
             # For backward compatibility, expand to [B, n_srcs, 2, T, F] format
             out_expanded = out_ri.unsqueeze(1).expand(B, self.n_srcs, 2, n_frames, n_freqs)
-            
+
             # Cast re/im to fp32, then pack into complex64
             re = out_expanded[:, :, 0].to(torch.float32)
             im = out_expanded[:, :, 1].to(torch.float32)
@@ -262,20 +262,20 @@ class MCxTFGridNet(nn.Module):
 
             # --- Process each speaker independently with their own chain ---
             speaker_outputs = []
-            
+
             for k in range(K):
                 # Get this speaker's embedding
                 spk_emb = speaker_embeddings[:, k]  # [B, C]
-                
+
                 # Use speaker k's processing chain (or first chain if k >= n_srcs)
                 chain_idx = min(k, self.n_srcs - 1)
-                
+
                 # Speaker-conditional mixture processing
                 z_k = self.speaker_conditional_conv(mixture_features, spk_emb)  # [B, C, T, F]
-                
+
                 if not hasattr(self, '_logged_speaker_chain_assignment'):
                     logging.info(f"🎯 Speaker {k} using processing chain {chain_idx}")
-                
+
                 # Process through speaker-specific layers
                 for i in range(self.n_layers):
                     z_k = self.speaker_fusions[chain_idx][i](spk_emb, z_k)
