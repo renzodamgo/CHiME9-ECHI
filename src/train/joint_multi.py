@@ -191,7 +191,7 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
     return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
 
 
-def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(0.1, 1.0), adaptive_weighting=False,
+def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(0.0, 1.0), adaptive_weighting=False,
                amplitude_aware=True, amplitude_loss_weight=1.0):
     """
     Joint loss combining STFT separation loss with SI-SDR time-domain loss.
