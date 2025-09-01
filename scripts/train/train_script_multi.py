@@ -14,6 +14,16 @@ from train.gromit import Gromit
 from shared.signal_utils import STFTWrapper, match_length, prep_audio
 from torch.amp import autocast, GradScaler
 
+# Import debugging hooks for speaker hierarchy collapse analysis
+import sys
+sys.path.append("/Users/damian/Projects/CHiME9-ECHI")
+from add_training_debug_hooks import (
+    debug_gridnet_lstm_states,
+    debug_attention_weights, 
+    analyze_speaker_channel_bias,
+    debug_film_conditioning_per_speaker
+)
+
 torch.backends.cuda.matmul.allow_tf32 = True
 torch.backends.cudnn.allow_tf32 = True
 
@@ -433,6 +443,13 @@ def run(
     input_rms = model_cfg.input.rms
 
     model.to(device)
+    
+    # Initialize debugging hooks for speaker hierarchy collapse analysis
+    logging.info("🔧 Initializing debugging hooks for speaker hierarchy analysis...")
+    debug_gridnet_lstm_states(model, log_interval=50)
+    debug_attention_weights(model, log_interval=50)
+    logging.info("✅ Debug hooks registered successfully")
+    
     gromit.start_training()
 
     # Training loop
@@ -520,6 +537,23 @@ def run(
             optimizer.zero_grad(set_to_none=True)
             with autocast("cuda", dtype=torch.bfloat16):
                 S_hat_c = model(noisy_tf, spk_all_for_model, spk_lens_all)
+                
+                # Debug analysis for speaker hierarchy collapse
+                with torch.no_grad():
+                    analyze_speaker_channel_bias(S_hat_c, global_step, log_interval=25)
+                    
+                    # Debug FiLM conditioning using model's internal state
+                    # The model stores embeddings during forward pass that we can access
+                    if hasattr(model, 'fusions') and global_step % 50 == 0:
+                        try:
+                            # Access model's FiLM layers for debugging
+                            film_layers = model.fusions
+                            # Note: Speaker embeddings are computed internally during forward pass
+                            # The model already logs detailed FiLM analysis in its forward method
+                            logging.info(f"🎭 FiLM layers available: {len(film_layers)} layers")
+                        except Exception as e:
+                            logging.warning(f"⚠️ FiLM debugging failed: {e}")
+                
                 loss, stats = joint_loss(
                     S_hat_c,
                     Y_ref_c,

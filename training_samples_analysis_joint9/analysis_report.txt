@@ -4,7 +4,7 @@ CHiME9-ECHI Training Samples Analysis Report
 
 Total samples analyzed: 81
 Epochs covered: 0 to 16
-Speakers: [np.int64(0), np.int64(1), np.int64(2)]
+Speakers: [0, 1, 2]
 Unique scenes: 3
 
 AMPLITUDE ANALYSIS:

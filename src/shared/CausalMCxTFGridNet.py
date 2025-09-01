@@ -172,6 +172,40 @@ class MCxTFGridNet(nn.Module):
         logging.info(f"speaker_conditional_conv parameters: {sum(p.numel() for p in self.speaker_conditional_conv.parameters())}")
         logging.info(f"total speaker-specific chains: {len(self.speaker_output_heads)}")
 
+        # Debug counters
+        self._forward_count = 0
+        self._gradient_log_interval = 50  # Log every N forwards
+
+    def _log_deconv_gradients(self, module, grad_input, grad_output):
+        """Log gradient statistics for deconv layer debugging"""
+        if self._forward_count % self._gradient_log_interval == 0 and grad_output[0] is not None:
+            grad = grad_output[0]  # [B, n_srcs*2, T, F]
+            B, channels, T, F = grad.shape
+
+            logging.info("🔍 DECONV GRADIENT ANALYSIS:")
+
+            # Per-speaker channel gradient analysis
+            for spk in range(self.n_srcs):
+                ch_start = spk * 2
+                ch_end = ch_start + 2
+                spk_grad = grad[:, ch_start:ch_end, :, :]  # [B, 2, T, F]
+
+                grad_mean = spk_grad.mean().item()
+                grad_std = spk_grad.std().item()
+                grad_max = spk_grad.abs().max().item()
+                grad_norm = spk_grad.norm().item()
+
+                logging.info(f"   Speaker {spk} (ch {ch_start}:{ch_end}): "
+                           f"mean={grad_mean:.2e}, std={grad_std:.2e}, "
+                           f"max_abs={grad_max:.2e}, norm={grad_norm:.2e}")
+
+            # Check for vanishing/exploding gradients
+            total_grad_norm = grad.norm().item()
+            if total_grad_norm < 1e-8:
+                logging.warning("⚠️  VANISHING GRADIENTS detected in deconv layer!")
+            elif total_grad_norm > 100:
+                logging.warning("⚠️  EXPLODING GRADIENTS detected in deconv layer!")
+
     def forward(self, spec: torch.Tensor, spk: torch.Tensor, spk_lens: torch.Tensor):
         """
         spec: [B, M, T, F, 2]  mixture (M = n_imics)
@@ -185,6 +219,38 @@ class MCxTFGridNet(nn.Module):
         assert spec.size(-1) == 2, spec.shape
         B, M, D2, D3, RI = spec.shape
         assert RI == 2
+
+        # Log STFT preprocessing info for debugging
+        if self._forward_count % self._gradient_log_interval == 0:
+            logging.info("🔍 STFT PREPROCESSING ANALYSIS:")
+            logging.info(f"   Mixture spec shape: [B={B}, M={M}, D2={D2}, D3={D3}, RI={RI}]")
+
+            # Analyze mixture STFT statistics
+            spec_real = spec[..., 0]  # [B, M, D2, D3]
+            spec_imag = spec[..., 1]  # [B, M, D2, D3]
+            spec_mag = torch.sqrt(spec_real**2 + spec_imag**2)  # [B, M, D2, D3]
+
+            logging.info(f"   Mixture magnitude: mean={spec_mag.mean().item():.4f}, "
+                        f"max={spec_mag.max().item():.4f}, std={spec_mag.std().item():.4f}")
+
+            # Analyze enrollment STFT
+            if spk.ndim == 4:  # Single enrollment
+                spk_real = spk[..., 0]  # [B, D2, D3]
+                spk_imag = spk[..., 1]  # [B, D2, D3]
+                spk_mag = torch.sqrt(spk_real**2 + spk_imag**2)
+                logging.info(f"   Single enrollment shape: [B={B}, D2={D2}, D3={D3}]")
+                logging.info(f"   Enrollment magnitude: mean={spk_mag.mean().item():.4f}, "
+                            f"max={spk_mag.max().item():.4f}, std={spk_mag.std().item():.4f}")
+            elif spk.ndim == 5:  # Multi-enrollment
+                K = spk.shape[1]
+                logging.info(f"   Multi-enrollment shape: [B={B}, K={K}, D2={D2}, D3={D3}]")
+                for k in range(K):
+                    spk_k = spk[:, k, :, :, :]  # [B, D2, D3, 2]
+                    spk_k_real = spk_k[..., 0]
+                    spk_k_imag = spk_k[..., 1]
+                    spk_k_mag = torch.sqrt(spk_k_real**2 + spk_k_imag**2)
+                    logging.info(f"     Speaker {k} magnitude: mean={spk_k_mag.mean().item():.4f}, "
+                                f"max={spk_k_mag.max().item():.4f}, std={spk_k_mag.std().item():.4f}")
 
         # Decide which axis is F vs T (F is usually the smaller one, e.g., 65)
         if D2 <= D3:
@@ -210,6 +276,7 @@ class MCxTFGridNet(nn.Module):
         # --- Store mixture features for speaker-specific processing ---
         # feat: [B, 2*M, T, F] - mixture spectrogram
         mixture_features = feat  # [B, 2*M, T, F]
+        self._forward_count += 1
 
         # --- Handle enrollments: single or K ---
         if spk.ndim == 4:
@@ -218,6 +285,17 @@ class MCxTFGridNet(nn.Module):
             spk_feat = spk.permute(0, 3, 1, 2)  # [B, 2, T, F]
             spk_feat = self.spk_conv(spk_feat)  # [B, C, T, F]
             e, _ = self.aux_enc(spk_feat, spk_lens)  # [B, C]
+
+            # Log speaker embedding quality for debugging
+            if self._forward_count % self._gradient_log_interval == 0:
+                logging.info("🎤 SPEAKER EMBEDDING ANALYSIS (Single):")
+                logging.info(f"   Embedding shape: {e.shape}")
+                logging.info(f"   Embedding mean: {e.mean().item():.4f}, std: {e.std().item():.4f}")
+                logging.info(f"   Embedding norm: {e.norm(dim=1).mean().item():.4f}")
+
+                # Check for embedding collapse
+                if e.std() < 0.01:
+                    logging.warning("⚠️  SPEAKER EMBEDDING collapse detected! Low variation across features.")
 
             # Use first speaker's processing chain for single speaker
             # Speaker-conditional mixture processing
@@ -607,6 +685,28 @@ class FiLM(nn.Module):
         super(FiLM, self).__init__()
         self.gamma_fc = nn.Linear(cond_dim, feature_dim)
         self.beta_fc = nn.Linear(cond_dim, feature_dim)
+
+        # Debug counters for FiLM analysis
+        self._forward_count = 0
+        self._log_interval = 50
+
+        # Register gradient hooks for FiLM layers
+        self.gamma_fc.register_backward_hook(self._log_gamma_gradients)
+        self.beta_fc.register_backward_hook(self._log_beta_gradients)
+
+    def _log_gamma_gradients(self, module, grad_input, grad_output):
+        """Log gamma (scale) gradient statistics for speaker conditioning debugging"""
+        if self._forward_count % self._log_interval == 0 and grad_output[0] is not None:
+            grad = grad_output[0]  # Gradient w.r.t. gamma_fc output
+            logging.info(f"🎭 FILM GAMMA GRADIENTS: mean={grad.mean().item():.2e}, "
+                        f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
+
+    def _log_beta_gradients(self, module, grad_input, grad_output):
+        """Log beta (bias) gradient statistics for speaker conditioning debugging"""
+        if self._forward_count % self._log_interval == 0 and grad_output[0] is not None:
+            grad = grad_output[0]  # Gradient w.r.t. beta_fc output
+            logging.info(f"🎭 FILM BETA GRADIENTS: mean={grad.mean().item():.2e}, "
+                        f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
 
     def forward(self, cond, x):
         """

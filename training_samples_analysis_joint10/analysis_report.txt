@@ -1,0 +1,61 @@
+============================================================
+CHiME9-ECHI Training Samples Analysis Report
+============================================================
+
+Total samples analyzed: 81
+Epochs covered: 0 to 16
+Speakers: [0, 1, 2]
+Unique scenes: 3
+
+AMPLITUDE ANALYSIS:
+--------------------
+Overall RMS range: 0.000000 to 0.172359
+Mean RMS: 0.032775
+Median RMS: 0.003410
+
+SILENT AUDIO DETECTION:
+-------------------------
+Silent samples (RMS < 0.001): 22 / 81 (27.2%)
+
+EPOCH-BY-EPOCH TRENDS:
+-----------------------
+Epoch  0: 9 samples, Mean RMS: 0.045586, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.023498, Silent: 0/9 (0.0%)
+Epoch  4: 9 samples, Mean RMS: 0.020884, Silent: 0/9 (0.0%)
+Epoch  6: 9 samples, Mean RMS: 0.026388, Silent: 2/9 (22.2%)
+Epoch  8: 9 samples, Mean RMS: 0.035561, Silent: 1/9 (11.1%)
+Epoch 10: 9 samples, Mean RMS: 0.028709, Silent: 3/9 (33.3%)
+Epoch 12: 9 samples, Mean RMS: 0.034308, Silent: 4/9 (44.4%)
+Epoch 14: 9 samples, Mean RMS: 0.038241, Silent: 6/9 (66.7%)
+Epoch 16: 9 samples, Mean RMS: 0.041803, Silent: 6/9 (66.7%)
+
+SPEAKER-SPECIFIC ANALYSIS:
+--------------------------
+Speaker 0: 27 samples, Mean RMS: 0.084559, Silent: 0/27 (0.0%)
+Speaker 1: 27 samples, Mean RMS: 0.006187, Silent: 13/27 (48.1%)
+Speaker 2: 27 samples, Mean RMS: 0.007580, Silent: 9/27 (33.3%)
+
+SPECTRAL ANALYSIS:
+------------------
+Mean Spectral Centroid: 2296 Hz
+Mean Spectral Bandwidth: 2183 Hz
+Mean Spectral Entropy: 5.82 bits
+Mean High-Freq Ratio: 0.3246
+
+INFORMATION LOSS DETECTION:
+---------------------------
+High-frequency loss: 16 / 81 (19.8%)
+Low spectral complexity: 67 / 81 (82.7%)
+Overly smooth spectrum: 57 / 81 (70.4%)
+
+FREQUENCY BAND ENERGY DISTRIBUTION:
+-----------------------------------
+Low Freq (0-1kHz):  0.779 ± 0.261
+Mid Freq (1-4kHz):  0.099 ± 0.099
+High Freq (4kHz+):  0.109 ± 0.164
+
+
+POTENTIAL ISSUES DETECTED:
+--------------------------
+⚠️  HIGH SILENT AUDIO RATE: 27.2% of samples are mostly silent
+⚠️  LOW SPECTRAL COMPLEXITY: 82.7% of samples have low spectral entropy
