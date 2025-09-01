@@ -264,7 +264,7 @@ def validate(
             )
             gromit.val_loss.update(val_loss.detach())
             gromit.val_l_sep.update(torch.tensor(val_stats["L_sep"]))
-            gromit.val_si_sdr.update(-torch.tensor(val_stats["amplitude_loss"]))  # Negative so higher is better
+            gromit.val_sisdr.update(torch.tensor(val_stats["sisdr_db"]))  # SI-SDR in dB (higher is better)
 
             # Store validation stats for end-of-epoch logging
             if not hasattr(validate, '_val_separation_stats'):
@@ -563,7 +563,7 @@ def run(
             scaler.update()
             gromit.train_loss.update(loss.detach())
             gromit.train_l_sep.update(torch.tensor(stats["L_sep"]))
-            gromit.train_si_sdr.update(-torch.tensor(stats["amplitude_loss"]))  # Negative so higher is better
+            gromit.train_sisdr.update(torch.tensor(stats["sisdr_db"]))  # SI-SDR in dB (higher is better)
 
             # Log speaker separation metrics periodically
             if batch_idx % 50 == 0:  # Every 50 batches

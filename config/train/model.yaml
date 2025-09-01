@@ -3,7 +3,7 @@ name: baseline
 input:
     sample_rate: ${model_sample_rate}
     channels: ${audio_channels}
-    rms: 0.0
+    rms: 0.01
     use_spkid: true
     type: stft
     stft:

@@ -1,0 +1,62 @@
+============================================================
+CHiME9-ECHI Training Samples Analysis Report
+============================================================
+
+Total samples analyzed: 81
+Epochs covered: 0 to 16
+Speakers: [np.int64(0), np.int64(1), np.int64(2)]
+Unique scenes: 3
+
+AMPLITUDE ANALYSIS:
+--------------------
+Overall RMS range: 0.000059 to 0.005216
+Mean RMS: 0.000747
+Median RMS: 0.000579
+
+SILENT AUDIO DETECTION:
+-------------------------
+Silent samples (RMS < 0.001): 67 / 81 (82.7%)
+
+EPOCH-BY-EPOCH TRENDS:
+-----------------------
+Epoch  0: 9 samples, Mean RMS: 0.002540, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.000864, Silent: 7/9 (77.8%)
+Epoch  4: 9 samples, Mean RMS: 0.000630, Silent: 9/9 (100.0%)
+Epoch  6: 9 samples, Mean RMS: 0.000611, Silent: 7/9 (77.8%)
+Epoch  8: 9 samples, Mean RMS: 0.000517, Silent: 9/9 (100.0%)
+Epoch 10: 9 samples, Mean RMS: 0.000406, Silent: 9/9 (100.0%)
+Epoch 12: 9 samples, Mean RMS: 0.000392, Silent: 8/9 (88.9%)
+Epoch 14: 9 samples, Mean RMS: 0.000335, Silent: 9/9 (100.0%)
+Epoch 16: 9 samples, Mean RMS: 0.000427, Silent: 9/9 (100.0%)
+
+SPEAKER-SPECIFIC ANALYSIS:
+--------------------------
+Speaker 0: 27 samples, Mean RMS: 0.001071, Silent: 19/27 (70.4%)
+Speaker 1: 27 samples, Mean RMS: 0.000452, Silent: 24/27 (88.9%)
+Speaker 2: 27 samples, Mean RMS: 0.000718, Silent: 24/27 (88.9%)
+
+SPECTRAL ANALYSIS:
+------------------
+Mean Spectral Centroid: 3792 Hz
+Mean Spectral Bandwidth: 2663 Hz
+Mean Spectral Entropy: 6.96 bits
+Mean High-Freq Ratio: 1.5014
+
+INFORMATION LOSS DETECTION:
+---------------------------
+High-frequency loss: 0 / 81 (0.0%)
+Low spectral complexity: 45 / 81 (55.6%)
+Overly smooth spectrum: 19 / 81 (23.5%)
+
+FREQUENCY BAND ENERGY DISTRIBUTION:
+-----------------------------------
+Low Freq (0-1kHz):  0.412 ± 0.189
+Mid Freq (1-4kHz):  0.166 ± 0.103
+High Freq (4kHz+):  0.422 ± 0.152
+
+
+POTENTIAL ISSUES DETECTED:
+--------------------------
+⚠️  HIGH SILENT AUDIO RATE: 82.7% of samples are mostly silent
+⚠️  LOW SPECTRAL COMPLEXITY: 55.6% of samples have low spectral entropy
+⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
