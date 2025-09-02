@@ -258,7 +258,7 @@ def debug_film_conditioning_per_speaker(film_layers: List, embeddings: torch.Ten
             logging.warning(f"⚠️  Speaker {k} EMBEDDING COLLAPSE: std={emb_std:.4f}")
     
     # Analyze inter-speaker similarity
-    logging.info(f"Analyze inter-speaker similarity: similarity = torch.cosine_similarity(emb_i, emb_j, dim=0).item()"
+    logging.info("Analyze inter-speaker similarity:")
     for i in range(K):
         for j in range(i+1, K):
             emb_i = embeddings_reshaped[0, i, :]  # First batch sample
