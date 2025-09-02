@@ -153,8 +153,8 @@ def save_samples_for_scenes(
                     f"proc_spk{k_idx}",
                 )
 
-                # Save target audio if requested
-                if save_targets_and_noisy and epoch == 0:
+                # Save target audio if requested (save every 2 epochs to capture shuffle diversity)
+                if save_targets_and_noisy and (epoch % 2 == 0):
                     gromit.save_sample(
                         target_wav[b_idx, k_idx],
                         model_cfg.input.sample_rate,
@@ -164,8 +164,8 @@ def save_samples_for_scenes(
                         f"target_spk{k_idx}",
                     )
 
-            # Save noisy audio if requested (once per scene)
-            if save_targets_and_noisy and epoch == 0:
+            # Save noisy audio if requested (save every 2 epochs to capture shuffle diversity)
+            if save_targets_and_noisy and (epoch % 2 == 0):
                 gromit.save_sample(
                     noisy_wav[b_idx, 0],  # Use first microphone channel
                     model_cfg.input.sample_rate,
