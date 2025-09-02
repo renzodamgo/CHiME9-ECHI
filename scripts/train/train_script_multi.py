@@ -477,6 +477,19 @@ def run(
             # Multi-speaker training path only
             noisy = batch["noisy"].to(device, non_blocking=True)  # [B, C, Tw]
             spk_all = batch["spkid_all"].to(device, non_blocking=True)  # [B, K, Tr]
+
+            if spk_all.shape[1] > 1:
+                try:
+                    diff_0_1 = torch.mean(torch.abs(spk_all[:, 0, :] - spk_all[:, 1, :])).item()
+                    logging.info(f"🎤 Enrollment audio difference (spk0 vs spk1): {diff_0_1:.6f}")
+                    if spk_all.shape[1] > 2:
+                        diff_1_2 = torch.mean(torch.abs(spk_all[:, 1, :] - spk_all[:, 2, :])).item()
+                        logging.info(f"🎤 Enrollment audio difference (spk1 vs spk2): {diff_1_2:.6f}")
+                    
+                    if diff_0_1 < 1e-6:
+                        logging.warning("⚠️  Enrollment audio for speaker 0 and 1 appears to be IDENTICAL.")
+                except Exception as e:
+                    logging.warning(f"⚠️ Could not compare enrollment audios: {e}")
             targ_all = batch["target_all"].to(device, non_blocking=True)  # [B, K, Tw]
 
             logging.info(
@@ -542,15 +555,30 @@ def run(
                 with torch.no_grad():
                     analyze_speaker_channel_bias(S_hat_c, global_step, log_interval=25)
                     
-                    # Debug FiLM conditioning using model's internal state
-                    # The model stores embeddings during forward pass that we can access
-                    if hasattr(model, 'fusions') and global_step % 50 == 0:
+                    if hasattr(model, 'last_speaker_embeddings'):
                         try:
-                            # Access model's FiLM layers for debugging
-                            film_layers = model.fusions
-                            # Note: Speaker embeddings are computed internally during forward pass
-                            # The model already logs detailed FiLM analysis in its forward method
-                            logging.info(f"🎭 FiLM layers available: {len(film_layers)} layers")
+                            # Get the embeddings stored in the model
+                            speaker_embeddings = model.last_speaker_embeddings
+                            
+                            # Ensure embeddings are not empty and have the correct dimensions
+                            if speaker_embeddings is not None and speaker_embeddings.ndim == 3:
+                                B, K, C = speaker_embeddings.shape
+                                
+                                # Reshape embeddings for the debug function
+                                speaker_embeddings_flat = speaker_embeddings.reshape(B * K, C)
+                                
+                                # The model has `speaker_fusions` which is a list of lists of FiLM layers.
+                                # The debug function expects a flat list.
+                                film_layers = [layer for speaker in model.speaker_fusions for layer in speaker]
+
+                                # Call the debug function
+                                debug_film_conditioning_per_speaker(
+                                    film_layers=film_layers,
+                                    embeddings=speaker_embeddings_flat,
+                                    K=K,
+                                    step=global_step,
+                                    log_interval=1 # Log every step
+                                )
                         except Exception as e:
                             logging.warning(f"⚠️ FiLM debugging failed: {e}")
                 

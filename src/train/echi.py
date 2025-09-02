@@ -364,7 +364,7 @@ def collate_fn_joint(batch: list[dict]):
     for b, x in enumerate(batch):
         Tr = x["spkid_all"].size(1)
         spkid_all[b, :, :Tr] = x["spkid_all"]
-        spkid_lens_all[b].fill_(Tr)
+        spkid_lens_all[b] = x["spkid_lens_all"]  # Use original per-speaker lengths
 
     return {
         "id": ids,

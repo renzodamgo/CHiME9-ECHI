@@ -2,73 +2,78 @@
 CHiME9-ECHI Training Samples Analysis Report
 ============================================================
 
-Total samples analyzed: 177
-Epochs covered: 0 to 38
+Total samples analyzed: 225
+Epochs covered: 0 to 48
 Speakers: [np.int64(0), np.int64(1), np.int64(2)]
 Unique scenes: 3
 
 AMPLITUDE ANALYSIS:
 --------------------
-Overall RMS range: 0.002734 to 0.014303
-Mean RMS: 0.005464
-Median RMS: 0.004043
+Overall RMS range: 0.000296 to 0.075869
+Mean RMS: 0.014725
+Median RMS: 0.004171
 
 SILENT AUDIO DETECTION:
 -------------------------
-Silent samples (RMS < 0.001): 0 / 177 (0.0%)
+Silent samples (RMS < 0.001): 34 / 225 (15.1%)
 
 EPOCH-BY-EPOCH TRENDS:
 -----------------------
-Epoch  0: 9 samples, Mean RMS: 0.007038, Silent: 0/9 (0.0%)
-Epoch  2: 9 samples, Mean RMS: 0.005158, Silent: 0/9 (0.0%)
-Epoch  4: 9 samples, Mean RMS: 0.005640, Silent: 0/9 (0.0%)
-Epoch  6: 9 samples, Mean RMS: 0.005041, Silent: 0/9 (0.0%)
-Epoch  8: 9 samples, Mean RMS: 0.004813, Silent: 0/9 (0.0%)
-Epoch 10: 9 samples, Mean RMS: 0.004771, Silent: 0/9 (0.0%)
-Epoch 12: 9 samples, Mean RMS: 0.005644, Silent: 0/9 (0.0%)
-Epoch 14: 9 samples, Mean RMS: 0.005547, Silent: 0/9 (0.0%)
-Epoch 16: 9 samples, Mean RMS: 0.005809, Silent: 0/9 (0.0%)
-Epoch 18: 9 samples, Mean RMS: 0.005116, Silent: 0/9 (0.0%)
-Epoch 20: 9 samples, Mean RMS: 0.005548, Silent: 0/9 (0.0%)
-Epoch 22: 9 samples, Mean RMS: 0.005407, Silent: 0/9 (0.0%)
-Epoch 24: 9 samples, Mean RMS: 0.005532, Silent: 0/9 (0.0%)
-Epoch 26: 9 samples, Mean RMS: 0.005609, Silent: 0/9 (0.0%)
-Epoch 28: 9 samples, Mean RMS: 0.005708, Silent: 0/9 (0.0%)
-Epoch 30: 9 samples, Mean RMS: 0.005696, Silent: 0/9 (0.0%)
-Epoch 32: 9 samples, Mean RMS: 0.005270, Silent: 0/9 (0.0%)
-Epoch 34: 9 samples, Mean RMS: 0.005205, Silent: 0/9 (0.0%)
-Epoch 36: 9 samples, Mean RMS: 0.005252, Silent: 0/9 (0.0%)
-Epoch 38: 6 samples, Mean RMS: 0.005473, Silent: 0/6 (0.0%)
+Epoch  0: 9 samples, Mean RMS: 0.020116, Silent: 0/9 (0.0%)
+Epoch  2: 9 samples, Mean RMS: 0.019061, Silent: 0/9 (0.0%)
+Epoch  4: 9 samples, Mean RMS: 0.019985, Silent: 0/9 (0.0%)
+Epoch  6: 9 samples, Mean RMS: 0.018340, Silent: 0/9 (0.0%)
+Epoch  8: 9 samples, Mean RMS: 0.014320, Silent: 0/9 (0.0%)
+Epoch 10: 9 samples, Mean RMS: 0.015013, Silent: 0/9 (0.0%)
+Epoch 12: 9 samples, Mean RMS: 0.014664, Silent: 0/9 (0.0%)
+Epoch 14: 9 samples, Mean RMS: 0.017406, Silent: 1/9 (11.1%)
+Epoch 16: 9 samples, Mean RMS: 0.015748, Silent: 1/9 (11.1%)
+Epoch 18: 9 samples, Mean RMS: 0.016018, Silent: 2/9 (22.2%)
+Epoch 20: 9 samples, Mean RMS: 0.014483, Silent: 2/9 (22.2%)
+Epoch 22: 9 samples, Mean RMS: 0.015115, Silent: 2/9 (22.2%)
+Epoch 24: 9 samples, Mean RMS: 0.015601, Silent: 2/9 (22.2%)
+Epoch 26: 9 samples, Mean RMS: 0.013690, Silent: 2/9 (22.2%)
+Epoch 28: 9 samples, Mean RMS: 0.011849, Silent: 2/9 (22.2%)
+Epoch 30: 9 samples, Mean RMS: 0.011851, Silent: 2/9 (22.2%)
+Epoch 32: 9 samples, Mean RMS: 0.014886, Silent: 2/9 (22.2%)
+Epoch 34: 9 samples, Mean RMS: 0.014376, Silent: 2/9 (22.2%)
+Epoch 36: 9 samples, Mean RMS: 0.012677, Silent: 2/9 (22.2%)
+Epoch 38: 9 samples, Mean RMS: 0.012142, Silent: 2/9 (22.2%)
+Epoch 40: 9 samples, Mean RMS: 0.012177, Silent: 2/9 (22.2%)
+Epoch 42: 9 samples, Mean RMS: 0.012491, Silent: 2/9 (22.2%)
+Epoch 44: 9 samples, Mean RMS: 0.013105, Silent: 2/9 (22.2%)
+Epoch 46: 9 samples, Mean RMS: 0.010975, Silent: 2/9 (22.2%)
+Epoch 48: 9 samples, Mean RMS: 0.012039, Silent: 2/9 (22.2%)
 
 SPEAKER-SPECIFIC ANALYSIS:
 --------------------------
-Speaker 0: 59 samples, Mean RMS: 0.008566, Silent: 0/59 (0.0%)
-Speaker 1: 59 samples, Mean RMS: 0.003840, Silent: 0/59 (0.0%)
-Speaker 2: 59 samples, Mean RMS: 0.003985, Silent: 0/59 (0.0%)
+Speaker 0: 75 samples, Mean RMS: 0.037828, Silent: 0/75 (0.0%)
+Speaker 1: 75 samples, Mean RMS: 0.004161, Silent: 0/75 (0.0%)
+Speaker 2: 75 samples, Mean RMS: 0.002187, Silent: 34/75 (45.3%)
 
 SPECTRAL ANALYSIS:
 ------------------
-Mean Spectral Centroid: 721 Hz
-Mean Spectral Bandwidth: 1354 Hz
-Mean Spectral Entropy: 1.53 bits
-Mean High-Freq Ratio: 0.0204
+Mean Spectral Centroid: 2353 Hz
+Mean Spectral Bandwidth: 2244 Hz
+Mean Spectral Entropy: 6.15 bits
+Mean High-Freq Ratio: 0.1273
 
 INFORMATION LOSS DETECTION:
 ---------------------------
-High-frequency loss: 149 / 177 (84.2%)
-Low spectral complexity: 175 / 177 (98.9%)
-Overly smooth spectrum: 174 / 177 (98.3%)
+High-frequency loss: 59 / 225 (26.2%)
+Low spectral complexity: 217 / 225 (96.4%)
+Overly smooth spectrum: 135 / 225 (60.0%)
 
 FREQUENCY BAND ENERGY DISTRIBUTION:
 -----------------------------------
-Low Freq (0-1kHz):  0.968 ± 0.104
-Mid Freq (1-4kHz):  0.024 ± 0.077
-High Freq (4kHz+):  0.008 ± 0.029
+Low Freq (0-1kHz):  0.888 ± 0.096
+Mid Freq (1-4kHz):  0.065 ± 0.053
+High Freq (4kHz+):  0.047 ± 0.054
 
 
 POTENTIAL ISSUES DETECTED:
 --------------------------
-⚠️  HIGH-FREQUENCY INFORMATION LOSS: 84.2% of samples missing high-frequency content
-⚠️  LOW SPECTRAL COMPLEXITY: 98.9% of samples have low spectral entropy
+⚠️  DECREASING AMPLITUDE TREND: RMS amplitude is decreasing across epochs
+⚠️  LOW SPECTRAL COMPLEXITY: 96.4% of samples have low spectral entropy
 ⚠️  DECREASING HIGH-FREQUENCY CONTENT: High-frequency ratio is decreasing across epochs
-⚠️  LOW HIGH-FREQUENCY ENERGY: Only 0.8% of energy in high frequencies (should be >10%)
+⚠️  LOW HIGH-FREQUENCY ENERGY: Only 4.7% of energy in high frequencies (should be >10%)

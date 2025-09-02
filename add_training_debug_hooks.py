@@ -25,7 +25,7 @@ def debug_gridnet_lstm_states(model, log_interval: int = 50):
             model._debug_step_count += 1
             
             if model._debug_step_count % log_interval == 0:
-                hidden_states, cell_states = output
+                hidden_states, final_states = output
                 
                 # Analyze hidden state statistics
                 h_mean = hidden_states.mean().item()
@@ -33,7 +33,8 @@ def debug_gridnet_lstm_states(model, log_interval: int = 50):
                 h_max = hidden_states.abs().max().item()
                 
                 # Analyze cell state statistics (for LSTM)
-                if cell_states is not None:
+                if final_states is not None:
+                    _, cell_states = final_states
                     c_mean = cell_states.mean().item()
                     c_std = cell_states.std().item()
                     c_max = cell_states.abs().max().item()
@@ -55,13 +56,25 @@ def debug_gridnet_lstm_states(model, log_interval: int = 50):
         return hook
     
     # Add hooks to all GridNet LSTM layers
-    for i, gridnet_block in enumerate(model.gridnets):
-        gridnet_block.intra_rnn.register_forward_hook(
-            create_lstm_debug_hook(i, "intra")
-        )
-        gridnet_block.inter_rnn.register_forward_hook(
-            create_lstm_debug_hook(i, "inter")
-        )
+    if hasattr(model, 'speaker_gridnets'):
+        block_idx = 0
+        for speaker_blocks in model.speaker_gridnets:
+            for gridnet_block in speaker_blocks:
+                gridnet_block.intra_rnn.register_forward_hook(
+                    create_lstm_debug_hook(block_idx, "intra")
+                )
+                gridnet_block.inter_rnn.register_forward_hook(
+                    create_lstm_debug_hook(block_idx, "inter")
+                )
+                block_idx += 1
+    elif hasattr(model, 'gridnets'):
+        for i, gridnet_block in enumerate(model.gridnets):
+            gridnet_block.intra_rnn.register_forward_hook(
+                create_lstm_debug_hook(i, "intra")
+            )
+            gridnet_block.inter_rnn.register_forward_hook(
+                create_lstm_debug_hook(i, "inter")
+            )
     
     logging.info("🔧 LSTM debug hooks registered for GridNet blocks")
 
@@ -104,12 +117,22 @@ def debug_attention_weights(model, log_interval: int = 50):
         return hook
     
     # Add hooks to GridNet attention modules
-    for i, gridnet_block in enumerate(model.gridnets):
-        # Hook the final attention output
-        if hasattr(gridnet_block, 'attn_concat_proj'):
-            gridnet_block.attn_concat_proj.register_forward_hook(
-                create_attention_debug_hook(i)
-            )
+    if hasattr(model, 'speaker_gridnets'):
+        block_idx = 0
+        for speaker_blocks in model.speaker_gridnets:
+            for gridnet_block in speaker_blocks:
+                if hasattr(gridnet_block, 'attn_concat_proj'):
+                    gridnet_block.attn_concat_proj.register_forward_hook(
+                        create_attention_debug_hook(block_idx)
+                    )
+                block_idx += 1
+    elif hasattr(model, 'gridnets'):
+        for i, gridnet_block in enumerate(model.gridnets):
+            # Hook the final attention output
+            if hasattr(gridnet_block, 'attn_concat_proj'):
+                gridnet_block.attn_concat_proj.register_forward_hook(
+                    create_attention_debug_hook(i)
+                )
     
     logging.info("🔧 Attention debug hooks registered for GridNet blocks")
 
@@ -193,24 +216,23 @@ def analyze_speaker_channel_bias(outputs: torch.Tensor, step: int, log_interval:
                 logging.warning(f"⚠️  Weakest speaker: {min_idx} (RMS={min_rms:.6f})")
 
 
-def debug_film_conditioning_per_speaker(film_layers: List, embeddings: torch.Tensor, 
-                                       step: int, log_interval: int = 50):
+def debug_film_conditioning_per_speaker(film_layers: List, embeddings: torch.Tensor,
+                                       K: int, step: int, log_interval: int = 50):
     """
     Analyze FiLM conditioning effectiveness per speaker.
-    
+
     Args:
         film_layers: List of FiLM layer modules
-        embeddings: [BK, C] speaker embeddings  
+        embeddings: [BK, C] speaker embeddings
+        K: Number of speakers
         step: Current training step
         log_interval: How often to log analysis
     """
-    
+
     if step % log_interval != 0:
         return
-    
+
     BK, C = embeddings.shape
-    # Assume 3 speakers for now (adjust based on your setup)
-    K = 3
     B = BK // K
     
     if BK % K != 0:
@@ -236,6 +258,7 @@ def debug_film_conditioning_per_speaker(film_layers: List, embeddings: torch.Ten
             logging.warning(f"⚠️  Speaker {k} EMBEDDING COLLAPSE: std={emb_std:.4f}")
     
     # Analyze inter-speaker similarity
+    logging.info(f"Analyze inter-speaker similarity: similarity = torch.cosine_similarity(emb_i, emb_j, dim=0).item()"
     for i in range(K):
         for j in range(i+1, K):
             emb_i = embeddings_reshaped[0, i, :]  # First batch sample

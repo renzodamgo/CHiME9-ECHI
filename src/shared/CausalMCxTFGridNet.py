@@ -316,7 +316,7 @@ class MCxTFGridNet(nn.Module):
             re = out_expanded[:, :, 0].to(torch.float32)
             im = out_expanded[:, :, 1].to(torch.float32)
             out = torch.complex(re, im)  # [B, n_srcs, T, F] complex64
-            return out.unsqueeze(1)  # [B, 1, n_srcs, T, F]
+            return out.unsqueeze(1), e.unsqueeze(1)
 
         elif spk.ndim == 5:
             # Multi-speaker case: Each speaker gets dedicated processing chain
@@ -335,8 +335,9 @@ class MCxTFGridNet(nn.Module):
             else:
                 spk_lens = spk_lens.reshape(B * K)
 
-            speaker_embeddings, _ = self.aux_enc(spk_feat, spk_lens)  # [BK, C]
+            speaker_embeddings, _ = self.aux_enc(spk_feat, spk_lens, B, K)  # [BK, C]
             speaker_embeddings = speaker_embeddings.view(B, K, -1)  # [B, K, C]
+            self.last_speaker_embeddings = speaker_embeddings
 
             # --- Process each speaker independently with their own chain ---
             speaker_outputs = []
@@ -658,24 +659,41 @@ class AuxEncoder(nn.Module):
             ]
         )
         self.out_conv = nn.Linear(emb_dim, emb_dim)
+        
+        # Attention Pooling mechanism
+        self.attention = nn.Sequential(
+            nn.Linear(emb_dim, emb_dim // 2),
+            nn.Tanh(),
+            nn.Linear(emb_dim // 2, 1)
+        )
+
         self.speaker = nn.Linear(emb_dim, num_spks)
 
     def forward(
-        self, auxs: torch.Tensor, aux_lengths: torch.Tensor
+        self, auxs: torch.Tensor, aux_lengths: torch.Tensor, B: int, K: int
     ) -> Tuple[torch.Tensor, torch.Tensor]:
 
         aux_lengths = (((aux_lengths // 3) // 3) // 3) // 3
         auxs = auxs.transpose(2, 3)
         for i in range(len(self.aux_enc)):
-            auxs = self.aux_enc[i](auxs)  # [B, C, T, F]
+            auxs = self.aux_enc[i](auxs)  # [BK, C, T, F]
 
-        auxs = torch.stack(
-            [
-                torch.mean(aux[:, :aux_length, :], dim=(1, 2))
-                for aux, aux_length in zip(auxs, aux_lengths)
-            ],
-            dim=0,
-        )  # [B, C]
+        # Attention Pooling
+        # auxs is [BK, C, T, F]
+        BK, C, T, n_freqs = auxs.shape
+        
+        # Reshape for attention: [BK, C, T*F] -> [BK, T*F, C]
+        x = auxs.view(BK, C, T * n_freqs).transpose(1, 2)
+        
+        # Get attention scores
+        attn_weights = self.attention(x).squeeze(-1) # [BK, T*F]
+        attn_weights = F.softmax(attn_weights, dim=-1) # [BK, T*F]
+        
+        # Apply attention weights
+        # (BK, 1, T*F) @ (BK, T*F, C) -> (BK, 1, C)
+        weighted_avg = torch.bmm(attn_weights.unsqueeze(1), x)
+        auxs = weighted_avg.squeeze(1) # [BK, C]
+
         auxs = self.out_conv(auxs)
         return auxs, self.speaker(auxs)
 
