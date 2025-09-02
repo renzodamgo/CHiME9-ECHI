@@ -659,7 +659,7 @@ class AuxEncoder(nn.Module):
             ]
         )
         self.out_conv = nn.Linear(emb_dim, emb_dim)
-        
+
         # Attention Pooling mechanism
         self.attention = nn.Sequential(
             nn.Linear(emb_dim, emb_dim // 2),
@@ -681,14 +681,14 @@ class AuxEncoder(nn.Module):
         # Attention Pooling
         # auxs is [BK, C, T, F]
         BK, C, T, n_freqs = auxs.shape
-        
+
         # Reshape for attention: [BK, C, T*F] -> [BK, T*F, C]
         x = auxs.view(BK, C, T * n_freqs).transpose(1, 2)
-        
+
         # Get attention scores
         attn_weights = self.attention(x).squeeze(-1) # [BK, T*F]
         attn_weights = F.softmax(attn_weights, dim=-1) # [BK, T*F]
-        
+
         # Apply attention weights
         # (BK, 1, T*F) @ (BK, T*F, C) -> (BK, 1, C)
         weighted_avg = torch.bmm(attn_weights.unsqueeze(1), x)
@@ -716,15 +716,15 @@ class FiLM(nn.Module):
         """Log gamma (scale) gradient statistics for speaker conditioning debugging"""
         if self._forward_count % self._log_interval == 0 and grad_output[0] is not None:
             grad = grad_output[0]  # Gradient w.r.t. gamma_fc output
-            logging.info(f"🎭 FILM GAMMA GRADIENTS: mean={grad.mean().item():.2e}, "
-                        f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
+            # logging.info(f"🎭 FILM GAMMA GRADIENTS: mean={grad.mean().item():.2e}, "
+            #             f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
 
     def _log_beta_gradients(self, module, grad_input, grad_output):
         """Log beta (bias) gradient statistics for speaker conditioning debugging"""
         if self._forward_count % self._log_interval == 0 and grad_output[0] is not None:
             grad = grad_output[0]  # Gradient w.r.t. beta_fc output
-            logging.info(f"🎭 FILM BETA GRADIENTS: mean={grad.mean().item():.2e}, "
-                        f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
+            # logging.info(f"🎭 FILM BETA GRADIENTS: mean={grad.mean().item():.2e}, "
+            #             f"std={grad.std().item():.2e}, norm={grad.norm().item():.2e}")
 
     def forward(self, cond, x):
         """

@@ -164,7 +164,7 @@ def analyze_speaker_separation(s_hat_wav, y_wav):
     return stats
 
 
-def _compute_balanced_sisdr_loss(sisdr_per_spk):
+def _compute_balanced_sisdr_loss(sisdr_per_spk, active_mask=None):
     """
     Compute speaker-balanced SI-SDR loss to prevent hierarchy collapse.
 
@@ -173,6 +173,7 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
 
     Args:
         sisdr_per_spk: [B, K] per-speaker SI-SDR values (higher is better)
+        active_mask: [B, K] boolean mask indicating which speakers are active (optional)
 
     Returns:
         balanced_sisdr: scalar balanced SI-SDR loss
@@ -181,12 +182,22 @@ def _compute_balanced_sisdr_loss(sisdr_per_spk):
         # Single speaker case - no balancing needed
         return sisdr_per_spk.squeeze()
 
-    # Use equal weighting for all speakers to encourage balanced improvement
-    # This prevents the model from abandoning good speakers to chase impossible cases
-    equal_weights = torch.ones_like(sisdr_per_spk) / sisdr_per_spk.size(-1)  # [B, K]
+    if active_mask is not None:
+        # Only compute loss for active speakers
+        # Zero out inactive speakers and normalize by active count
+        sisdr_masked = sisdr_per_spk * active_mask.float()  # [B, K]
+        active_count = active_mask.sum(dim=-1, keepdim=True).float()  # [B, 1]
+        active_count = torch.clamp(active_count, min=1.0)  # Avoid division by zero
+        
+        # Average over active speakers only
+        balanced_sisdr_per_sample = sisdr_masked.sum(dim=-1) / active_count.squeeze(-1)  # [B]
+    else:
+        # Use equal weighting for all speakers to encourage balanced improvement
+        # This prevents the model from abandoning good speakers to chase impossible cases
+        equal_weights = torch.ones_like(sisdr_per_spk) / sisdr_per_spk.size(-1)  # [B, K]
 
-    # Apply equal weighting - all speakers get equal optimization attention
-    balanced_sisdr_per_sample = (sisdr_per_spk * equal_weights).sum(dim=-1)  # [B]
+        # Apply equal weighting - all speakers get equal optimization attention
+        balanced_sisdr_per_sample = (sisdr_per_spk * equal_weights).sum(dim=-1)  # [B]
 
     return balanced_sisdr_per_sample.mean()  # Global balanced SI-SDR
 
@@ -228,8 +239,13 @@ def joint_loss(S_hat_c, Y_ref_c, batch, stft, weights=(0.0, 1.0), adaptive_weigh
     # Compute SI-SDR per speaker: [B, K] -> higher is better
     sisdr_per_spk = _sisdr(s_hat_wav_matched, y_wav_matched)
 
+    # Extract speaker activity mask from batch
+    active_mask = batch.get("speaker_active_mask", None)  # [B, K] boolean
+    if active_mask is not None:
+        active_mask = active_mask.to(S_hat_c.device)
+
     # Convert to loss (negate since SI-SDR higher = better, but we minimize loss)
-    sisdr_loss = -_compute_balanced_sisdr_loss(sisdr_per_spk)
+    sisdr_loss = -_compute_balanced_sisdr_loss(sisdr_per_spk, active_mask=active_mask)
 
     # 3. Combine STFT loss and SI-SDR loss
     loss = stft_weight * L_sep + sisdr_weight * sisdr_loss

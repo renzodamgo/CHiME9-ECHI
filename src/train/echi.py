@@ -192,13 +192,15 @@ class ECHIJoint(ECHI):
             if len(seg_lists) != len(pids):
                 continue
 
-            common_idxs = set(seg_lists[0].keys())
-            for d in seg_lists[1:]:
-                common_idxs &= set(d.keys())
-            if not common_idxs:
+            # Use union instead of intersection to get all available segments
+            # This dramatically increases dataset diversity
+            all_idxs = set()
+            for d in seg_lists:
+                all_idxs |= set(d.keys())
+            if not all_idxs:
                 continue
 
-            for idx in sorted(common_idxs):
+            for idx in sorted(all_idxs):
                 # Build file paths for this segment idx across all PIDs
                 seg_ok = True
                 entry = {
@@ -208,10 +210,15 @@ class ECHIJoint(ECHI):
                     "idx": idx,
                     "pids": pids,
                     "noisy": None,  # will take from first pid (same audio content)
-                    "target_all": [],  # per-pid segment
+                    "target_all": [],  # per-pid segment (None if speaker is silent)
                     "spkid_all": [],  # per-pid enrollment (full rainbow file)
+                    "speaker_active_mask": [],  # Track which speakers have active segments
                 }
 
+                # Check if we have at least one active speaker and one noisy file
+                has_noisy = False
+                active_speakers = 0
+                
                 for j, pid in enumerate(pids):
                     noisy_path = self.signal_paths["noisy"].format(
                         dataset=self.subset,
@@ -231,27 +238,43 @@ class ECHIJoint(ECHI):
                         dataset=self.subset, pid=pid
                     )  # Rainbow is not segmented
 
-                    # All three must exist
-                    if not (
-                        Path(noisy_path).exists()
-                        and Path(ref_path).exists()
-                        and Path(spk_path).exists()
-                    ):
+                    # Check if this speaker has an active segment
+                    speaker_has_segment = (idx in seg_lists[j] and 
+                                         Path(noisy_path).exists() and 
+                                         Path(ref_path).exists() and 
+                                         Path(spk_path).exists())
+
+                    if speaker_has_segment:
+                        # Speaker is active - use target reference
+                        entry["target_all"].append(ref_path)
+                        entry["speaker_active_mask"].append(True)
+                        active_speakers += 1
+                        
+                        # Set noisy path (same for all speakers)
+                        if entry["noisy"] is None:
+                            entry["noisy"] = noisy_path
+                        has_noisy = True
+                            
+                    else:
+                        # Speaker is silent - will use model output as target
+                        entry["target_all"].append(None)
+                        entry["speaker_active_mask"].append(False)
+                    
+                    # Always need speaker ID for enrollment
+                    if Path(spk_path).exists():
+                        entry["spkid_all"].append(spk_path)
+                    else:
                         seg_ok = False
                         break
 
-                    if entry["noisy"] is None:
-                        entry["noisy"] = (
-                            noisy_path  # any pid's noisy has the same mixture
-                        )
-
-                    entry["target_all"].append(ref_path)
-                    entry["spkid_all"].append(spk_path)
+                # Need at least two active speakers and noisy audio
+                if not has_noisy or active_speakers < 2:
+                    seg_ok = False
 
                 if seg_ok:
                     self.manifest.append(entry)
 
-                if self.debug and len(self.manifest) >= 10:
+                if self.debug and len(self.manifest) >= 50:
                     end = True
                     break
             if end:
@@ -268,16 +291,24 @@ class ECHIJoint(ECHI):
 
         # --- K targets -> [K, Tw], aligned to noisy ---
         targets, tfs_set = [], set()
-        for p in meta["target_all"]:
-            t, tfs = torchaudio.load(str(p))  # [1, L]
-            t = t.squeeze(0)  # [L]
-            L = t.shape[-1]
-            if L > Tw:
-                t = t[..., :Tw]
-            elif L < Tw:
-                t = F.pad(t, (0, Tw - L))
-            targets.append(t)
-            tfs_set.add(tfs)
+        for i, p in enumerate(meta["target_all"]):
+            if p is not None:  # Active speaker - load target
+                t, tfs = torchaudio.load(str(p))  # [1, L]
+                t = t.squeeze(0)  # [L]
+                L = t.shape[-1]
+                if L > Tw:
+                    t = t[..., :Tw]
+                elif L < Tw:
+                    t = F.pad(t, (0, Tw - L))
+                targets.append(t)
+                tfs_set.add(tfs)
+            else:  # Silent speaker - create placeholder (will use model output as target)
+                # Create zero tensor as placeholder - loss will ignore this
+                t = torch.zeros(Tw, dtype=torch.float32)
+                targets.append(t)
+                # Use same fs as noisy audio
+                tfs_set.add(nfs)
+        
         assert len(tfs_set) == 1, f"Inconsistent fs for targets: {tfs_set}"
         tfs = tfs_set.pop()
         targets = torch.stack(targets, dim=0)  # [K, Tw]
@@ -299,6 +330,7 @@ class ECHIJoint(ECHI):
         out["noisy"] = noisy  # [C, Tw]
         out["target_all"] = targets  # [K, Tw]  (aligned!)
         out["spkid_all"] = spks  # [K, Tr_max]
+        out["speaker_active_mask"] = torch.tensor(meta["speaker_active_mask"], dtype=torch.bool)  # [K]
         out["fs"] = nfs
 
         # lengths (useful downstream)
@@ -366,6 +398,9 @@ def collate_fn_joint(batch: list[dict]):
         spkid_all[b, :, :Tr] = x["spkid_all"]
         spkid_lens_all[b] = x["spkid_lens_all"]  # Use original per-speaker lengths
 
+    # speaker active masks
+    speaker_active_mask = torch.stack([x["speaker_active_mask"] for x in batch])  # [B, K]
+
     return {
         "id": ids,
         "fs": fs,
@@ -375,4 +410,5 @@ def collate_fn_joint(batch: list[dict]):
         "target_lens_all": target_lens_all,
         "spkid_all": spkid_all,
         "spkid_lens_all": spkid_lens_all,
+        "speaker_active_mask": speaker_active_mask,
     }

@@ -539,6 +539,55 @@ def generate_summary_report(df: pd.DataFrame, output_dir: str):
         ""
     ])
     
+    # Overall RMS per speaker per epoch
+    report_lines.extend([
+        "OVERALL RMS PER SPEAKER PER EPOCH:",
+        "-" * 34,
+    ])
+    
+    # Create pivot table for RMS by speaker and epoch
+    rms_pivot = df.pivot_table(values='rms', index='epoch', columns='speaker', aggfunc='mean')
+    
+    # Header
+    speakers = sorted(df['speaker'].unique())
+    header = "Epoch" + "".join([f"    Spk{s:1d}" for s in speakers])
+    report_lines.append(header)
+    report_lines.append("-" * len(header))
+    
+    # Data rows
+    for epoch in sorted(df['epoch'].unique()):
+        line = f"{epoch:5d}"
+        for speaker in speakers:
+            if speaker in rms_pivot.columns and epoch in rms_pivot.index:
+                rms_val = rms_pivot.loc[epoch, speaker]
+                if pd.notna(rms_val):
+                    line += f"  {rms_val:6.4f}"
+                else:
+                    line += f"  {'N/A':>6s}"
+            else:
+                line += f"  {'N/A':>6s}"
+        report_lines.append(line)
+    
+    report_lines.append("")
+    
+    # Detailed CSV-style breakdown per speaker, epoch, and segment
+    report_lines.extend([
+        "DETAILED BREAKDOWN PER SPEAKER, EPOCH, AND SEGMENT:",
+        "-" * 51,
+        "Speaker | Epoch | Segment | RMS      | Silent | Centroid(Hz) | Entropy",
+        "-" * 70,
+    ])
+    
+    # Sort by speaker, epoch, then segment
+    for _, row in df.sort_values(['speaker', 'epoch', 'scene_id']).iterrows():
+        silent_flag = "Yes" if row['is_mostly_silent'] else "No"
+        report_lines.append(
+            f"   {row['speaker']:1d}    |  {row['epoch']:2d}   | {row['scene_id']:7s} | {row['rms']:8.6f} | {silent_flag:6s} | "
+            f"{row['spectral_centroid']:8.0f} | {row['spectral_entropy']:7.2f}"
+        )
+    
+    report_lines.append("")
+    
     # Problem detection
     report_lines.extend([
         "",
@@ -593,8 +642,43 @@ def generate_summary_report(df: pd.DataFrame, output_dir: str):
     with open(report_path, 'w') as f:
         f.write(report_text)
     
+    # Save detailed CSV breakdown
+    detailed_csv_path = os.path.join(output_dir, 'detailed_breakdown.csv')
+    detailed_data = []
+    
+    for _, row in df.sort_values(['speaker', 'epoch', 'scene_id']).iterrows():
+        detailed_data.append({
+            'speaker': row['speaker'],
+            'epoch': row['epoch'],
+            'segment': row['scene_id'],
+            'rms': row['rms'],
+            'is_silent': row['is_mostly_silent'],
+            'spectral_centroid_hz': row['spectral_centroid'],
+            'spectral_entropy': row['spectral_entropy'],
+            'spectral_bandwidth': row['spectral_bandwidth'],
+            'high_freq_ratio': row['high_freq_ratio'],
+            'low_freq_energy': row['low_freq_energy'],
+            'mid_freq_energy': row['mid_freq_energy'],
+            'high_freq_energy': row['high_freq_energy'],
+            'is_missing_highs': row['is_missing_highs'],
+            'is_low_complexity': row['is_low_complexity'],
+            'is_overly_smooth': row['is_overly_smooth'],
+            'dynamic_range': row['dynamic_range'],
+            'filename': row['filename']
+        })
+    
+    detailed_df = pd.DataFrame(detailed_data)
+    detailed_df.to_csv(detailed_csv_path, index=False)
+    
+    # Save RMS pivot table as CSV
+    rms_pivot_path = os.path.join(output_dir, 'rms_per_speaker_epoch.csv')
+    rms_pivot = df.pivot_table(values='rms', index='epoch', columns='speaker', aggfunc='mean')
+    rms_pivot.to_csv(rms_pivot_path)
+    
     print(report_text)
     print(f"\nDetailed report saved to: {report_path}")
+    print(f"Detailed CSV breakdown saved to: {detailed_csv_path}")
+    print(f"RMS per speaker/epoch table saved to: {rms_pivot_path}")
 
 
 def main():
