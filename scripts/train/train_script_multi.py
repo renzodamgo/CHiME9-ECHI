@@ -4,6 +4,7 @@ from omegaconf import DictConfig
 from tqdm import tqdm
 import logging
 import math
+import random
 from torch_stoi import NegSTOILoss
 from torch.utils.data.dataloader import DataLoader
 from train.joint_multi import joint_loss
@@ -16,7 +17,8 @@ from torch.amp import autocast, GradScaler
 
 # Import debugging hooks for speaker hierarchy collapse analysis
 import sys
-sys.path.append("/Users/damian/Projects/CHiME9-ECHI")
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from add_training_debug_hooks import (
     debug_gridnet_lstm_states,
     debug_attention_weights, 
@@ -69,6 +71,7 @@ def log_speaker_separation_metrics(stats, epoch, batch_idx, split="train"):
 def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     """
     Always use ECHIJoint dataset for multi-speaker training.
+    Returns dataset and initial sample selection.
     """
     logging.info(f"=== DATASET SETUP ({split}) ===")
     logging.info(f"Creating ECHIJoint dataset for {split}")
@@ -86,8 +89,10 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
 
     data_len = len(data)
     logging.info(f"Dataset length: {data_len}")
+    
+    # Initial sample selection (will be updated each epoch)
     samples = [data.__getitem__(i * data_len // 5)["id"] for i in range(1, 4)]
-    logging.info(f"Sample IDs: {samples}")
+    logging.info(f"Initial Sample IDs: {samples}")
 
     loader = DataLoader(
         data,
@@ -99,6 +104,49 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
     logging.info(f"Collate function: {collate_fn_joint.__name__}")
 
     return loader, samples
+
+
+def update_epoch_samples(dataset, split: str, epoch: int, debug: bool = False):
+    """
+    Update sample selection for the current epoch to provide training diversity.
+    Returns new sample IDs to save for this epoch.
+    """
+    
+    data_len = len(dataset.dataset) if hasattr(dataset, 'dataset') else len(dataset)
+    
+    # Create a consistent seed based on epoch for reproducibility
+    random.seed(42 + epoch)
+    
+    # Enhanced sample selection based on dataset size
+    if debug:
+        # In debug mode, use fewer samples
+        pool_size = min(8, data_len // 20)
+        samples_per_epoch = min(3, pool_size)
+    else:
+        # Full training: more diverse sample selection
+        pool_size = min(20, data_len // 50)  # Pool of 20 samples, roughly 1% of dataset
+        samples_per_epoch = min(6, pool_size)  # Save 6 samples per epoch for diversity
+    
+    # Generate random sample indices for this epoch
+    sample_indices = random.sample(range(data_len), pool_size)
+    
+    # Select samples for this epoch, rotating through the pool
+    epoch_start_idx = (epoch * samples_per_epoch) % pool_size
+    epoch_sample_indices = []
+    for i in range(samples_per_epoch):
+        idx = sample_indices[(epoch_start_idx + i) % pool_size]
+        epoch_sample_indices.append(idx)
+    
+    # Get the actual dataset object to fetch sample IDs
+    actual_dataset = dataset.dataset if hasattr(dataset, 'dataset') else dataset
+    samples = [actual_dataset.__getitem__(i)["id"] for i in epoch_sample_indices]
+    
+    logging.info(f"=== EPOCH {epoch} SAMPLE SELECTION ({split.upper()}) ===")
+    logging.info(f"Selected {len(samples)} samples from pool of {pool_size}")
+    logging.info(f"Sample indices: {epoch_sample_indices}")
+    logging.info(f"Sample IDs: {samples}")
+    
+    return samples
 
 
 def save_samples_for_scenes(
@@ -455,6 +503,11 @@ def run(
     # Training loop
     for epoch in range(train_cfg.epochs):
         logging.info(f"=== EPOCH {epoch}/{train_cfg.epochs-1} START ===")
+        
+        # Update sample selection for this epoch to provide diversity
+        trainsaves = update_epoch_samples(trainset, "train", epoch, debug)
+        devsaves = update_epoch_samples(devset, "dev", epoch, debug)
+        
         if torch.cuda.is_available():
             torch.cuda.reset_peak_memory_stats()
         model.train()
