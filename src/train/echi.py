@@ -218,7 +218,7 @@ class ECHIJoint(ECHI):
                 # Check if we have at least one active speaker and one noisy file
                 has_noisy = False
                 active_speakers = 0
-                
+
                 for j, pid in enumerate(pids):
                     noisy_path = self.signal_paths["noisy"].format(
                         dataset=self.subset,
@@ -239,9 +239,9 @@ class ECHIJoint(ECHI):
                     )  # Rainbow is not segmented
 
                     # Check if this speaker has an active segment
-                    speaker_has_segment = (idx in seg_lists[j] and 
-                                         Path(noisy_path).exists() and 
-                                         Path(ref_path).exists() and 
+                    speaker_has_segment = (idx in seg_lists[j] and
+                                         Path(noisy_path).exists() and
+                                         Path(ref_path).exists() and
                                          Path(spk_path).exists())
 
                     if speaker_has_segment:
@@ -249,17 +249,17 @@ class ECHIJoint(ECHI):
                         entry["target_all"].append(ref_path)
                         entry["speaker_active_mask"].append(True)
                         active_speakers += 1
-                        
+
                         # Set noisy path (same for all speakers)
                         if entry["noisy"] is None:
                             entry["noisy"] = noisy_path
                         has_noisy = True
-                            
+
                     else:
                         # Speaker is silent - will use model output as target
                         entry["target_all"].append(None)
                         entry["speaker_active_mask"].append(False)
-                    
+
                     # Always need speaker ID for enrollment
                     if Path(spk_path).exists():
                         entry["spkid_all"].append(spk_path)
@@ -268,7 +268,7 @@ class ECHIJoint(ECHI):
                         break
 
                 # Need at least two active speakers and noisy audio
-                if not has_noisy or active_speakers < 2:
+                if not has_noisy or active_speakers < 3:
                     seg_ok = False
 
                 if seg_ok:
@@ -308,7 +308,7 @@ class ECHIJoint(ECHI):
                 targets.append(t)
                 # Use same fs as noisy audio
                 tfs_set.add(nfs)
-        
+
         assert len(tfs_set) == 1, f"Inconsistent fs for targets: {tfs_set}"
         tfs = tfs_set.pop()
         targets = torch.stack(targets, dim=0)  # [K, Tw]
