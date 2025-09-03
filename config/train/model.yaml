@@ -1,4 +1,4 @@
-name: baseline
+name: universal
 
 input:
     sample_rate: ${model_sample_rate}
@@ -13,7 +13,7 @@ input:
         window: hann
 
 params:
-    n_srcs: 3
+    # n_srcs: 3  # Removed - Universal GridNet supports dynamic speakers
     n_imics: ${model.input.channels}
     n_layers: 3
     lstm_hidden_units: 128

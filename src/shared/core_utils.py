@@ -7,6 +7,7 @@ from typing import Optional
 import torch
 
 from shared.CausalMCxTFGridNet import MCxTFGridNet
+from shared.UniversalMCxTFGridNet import UniversalMCxTFGridNet
 
 
 def get_model(
@@ -15,6 +16,8 @@ def get_model(
 
     if cfg.name == "baseline":
         model = MCxTFGridNet(**cfg.params)
+    elif cfg.name == "universal":
+        model = UniversalMCxTFGridNet(**cfg.params)
     else:
         raise ValueError(f"Model {cfg.name} not recognised. Add code here!")
 

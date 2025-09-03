@@ -273,19 +273,20 @@ class UniversalMCxTFGridNet(nn.Module):
         speaker_embeddings, _ = self.aux_enc(spk_feat, spk_lens, B, K)  # [BK, C]
         speaker_embeddings = speaker_embeddings.view(B, K, -1)  # [B, K, C]
 
-        # Process each speaker with the SAME universal chain
+        # PARALLEL PROCESSING: 
+        # All speakers processed simultaneously, keeping all intermediate results in GPU memory
         speaker_outputs = []
         
         for k in range(K):
             spk_emb = speaker_embeddings[:, k]  # [B, C]
             
             if self._forward_count % self._gradient_log_interval == 0 and k == 0:
-                logging.info(f"🌟 UNIVERSAL PROCESSING: All {K} speakers use identical shared chain")
+                logging.info(f"🌟 UNIVERSAL PARALLEL PROCESSING: All {K} speakers use identical shared chain")
                 logging.info(f"   Speaker {k} embedding norm: {spk_emb.norm(dim=1).mean().item():.4f}")
             
             # Universal separation: same shared weights for ALL speakers
             separated_k = self._universal_separation_chain(mixture_features, spk_emb)
-            speaker_outputs.append(separated_k)
+            speaker_outputs.append(separated_k)  # All kept in GPU memory simultaneously
 
         # Stack all speaker outputs: [B, K, 2, T, F]
         out_ri = torch.stack(speaker_outputs, dim=1)
