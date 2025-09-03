@@ -109,44 +109,87 @@ def get_dataset(split: str, data_cfg: DictConfig, debug: bool):
 def update_epoch_samples(dataset, split: str, epoch: int, debug: bool = False):
     """
     Update sample selection for the current epoch to provide training diversity.
+    Uses different strategies for training vs validation:
+    - Training: Full rotation for maximum diversity
+    - Validation: Hybrid approach (fixed + rotating) for stable progress tracking
     Returns new sample IDs to save for this epoch.
     """
     
     data_len = len(dataset.dataset) if hasattr(dataset, 'dataset') else len(dataset)
-    
-    # Create a consistent seed based on epoch for reproducibility
-    random.seed(42 + epoch)
-    
-    # Enhanced sample selection based on dataset size
-    if debug:
-        # In debug mode, use fewer samples
-        pool_size = min(8, data_len // 20)
-        samples_per_epoch = min(3, pool_size)
-    else:
-        # Full training: more diverse sample selection
-        pool_size = min(20, data_len // 50)  # Pool of 20 samples, roughly 1% of dataset
-        samples_per_epoch = min(6, pool_size)  # Save 6 samples per epoch for diversity
-    
-    # Generate random sample indices for this epoch
-    sample_indices = random.sample(range(data_len), pool_size)
-    
-    # Select samples for this epoch, rotating through the pool
-    epoch_start_idx = (epoch * samples_per_epoch) % pool_size
-    epoch_sample_indices = []
-    for i in range(samples_per_epoch):
-        idx = sample_indices[(epoch_start_idx + i) % pool_size]
-        epoch_sample_indices.append(idx)
-    
-    # Get the actual dataset object to fetch sample IDs
     actual_dataset = dataset.dataset if hasattr(dataset, 'dataset') else dataset
-    samples = [actual_dataset.__getitem__(i)["id"] for i in epoch_sample_indices]
     
-    logging.info(f"=== EPOCH {epoch} SAMPLE SELECTION ({split.upper()}) ===")
-    logging.info(f"Selected {len(samples)} samples from pool of {pool_size}")
-    logging.info(f"Sample indices: {epoch_sample_indices}")
-    logging.info(f"Sample IDs: {samples}")
-    
-    return samples
+    if split.lower() in ["dev", "val", "validation"]:
+        # HYBRID VALIDATION APPROACH: 3 fixed + 3 rotating samples
+        logging.info(f"=== EPOCH {epoch} HYBRID VALIDATION SAMPLE SELECTION ===")
+        
+        # Fixed samples (always the same for consistent progress tracking)
+        fixed_indices = [data_len // 6, data_len // 2, data_len * 5 // 6]  # Spread across dataset
+        fixed_samples = [actual_dataset.__getitem__(i)["id"] for i in fixed_indices]
+        
+        # Rotating samples (different each epoch for diversity)
+        random.seed(42 + epoch)  # Consistent seed based on epoch
+        
+        if debug:
+            rotating_pool_size = min(6, data_len // 30)
+            rotating_per_epoch = min(2, rotating_pool_size)  # 2 rotating in debug mode
+        else:
+            rotating_pool_size = min(15, data_len // 100)  # Smaller pool for validation
+            rotating_per_epoch = 3  # 3 rotating samples
+        
+        # Generate rotating sample indices (avoid fixed indices)
+        available_indices = [i for i in range(data_len) if i not in fixed_indices]
+        rotating_pool_indices = random.sample(available_indices, min(rotating_pool_size, len(available_indices)))
+        
+        # Select rotating samples for this epoch
+        epoch_start_idx = (epoch * rotating_per_epoch) % len(rotating_pool_indices)
+        rotating_epoch_indices = []
+        for i in range(rotating_per_epoch):
+            idx = rotating_pool_indices[(epoch_start_idx + i) % len(rotating_pool_indices)]
+            rotating_epoch_indices.append(idx)
+        
+        rotating_samples = [actual_dataset.__getitem__(i)["id"] for i in rotating_epoch_indices]
+        
+        # Combine fixed + rotating samples
+        all_samples = fixed_samples + rotating_samples
+        all_indices = fixed_indices + rotating_epoch_indices
+        
+        logging.info(f"Fixed samples (3): {fixed_samples}")
+        logging.info(f"Rotating samples (3): {rotating_samples}")
+        logging.info(f"Fixed indices: {fixed_indices}")
+        logging.info(f"Rotating indices: {rotating_epoch_indices}")
+        logging.info(f"Total validation samples: {len(all_samples)}")
+        
+        return all_samples
+        
+    else:
+        # FULL ROTATION FOR TRAINING (existing behavior)
+        random.seed(42 + epoch)
+        
+        if debug:
+            pool_size = min(8, data_len // 20)
+            samples_per_epoch = min(3, pool_size)
+        else:
+            pool_size = min(20, data_len // 50)
+            samples_per_epoch = min(6, pool_size)
+        
+        # Generate random sample indices for this epoch
+        sample_indices = random.sample(range(data_len), pool_size)
+        
+        # Select samples for this epoch, rotating through the pool
+        epoch_start_idx = (epoch * samples_per_epoch) % pool_size
+        epoch_sample_indices = []
+        for i in range(samples_per_epoch):
+            idx = sample_indices[(epoch_start_idx + i) % pool_size]
+            epoch_sample_indices.append(idx)
+        
+        samples = [actual_dataset.__getitem__(i)["id"] for i in epoch_sample_indices]
+        
+        logging.info(f"=== EPOCH {epoch} TRAINING SAMPLE SELECTION ===")
+        logging.info(f"Selected {len(samples)} samples from pool of {pool_size}")
+        logging.info(f"Sample indices: {epoch_sample_indices}")
+        logging.info(f"Sample IDs: {samples}")
+        
+        return samples
 
 
 def save_samples_for_scenes(
