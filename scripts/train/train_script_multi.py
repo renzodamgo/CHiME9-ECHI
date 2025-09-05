@@ -286,6 +286,7 @@ def validate(
     input_rms,
     devsaves,
     stats,
+    scaler,
 ):
     """Multi-speaker validation only."""
     logging.info(f"=== VALIDATION epoch {epoch} ===")
@@ -831,6 +832,7 @@ def run(
             input_rms,
             devsaves,
             stats,
+            scaler,
         )
 
 

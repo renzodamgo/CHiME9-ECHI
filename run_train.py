@@ -19,6 +19,12 @@ def main(cfg):
         unpack(cfg.unpack)
 
     if cfg.train.run:
+        # Support resuming from checkpoint via config
+        resume_checkpoint = None
+        if hasattr(cfg.train, 'resume_from_checkpoint') and cfg.train.resume_from_checkpoint:
+            resume_checkpoint = cfg.train.resume_from_checkpoint
+            logging.info(f"🔄 Resuming training from checkpoint: {resume_checkpoint}")
+        
         run(
             cfg.dataloading,
             cfg.model,
@@ -27,6 +33,7 @@ def main(cfg):
             cfg.debug,
             cfg.wandb.entity,
             cfg.wandb.project,
+            resume_checkpoint,
         )
 
 
