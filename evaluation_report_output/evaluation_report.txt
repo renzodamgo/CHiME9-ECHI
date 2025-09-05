@@ -1,0 +1,131 @@
+================================================================================
+CHiME9-ECHI Quick Test HA Evaluation Report
+================================================================================
+
+Total audio segments evaluated: 125
+Unique participants: 30
+Sessions covered: dev_02, dev_03, dev_04, dev_05, dev_06, dev_07, dev_09, dev_10, dev_11, dev_12
+
+SUMMARY STATISTICS
+----------------------------------------
+
+SDR:
+  Mean: -5.382
+  Std:  3.406
+  Min:  -13.946
+  Max:  5.815
+  Count: 125/125 finite values
+
+SAR:
+  Mean: -5.382
+  Std:  3.406
+  Min:  -13.946
+  Max:  5.815
+  Count: 125/125 finite values
+
+SI_SNR:
+  Mean: -25.873
+  Std:  11.093
+  Min:  -84.399
+  Max:  -10.915
+  Count: 125/125 finite values
+
+CI_SDR:
+  Mean: -5.382
+  Std:  3.406
+  Min:  -13.946
+  Max:  5.815
+  Count: 125/125 finite values
+
+PESQ:
+  Mean: 1.168
+  Std:  0.116
+  Min:  1.039
+  Max:  1.728
+  Count: 125/125 finite values
+
+STOI:
+  Mean: 0.516
+  Std:  0.205
+  Min:  0.000
+  Max:  0.755
+  Count: 125/125 finite values
+
+SESSION-WISE PERFORMANCE
+----------------------------------------
+
+dev_02:
+  Segments: 13
+  Mean SDR: -6.901 dB
+  Mean SI-SNR: -22.238 dB
+  Mean PESQ: 1.086
+  Mean STOI: 0.279
+
+dev_03:
+  Segments: 10
+  Mean SDR: -5.937 dB
+  Mean SI-SNR: -27.101 dB
+  Mean PESQ: 1.144
+  Mean STOI: 0.510
+
+dev_04:
+  Segments: 14
+  Mean SDR: -5.696 dB
+  Mean SI-SNR: -20.375 dB
+  Mean PESQ: 1.189
+  Mean STOI: 0.581
+
+dev_05:
+  Segments: 14
+  Mean SDR: -4.254 dB
+  Mean SI-SNR: -27.937 dB
+  Mean PESQ: 1.238
+  Mean STOI: 0.595
+
+dev_06:
+  Segments: 9
+  Mean SDR: -7.440 dB
+  Mean SI-SNR: -30.072 dB
+  Mean PESQ: 1.191
+  Mean STOI: 0.487
+
+dev_07:
+  Segments: 12
+  Mean SDR: -4.386 dB
+  Mean SI-SNR: -25.763 dB
+  Mean PESQ: 1.199
+  Mean STOI: 0.570
+
+dev_09:
+  Segments: 13
+  Mean SDR: -6.874 dB
+  Mean SI-SNR: -24.821 dB
+  Mean PESQ: 1.164
+  Mean STOI: 0.354
+
+dev_10:
+  Segments: 13
+  Mean SDR: -5.068 dB
+  Mean SI-SNR: -31.156 dB
+  Mean PESQ: 1.171
+  Mean STOI: 0.606
+
+dev_11:
+  Segments: 14
+  Mean SDR: -4.731 dB
+  Mean SI-SNR: -21.721 dB
+  Mean PESQ: 1.166
+  Mean STOI: 0.619
+
+dev_12:
+  Segments: 13
+  Mean SDR: -3.335 dB
+  Mean SI-SNR: -29.701 dB
+  Mean PESQ: 1.125
+  Mean STOI: 0.538
+
+PERFORMANCE EXTREMES
+----------------------------------------
+
+Best SDR: 5.815 dB (dev_05.ha.P126.137.22207055_22215183.wav)
+Worst SDR: -13.946 dB (dev_02.ha.P093.218.32969305_32974361.wav)

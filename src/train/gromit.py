@@ -86,7 +86,8 @@ class Gromit:
         # logging.info("Training")
 
     def epoch_report(
-        self, epoch, do_ckpt, model: torch.nn.Module, lr: float, stats: dict, delim=" "
+        self, epoch, do_ckpt, model: torch.nn.Module, lr: float, stats: dict, delim=" ", 
+        optimizer=None, lr_scheduler=None, scaler=None
     ):
 
         train_log = read_json(self.json_name)
@@ -140,9 +141,26 @@ class Gromit:
 
         if do_ckpt:
             ckpt_path = self.get_ckpt_path(epoch, self.exp_name)
-            torch.save(model.state_dict(), ckpt_path)
-            # logging.info(f"model dict: {model.state_dict().keys()}")
-            # logging.info(f"SAVED CHECKPOINT {epoch} to {ckpt_path}")
+            
+            # Prepare checkpoint dictionary with all necessary state
+            checkpoint_dict = {
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'lr': lr,
+                'stats': stats,
+            }
+            
+            # Add optional components if provided
+            if optimizer is not None:
+                checkpoint_dict['optimizer_state_dict'] = optimizer.state_dict()
+            if lr_scheduler is not None:
+                checkpoint_dict['lr_scheduler_state_dict'] = lr_scheduler.state_dict()
+            if scaler is not None:
+                checkpoint_dict['scaler_state_dict'] = scaler.state_dict()
+            
+            torch.save(checkpoint_dict, ckpt_path)
+            logging.info(f"✅ SAVED COMPLETE CHECKPOINT {epoch} to {ckpt_path}")
+            logging.info(f"   Contains: {list(checkpoint_dict.keys())}")
 
         out_string += f"{delim}LR: {lr}"
 

@@ -454,7 +454,10 @@ def validate(
         delattr(validate, '_val_separation_stats')
 
     gromit.epoch_report(
-        epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"], stats
+        epoch, do_checkpoint, model, optimizer.param_groups[0]["lr"], stats,
+        optimizer=optimizer, 
+        lr_scheduler=lr_scheduler if do_lrschedule else None,
+        scaler=scaler
     )
 
 
@@ -466,6 +469,7 @@ def run(
     debug,
     wandb_entity=None,
     wandb_project=None,
+    resume_from_checkpoint=None,
 ):
     logging.info("=== MULTI-SPEAKER ONLY TRAINING (OPTIMIZED) ===")
     logging.info(f"Device: {get_device()}")
@@ -528,6 +532,56 @@ def run(
             train_cfg.schedule_lr.name, optimizer, train_cfg.schedule_lr.params
         )
 
+    # Checkpoint resumption
+    start_epoch = 0
+    if resume_from_checkpoint is not None:
+        logging.info(f"🔄 Resuming training from checkpoint: {resume_from_checkpoint}")
+        checkpoint = torch.load(resume_from_checkpoint, map_location=device)
+        
+        # Load model state
+        if 'model_state_dict' in checkpoint:
+            model.load_state_dict(checkpoint['model_state_dict'])
+            logging.info("✅ Model state loaded from checkpoint")
+        elif isinstance(checkpoint, dict) and 'spk_conv.0.weight' in checkpoint:
+            # Legacy format - just model state dict
+            model.load_state_dict(checkpoint)
+            logging.info("✅ Model state loaded from legacy checkpoint format")
+        else:
+            logging.error(f"❌ Invalid checkpoint format: {list(checkpoint.keys())}")
+            raise ValueError("Invalid checkpoint format")
+        
+        # Load optimizer state if available
+        if 'optimizer_state_dict' in checkpoint:
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            logging.info("✅ Optimizer state loaded from checkpoint")
+        
+        # Load LR scheduler state if available
+        if 'lr_scheduler_state_dict' in checkpoint and do_lrschedule:
+            lr_scheduler.load_state_dict(checkpoint['lr_scheduler_state_dict'])
+            logging.info("✅ LR scheduler state loaded from checkpoint")
+            
+        # Load scaler state if available
+        if 'scaler_state_dict' in checkpoint:
+            scaler.load_state_dict(checkpoint['scaler_state_dict'])
+            logging.info("✅ Scaler state loaded from checkpoint")
+        
+        # Get starting epoch
+        if 'epoch' in checkpoint:
+            start_epoch = checkpoint['epoch'] + 1  # Start from next epoch
+            logging.info(f"✅ Resuming from epoch {start_epoch}")
+        else:
+            logging.warning("⚠️ Epoch information not found in checkpoint, starting from epoch 0")
+    
+    elif hasattr(train_cfg, 'resume_from_checkpoint') and train_cfg.resume_from_checkpoint:
+        # Check if resume path is specified in config
+        resume_path = Path(train_cfg.resume_from_checkpoint)
+        if resume_path.exists():
+            logging.info(f"🔄 Resuming from config-specified checkpoint: {resume_path}")
+            resume_from_checkpoint = str(resume_path)
+            # Recursive call to handle checkpoint loading
+            return run(data_cfg, model_cfg, train_cfg, exp_dir, debug, 
+                      wandb_entity, wandb_project, resume_from_checkpoint)
+
     # Config shortcuts
     input_channels = model_cfg.input.channels
     input_sr = model_cfg.input.sample_rate
@@ -544,7 +598,7 @@ def run(
     gromit.start_training()
 
     # Training loop
-    for epoch in range(train_cfg.epochs):
+    for epoch in range(start_epoch, train_cfg.epochs):
         logging.info(f"=== EPOCH {epoch}/{train_cfg.epochs-1} START ===")
         
         # Update sample selection for this epoch to provide diversity
@@ -782,6 +836,11 @@ def run(
 
 @hydra.main(version_base=None, config_path="../../config/train", config_name="main_ha")
 def main(cfg: DictConfig) -> None:
+    # Support resuming from checkpoint via config or command line
+    resume_checkpoint = None
+    if hasattr(cfg.train, 'resume_from_checkpoint') and cfg.train.resume_from_checkpoint:
+        resume_checkpoint = cfg.train.resume_from_checkpoint
+    
     run(
         cfg.dataloading,
         cfg.model,
@@ -790,6 +849,7 @@ def main(cfg: DictConfig) -> None:
         cfg.debug,
         cfg.wandb.entity,
         cfg.wandb.project,
+        resume_checkpoint,
     )
 
 
