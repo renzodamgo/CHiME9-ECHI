@@ -1,0 +1,9 @@
+name: joint_ha_uni
+
+args:
+  inference_dir: ${enhancement_dir}
+  config_path: data/working_dir/experiments/ha-joint-uni/train_ha/hydra/.hydra/config.yaml
+  ckpt_path: data/working_dir/experiments/ha-joint-uni/train_ha/checkpoints/ha-joint-uni_048.pt
+  audio_device: ${device}
+  window_size: 60
+  stride: 56

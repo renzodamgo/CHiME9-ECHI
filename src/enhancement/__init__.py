@@ -6,6 +6,7 @@ import os
 from enhancement import baseline as baseline
 from enhancement import passthrough as passthrough
 from enhancement import custom as custom
+from enhancement import joint_ha_uni as joint_ha_uni
 
 # Auto import enhancment options from ECHIPLUGINS
 if "ECHIPLUGINS" in os.environ:
