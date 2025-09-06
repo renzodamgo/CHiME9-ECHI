@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "WebSearch",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(python test:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []

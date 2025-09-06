@@ -79,31 +79,39 @@ class JointHaUni:
             with torch.cuda.device(d):
                 torch.cuda.reset_peak_memory_stats(d)
 
+        # Add batch dimension before prep_audio to match training format
+        # device_audio: [C, T] -> [1, C, T] to match training's [B, C, T] format
+        device_audio_batched = device_audio.unsqueeze(0)  # [1, C, T]
+        
         device_audio = prep_audio(
-            device_audio,
+            device_audio_batched,
             device_fs,
             self.model_cfg.model.input.channels,
             self.model_cfg.model.input.sample_rate,
             self.model_cfg.model.input.rms,
-            batched=False,
-        )  # [C,T] on same device as input
+            batched=True,  # ✅ FIXED: Match training preprocessing
+        )  # [1, C, T] -> squeeze back to [C, T]
+        
+        device_audio = device_audio.squeeze(0)  # [1, C, T] -> [C, T]
 
         sample_rate = self.model_cfg.model.input.sample_rate
 
         logging.info(f"device_audio shape: {device_audio.shape}")
 
         # ----- Prep single enrollment (Rainbow) once -----
-        # Accept [T] or [1,T]
-        if spkid_audio.ndim == 2 and spkid_audio.shape[0] == 1:
-            spkid_audio = spkid_audio.squeeze(0)  # -> [T]
+        # Ensure proper dimensions for batched processing
+        if spkid_audio.ndim == 1:
+            spkid_audio = spkid_audio.unsqueeze(0)  # [T] -> [1,T]
+        elif spkid_audio.ndim == 2 and spkid_audio.shape[0] > 1:
+            spkid_audio = spkid_audio[0:1]  # Take first channel: [C,T] -> [1,T]
 
         spkid_audio = prep_audio(
-            spkid_audio,  # [T]
+            spkid_audio,  # [1,T] - proper shape for batched=True
             spkid_fs,
             1,  # mono
             self.model_cfg.model.input.sample_rate,
             self.model_cfg.model.input.rms,
-            batched=False,
+            batched=True,  # ✅ FIXED: Match training preprocessing
         )  # -> [1,T] (mono) on current device
         logging.info(f"spkid_audio shape: {spkid_audio.shape}")
 
@@ -158,15 +166,12 @@ class JointHaUni:
             end = min(start + self.window_samples, duration)
             window_size = end - start
 
-            snippet = device_audio[..., start:end]
-            snippet = prep_audio(
-                snippet,
-                self.model_cfg.model.input.sample_rate,
-                self.model_cfg.model.input.channels,
-                self.model_cfg.model.input.sample_rate,
-                0.0,
-                batched=False,
-            )  # [C, Tw]
+            snippet = device_audio[..., start:end]  # Already preprocessed - no need for prep_audio
+            # Skip prep_audio for snippets since device_audio is already:
+            # - Resampled to 16kHz
+            # - Normalized  
+            # - Proper channel format
+            # snippet already has shape [C, Tw] ready for STFT
 
             # Pad to avoid STFT truncation at the tail
             rem = (window_size - self.stft.n_fft) % self.stft.hop_length
@@ -202,12 +207,25 @@ class JointHaUni:
             # iSTFT and trim to window_size
             den_wav = self.stft.inverse(den_c).squeeze(0).squeeze(0)  # [Tw']
             den_wav = den_wav[:window_size]
+            
+            # Apply gentle high-frequency smoothing to reduce artifacts
+            # Simple 3-point smoothing filter
+            if den_wav.numel() > 2:
+                den_wav_smooth = torch.zeros_like(den_wav)
+                den_wav_smooth[0] = den_wav[0]
+                den_wav_smooth[1:-1] = 0.25 * den_wav[:-2] + 0.5 * den_wav[1:-1] + 0.25 * den_wav[2:]
+                den_wav_smooth[-1] = den_wav[-1]
+                
+                # Blend original and smoothed (preserve most detail, reduce artifacts)
+                den_wav = 0.8 * den_wav + 0.2 * den_wav_smooth
 
-            # Crossfade overlaps
+            # Crossfade overlaps using proper fade-in/fade-out
             if start > 0 and den_wav.shape[-1] > self.olap_samples:
+                # Fade in at the beginning (use first half of Hann window)
                 den_wav[: self.olap_samples] *= self.crossfade[: self.olap_samples]
             if end < duration and den_wav.shape[-1] > self.olap_samples:
-                den_wav[-self.olap_samples :] *= self.crossfade[-self.olap_samples :]
+                # Fade out at the end (use second half of Hann window)
+                den_wav[-self.olap_samples :] *= self.crossfade[self.olap_samples :]
 
             output[start:end] += den_wav
 

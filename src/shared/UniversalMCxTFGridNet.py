@@ -242,9 +242,14 @@ class UniversalMCxTFGridNet(nn.Module):
             logging.info(f"   Embedding shape: {speaker_embedding.shape}")
             logging.info(f"   Embedding mean: {speaker_embedding.mean().item():.4f}")
             logging.info(f"   Embedding std: {speaker_embedding.std().item():.4f}")
+            logging.info(f"   Embedding min/max: {speaker_embedding.min().item():.4f} / {speaker_embedding.max().item():.4f}")
             
             if speaker_embedding.std() < 0.01:
                 logging.warning("⚠️  Speaker embedding collapse detected!")
+            
+            # Log intermediate processing steps
+            logging.info(f"   spk_feat stats after conv: mean={spk_feat.mean().item():.4f}, std={spk_feat.std().item():.4f}")
+            logging.info(f"   aux_enc input shape: {spk_feat.shape}")
 
         # Universal processing: same shared chain for any speaker
         separated_audio = self._universal_separation_chain(mixture_features, speaker_embedding)
@@ -505,17 +510,11 @@ class GridNetV3Block(nn.Module):
         V = V.flatten(start_dim=2)  # [B', T, C*Q]
         emb_dim = Q.shape[-1]
 
-        attn_mat = torch.matmul(Q, K) / (emb_dim**0.5)  # [B', T, T]
-
-        causal_mask = (
-            torch.tril(torch.ones(attn_mat.shape[-1], attn_mat.shape[-1]))
-            .bool()
-            .to(attn_mat.device)
-        )
-        attn_mat = attn_mat.masked_fill(~causal_mask, float("-inf"))
-
-        attn_mat = F.softmax(attn_mat, dim=2)  # [B', T, T]
-        V = torch.matmul(attn_mat, V)  # [B', T, C*Q]
+        # Standard self-attention for audio enhancement 
+        # Q: [B', T, emb_dim], K: [B', emb_dim, T], V: [B', T, emb_dim]
+        attn_weights = torch.matmul(Q, K) / (emb_dim**0.5)  # [B', T, T]
+        attn_weights = F.softmax(attn_weights, dim=-1)
+        V = torch.matmul(attn_weights, V)  # [B', T, emb_dim]
 
         V = V.reshape(old_shape)  # [B', T, C, Q]
         V = V.transpose(1, 2)  # [B', C, T, Q]
