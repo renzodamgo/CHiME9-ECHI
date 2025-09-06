@@ -1,0 +1,79 @@
+# Multi-Speaker Context-Aware GridNet Configuration
+
+name: MultiSpeakerContextGridNet
+
+# Core GridNet architecture parameters
+n_layers: 6
+lstm_hidden_units: 192
+attn_n_head: 4
+attn_qk_output_channel: 4
+emb_dim: 48
+emb_ks: 4
+emb_hs: 1
+activation: prelu
+eps: 1.0e-5
+
+# Context-awareness parameters
+context_layers: 3        # Number of multi-speaker attention layers in aux encoder
+context_heads: 4         # Attention heads for inter-speaker relationship modeling
+context_dropout: 0.1     # Dropout in context attention blocks
+
+# Multi-speaker auxiliary encoder settings
+aux_encoder:
+  individual_processing: true    # Process each speaker individually first
+  cross_attention: true         # Apply cross-attention between speakers
+  relationship_analysis: true   # Analyze speaker relationships
+  difficulty_estimation: true   # Estimate separation difficulty
+  
+# Enhanced FiLM conditioning
+film_conditioning:
+  use_context: true            # Use context-aware FiLM instead of standard FiLM
+  context_fusion_weight: 0.3   # Weight for context vs individual conditioning
+  adaptive_difficulty: true    # Adapt conditioning strength based on difficulty
+
+# Speaker processing settings
+speaker_processing:
+  max_speakers: 5              # Maximum speakers to handle
+  dynamic_speaker_count: true  # Support variable number of speakers
+  speaker_order_invariant: true # Maintain speaker order invariance
+  
+# Input/Output settings
+input:
+  type: stft
+  channels: 4                  # Number of microphone channels
+  sample_rate: 16000
+  rms: 0.038                   # RMS normalization target
+  
+  stft:
+    n_fft: 512
+    hop_length: 128
+    win_length: 512
+    window: hann
+
+output:
+  type: stft
+  complex_format: true         # Output complex STFT
+  channels: 2                  # Real and imaginary parts
+
+# Architecture optimizations
+optimizations:
+  shared_processing: true      # Use shared weights for all speakers
+  parameter_sharing: maximum   # Maximum parameter sharing for efficiency
+  gradient_checkpointing: false # Disable for now, can enable for memory saving
+  
+# Training-specific model settings
+training:
+  gradient_logging: true       # Log gradient statistics
+  activation_logging: true     # Log activation statistics
+  embedding_analysis: true     # Analyze speaker embeddings
+  context_analysis: true       # Analyze multi-speaker context
+  
+  # Debugging intervals
+  log_interval: 50            # Log every N forward passes
+  save_embeddings: false      # Save speaker embeddings for analysis
+  
+# Compatibility settings
+compatibility:
+  universal_gridnet: true      # Maintain compatibility with UniversalGridNet
+  single_speaker_mode: true    # Support single-speaker enhancement
+  existing_checkpoints: partial # Partial loading of existing checkpoints

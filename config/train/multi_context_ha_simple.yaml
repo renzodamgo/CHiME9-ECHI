@@ -1,0 +1,42 @@
+# Context-Aware Multi-Speaker Training Configuration
+# Based on main_ha.yaml with context enhancements
+
+defaults:
+  - .@paths: ../paths
+  - .@shared: ../shared
+  - .@dataloading: dataloading
+  - .@train: train
+  - .@model: multi_context_gridnet  # Our custom model config
+  - .@wandb: wandb
+  - _self_
+
+# Override experiment name
+shared:
+  exp_name: ha-multi-context
+
+# Context-specific model parameters (memory-optimized)
+model:
+  name: MultiSpeakerContextGridNet
+  context_layers: 2  # Reduced from 3 to 2 for memory efficiency
+  context_heads: 2   # Reduced from 4 to 2 for memory efficiency
+
+# Enhanced training with context loss (extends base train config)
+train:
+  epochs: 60  # Override default epochs
+  lr: 0.0003  # Override default learning rate
+  # Add our custom loss configuration
+  loss_weights:
+    sisdr: 1.0
+    contrastive: 0.5
+    separation: 0.3
+    distinctiveness: 0.2
+  contrastive_temperature: 0.1
+
+# Device
+device: ha
+
+# Training directory
+train_dir: ${paths.train_ha_dir}
+
+# Debug
+debug: false

@@ -1,0 +1,111 @@
+# @package _global_
+defaults:
+  - .@paths: ../paths
+  - .@shared: ../shared
+  - multi_context_gridnet
+  - dataloading
+  - train
+  - wandb
+  - _self_
+
+# Experiment configuration
+shared:
+  exp_name: ha-multi-context
+
+# Model configuration override for context-aware model
+model:
+  name: MultiSpeakerContextGridNet
+  n_layers: 6
+  lstm_hidden_units: 192
+  attn_n_head: 4
+  attn_qk_output_channel: 4
+  emb_dim: 48
+  emb_ks: 4
+  emb_hs: 1
+  activation: prelu
+  eps: 1.0e-5
+  
+  # Context-specific parameters
+  context_layers: 3      # Number of multi-speaker attention layers
+  context_heads: 4       # Attention heads for context understanding
+  
+  input:
+    type: stft
+    channels: 4
+    sample_rate: 16000
+    rms: 0.038  # Normalization target
+    stft:
+      n_fft: 512
+      hop_length: 128
+      win_length: 512
+      window: hann
+
+# Training configuration
+train:
+  epochs: 60
+  lr: 0.0003            # Slightly lower LR for stable context learning
+  checkpoint_interval: 2
+  exp_name: ${shared.exp_name}
+  
+  # Enhanced loss configuration
+  loss_weights:
+    sisdr: 1.0           # Primary separation quality
+    contrastive: 0.5     # Speaker distinctiveness
+    separation: 0.3      # Context-aware interference suppression
+    distinctiveness: 0.2 # Output uniqueness
+  
+  contrastive_temperature: 0.1  # Temperature for contrastive learning
+  
+  # Learning rate scheduling
+  schedule_lr:
+    name: ReduceLROnPlateau
+    params:
+      mode: min
+      factor: 0.7
+      patience: 5
+      min_lr: 1.0e-5
+      verbose: true
+
+# Device-specific settings
+device: ha
+
+# Paths
+train_dir: ${paths.train_ha_dir}
+
+# Debugging and logging
+debug: false
+
+# Weights & Biases configuration
+wandb:
+  entity: null
+  project: chime9-echi-context
+
+# Advanced training settings
+training_strategy:
+  # Progressive difficulty (future enhancement)
+  curriculum_learning: false
+  start_with_easy_pairs: true
+  
+  # Gradient settings
+  gradient_clipping: 1.0
+  mixed_precision: true
+  
+  # Regularization
+  weight_decay: 1.0e-4
+  dropout: 0.1
+  
+  # Speaker-specific settings
+  max_speakers_per_batch: 5
+  min_speakers_per_batch: 2
+  speaker_sampling_strategy: balanced  # balanced, random, progressive
+
+# Evaluation settings
+evaluation:
+  metrics: [sisdr, stoi, pesq]
+  save_samples: true
+  sample_rate: 16000
+  
+  # Context-specific evaluation
+  evaluate_separation_quality: true
+  evaluate_speaker_distinctiveness: true
+  log_context_metrics: true
